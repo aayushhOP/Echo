@@ -102,12 +102,17 @@ export const createConversation = async (
       throw new AppError("groupName is required for group conversations", 400);
     }
 
-    if (!dto.participantIds || !Array.isArray(dto.participantIds) || dto.participantIds.length === 0) {
-      throw new AppError("participantIds array is required for group conversations", 400);
+    const rawParticipantIds = dto.participants || dto.participantIds;
+    if (!rawParticipantIds || !Array.isArray(rawParticipantIds) || rawParticipantIds.length === 0) {
+      throw new AppError("participants array is required for group conversations", 400);
     }
 
     // Clean and validate participant IDs
-    const uniqueIds = Array.from(new Set([...dto.participantIds, userId]));
+    const uniqueIds = Array.from(new Set([...rawParticipantIds, userId]));
+    if (uniqueIds.length < 2) {
+      throw new AppError("Group conversation requires at least 2 participants", 400);
+    }
+
     for (const pid of uniqueIds) {
       if (!Types.ObjectId.isValid(pid)) {
         throw new AppError(`Invalid participant ID: ${pid}`, 400);
@@ -176,15 +181,16 @@ export const updateConversation = async (
     conversation.groupName = dto.groupName.trim();
   }
 
-  if (dto.addParticipantIds && dto.addParticipantIds.length > 0) {
-    for (const pid of dto.addParticipantIds) {
+  const toAdd = dto.addParticipants || dto.addParticipantIds;
+  if (toAdd && toAdd.length > 0) {
+    for (const pid of toAdd) {
       if (!Types.ObjectId.isValid(pid)) {
         throw new AppError(`Invalid participant ID: ${pid}`, 400);
       }
     }
 
-    const usersToAdd = await User.find({ _id: { $in: dto.addParticipantIds } });
-    if (usersToAdd.length !== dto.addParticipantIds.length) {
+    const usersToAdd = await User.find({ _id: { $in: toAdd } });
+    if (usersToAdd.length !== toAdd.length) {
       throw new AppError("One or more users to add do not exist", 404);
     }
 
@@ -192,7 +198,7 @@ export const updateConversation = async (
       conversation.participants.map((id) => id.toString())
     );
 
-    for (const pid of dto.addParticipantIds) {
+    for (const pid of toAdd) {
       if (!currentParticipantSet.has(pid)) {
         conversation.participants.push(new Types.ObjectId(pid));
         currentParticipantSet.add(pid);
@@ -200,8 +206,9 @@ export const updateConversation = async (
     }
   }
 
-  if (dto.removeParticipantIds && dto.removeParticipantIds.length > 0) {
-    const toRemoveSet = new Set(dto.removeParticipantIds);
+  const toRemove = dto.removeParticipants || dto.removeParticipantIds;
+  if (toRemove && toRemove.length > 0) {
+    const toRemoveSet = new Set(toRemove);
 
     conversation.participants = conversation.participants.filter(
       (pid) => !toRemoveSet.has(pid.toString())

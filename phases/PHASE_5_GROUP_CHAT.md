@@ -23,10 +23,10 @@ Task: Confirm (write a test, don't rewrite the handlers) that the existing `mess
 Verify: a message sent in a group conversation reaches all connected group members via `message:new`.
 
 ## Done condition for Phase 5
-- [ ] Groups can be created with 2+ participants
-- [ ] Only admins can add/remove members
-- [ ] `participants` array stays correct after add/remove
-- [ ] A message in a group conversation reaches every connected member
-- [ ] No changes were needed in `messageHandlers.ts` to support groups
+- [x] Groups can be created with 2+ participants
+- [x] Only admins can add/remove members
+- [x] `participants` array stays correct after add/remove
+- [x] A message in a group conversation reaches every connected member
+- [x] No changes were needed in `messageHandlers.ts` to support groups
 
 Next file: `PHASE_6_FRONTEND.md`

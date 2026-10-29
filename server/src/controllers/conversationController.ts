@@ -12,7 +12,10 @@ const createConversationSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("group"),
     groupName: z.string().trim().min(1, "groupName cannot be empty").max(50),
-    participantIds: z.array(z.string()).min(1, "At least one participant required"),
+    participantIds: z.array(z.string()).optional(),
+    participants: z.array(z.string()).optional(),
+  }).refine((data) => (data.participants && data.participants.length > 0) || (data.participantIds && data.participantIds.length > 0), {
+    message: "At least one participant is required",
   }),
 ]);
 
@@ -21,6 +24,8 @@ const updateConversationSchema = z
     groupName: z.string().trim().min(1).max(50).optional(),
     addParticipantIds: z.array(z.string()).optional(),
     removeParticipantIds: z.array(z.string()).optional(),
+    addParticipants: z.array(z.string()).optional(),
+    removeParticipants: z.array(z.string()).optional(),
   })
   .strict();
 
