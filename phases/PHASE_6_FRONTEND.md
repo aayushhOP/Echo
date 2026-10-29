@@ -97,10 +97,10 @@ Task: Implement `TypingIndicator.tsx` and an online/offline dot on user avatars,
 Verify: typing in one browser shows the indicator in another connected browser. Closing a tab updates the other user's presence dot to offline.
 
 ## Done condition for Phase 6
-- [ ] Frontend folder structure matches Step 6.1
-- [ ] All REST calls go through `src/api/*.ts`, never direct `axios` calls in components
-- [ ] Exactly one socket connection per session, via `useSocket`
-- [ ] Sending a message shows optimistic UI, then reconciles
-- [ ] Typing indicator and presence dot both work live between two browsers
+- [x] Frontend folder structure matches Step 6.1
+- [x] All REST calls go through `src/api/*.ts`, never direct `axios` calls in components
+- [x] Exactly one socket connection per session, via `useSocket`
+- [x] Sending a message shows optimistic UI, then reconciles
+- [x] Typing indicator and presence dot both work live between two browsers
 
 Next file: `PHASE_7_POLISH_TESTING_DEPLOYMENT.md`
