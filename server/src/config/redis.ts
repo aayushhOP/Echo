@@ -47,5 +47,5 @@ export const connectRedis = async (): Promise<RedisClient | null> => {
 };
 
 export const getRedisClient = (): RedisClient | null => {
-  return isRedisConnected ? redisClient : null;
+  return isRedisConnected && redisClient && redisClient.isOpen ? redisClient : null;
 };

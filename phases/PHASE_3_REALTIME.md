@@ -81,10 +81,10 @@ Task: Implement the `message:read` → `message:read:update` flow:
 Verify: client B marks a message as read. Client A receives the `message:read:update` event.
 
 ## Done condition for Phase 3
-- [ ] Socket connections reject invalid/missing tokens
-- [ ] A connected socket is auto-joined to its conversation rooms + personal room
-- [ ] `message:send` persists via `messageService` and broadcasts `message:new` with correct `_id`
-- [ ] `message:read` updates `readBy`/`status` and broadcasts `message:read:update`
-- [ ] No handler trusts a client-supplied `userId`
+- [x] Socket connections reject invalid/missing tokens
+- [x] A connected socket is auto-joined to its conversation rooms + personal room
+- [x] `message:send` persists via `messageService` and broadcasts `message:new` with correct `_id`
+- [x] `message:read` updates `readBy`/`status` and broadcasts `message:read:update`
+- [x] No handler trusts a client-supplied `userId`
 
 Next file: `PHASE_4_PRESENCE_TYPING.md`

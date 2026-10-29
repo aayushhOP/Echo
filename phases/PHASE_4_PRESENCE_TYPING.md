@@ -34,9 +34,9 @@ Verify:
 2. Close both tabs → `presence:offline` fires once, with a `lastSeen` timestamp.
 
 ## Done condition for Phase 4
-- [ ] Typing indicator shows on the recipient's screen only, not the sender's
-- [ ] Closing one of several tabs does not mark the user offline
-- [ ] Closing the last tab marks the user offline with a correct `lastSeen`
-- [ ] Presence state is read from Redis, not MongoDB, on the hot path
+- [x] Typing indicator shows on the recipient's screen only, not the sender's
+- [x] Closing one of several tabs does not mark the user offline
+- [x] Closing the last tab marks the user offline with a correct `lastSeen`
+- [x] Presence state is read from Redis, not MongoDB, on the hot path
 
 Next file: `PHASE_5_GROUP_CHAT.md`

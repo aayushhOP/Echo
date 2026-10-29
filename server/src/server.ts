@@ -3,6 +3,7 @@ import { createApp } from "./app";
 import { connectDB } from "./config/db";
 import { connectRedis } from "./config/redis";
 import { ENV } from "./config/env";
+import { initSocketServer } from "./sockets";
 
 const startServer = async () => {
   // Connect Databases
@@ -11,6 +12,9 @@ const startServer = async () => {
 
   const app = createApp();
   const server = http.createServer(app);
+
+  // Initialize Socket.IO
+  initSocketServer(server);
 
   server.listen(ENV.PORT, () => {
     console.log(`[Server] Running on port ${ENV.PORT} in ${ENV.NODE_ENV} mode`);
