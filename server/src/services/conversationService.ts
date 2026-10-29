@@ -50,7 +50,7 @@ export const getConversationById = async (conversationId: string, userId: string
 export const createConversation = async (
   userId: string,
   dto: CreateConversationDTO
-): Promise<IConversation> => {
+): Promise<{ conversation: IConversation; isNew: boolean }> => {
   const currentUserId = new Types.ObjectId(userId);
 
   if (dto.type === "direct") {
@@ -71,16 +71,16 @@ export const createConversation = async (
 
     const otherUserId = new Types.ObjectId(dto.participantId);
 
-    // Rule: Check if a direct conversation already exists between these two users
+    // Rule: Check whether a direct conversation between the same two users already exists
     const existingConversation = await Conversation.findOne({
       type: "direct",
-      participants: { $all: [currentUserId, otherUserId], $size: 2 },
+      participants: { $all: [currentUserId, otherUserId] },
     })
       .populate("participants", "_id username avatarUrl status isOnline lastSeen")
       .populate("lastMessage");
 
     if (existingConversation) {
-      return existingConversation;
+      return { conversation: existingConversation, isNew: false };
     }
 
     // Create new direct conversation
@@ -94,7 +94,7 @@ export const createConversation = async (
       "_id username avatarUrl status isOnline lastSeen"
     );
 
-    return populated!;
+    return { conversation: populated!, isNew: true };
   }
 
   if (dto.type === "group") {
@@ -132,7 +132,7 @@ export const createConversation = async (
       .populate("participants", "_id username avatarUrl status isOnline lastSeen")
       .populate("admins", "_id username avatarUrl");
 
-    return populated!;
+    return { conversation: populated!, isNew: true };
   }
 
   throw new AppError("Invalid conversation type", 400);

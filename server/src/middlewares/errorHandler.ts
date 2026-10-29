@@ -18,8 +18,17 @@ export const errorHandler = (
   res: Response,
   _next: NextFunction
 ): void => {
-  const statusCode = err.statusCode || (err.name === "ValidationError" ? 400 : 500);
-  const message = err.message || "Internal server error";
+  let statusCode = err.statusCode;
+  let message = err.message || "Internal server error";
+
+  if (err.name === "ZodError") {
+    statusCode = 400;
+    message = err.errors?.map((e: any) => `${e.path.join(".") || "field"}: ${e.message}`).join(", ") || "Validation error";
+  } else if (err.name === "ValidationError") {
+    statusCode = 400;
+  } else if (!statusCode) {
+    statusCode = 500;
+  }
 
   if (process.env.NODE_ENV !== "test" && statusCode === 500) {
     console.error("[Error Handler]", err);

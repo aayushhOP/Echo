@@ -73,10 +73,10 @@ export const createConversationHandler = async (
       throw new AppError("Authentication required", 401);
     }
     const validatedData = createConversationSchema.parse(req.body);
-    const conversation = await conversationService.createConversation(req.userId, validatedData);
-    res.status(201).json({
+    const result = await conversationService.createConversation(req.userId, validatedData);
+    res.status(result.isNew ? 201 : 200).json({
       success: true,
-      data: conversation,
+      data: result.conversation,
     });
   } catch (error) {
     next(error);

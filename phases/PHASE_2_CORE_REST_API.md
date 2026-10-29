@@ -41,10 +41,10 @@ Task: Implement `GET /api/conversations/:id/messages` using cursor-based paginat
 Verify: seed 40+ messages in one conversation. Confirm the endpoint returns 30 messages by default, and passing `before` with the oldest returned message's cursor returns the next page.
 
 ## Done condition for Phase 2
-- [ ] `/api/users/me` GET and PATCH work
-- [ ] `/api/users/search` returns matching users
-- [ ] Creating the same direct conversation twice returns the same conversation
-- [ ] Message history paginates correctly with `before` + `limit`
-- [ ] Non-participants get 403 on conversation/message routes
+- [x] `/api/users/me` GET and PATCH work
+- [x] `/api/users/search` returns matching users
+- [x] Creating the same direct conversation twice returns the same conversation
+- [x] Message history paginates correctly with `before` + `limit`
+- [x] Non-participants get 403 on conversation/message routes
 
 Next file: `PHASE_3_REALTIME.md`

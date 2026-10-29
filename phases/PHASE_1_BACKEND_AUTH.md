@@ -181,10 +181,10 @@ Verify (use curl or Thunder Client):
 4. Hit the same route with no token → 401.
 
 ## Done condition for Phase 1
-- [ ] Backend folder structure matches Step 1.1
-- [ ] MongoDB connects on startup
-- [ ] `User`, `Conversation`, `Message` models compile with exact field names above
-- [ ] Register / login / refresh / logout all work via curl
-- [ ] Protected route rejects requests with no/invalid token
+- [x] Backend folder structure matches Step 1.1
+- [x] MongoDB connects on startup
+- [x] `User`, `Conversation`, `Message` models compile with exact field names above
+- [x] Register / login / refresh / logout all work via curl
+- [x] Protected route rejects requests with no/invalid token
 
 Next file: `PHASE_2_CORE_REST_API.md`

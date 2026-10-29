@@ -48,10 +48,10 @@ VITE_SOCKET_URL=http://localhost:5000
 Verify: both `.env.example` files exist with placeholders only. `.env` is NOT tracked by git (check `git status`).
 
 ## Done condition for Phase 0
-- [ ] `client/`, `server/` exist with their `package.json` untouched
-- [ ] `.gitignore` excludes `node_modules`, `.env`, `dist`, `build`
-- [ ] both `node_modules/` installed
-- [ ] `.env.example` files created in both folders
-- [ ] root `README.md` has an "Environment setup" section
+- [x] `client/`, `server/` exist with their `package.json` untouched
+- [x] `.gitignore` excludes `node_modules`, `.env`, `dist`, `build`
+- [x] both `node_modules/` installed
+- [x] `.env.example` files created in both folders
+- [x] root `README.md` has an "Environment setup" section
 
 Next file: `PHASE_1_BACKEND_AUTH.md`
