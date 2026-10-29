@@ -7,11 +7,20 @@ export const registerPresenceHandlers = async (io: Server, socket: Socket) => {
   // Track connection synchronously during connection handling
   try {
     const isFirstConnection = await presenceService.trackUserConnection(userId, socket.id);
+    const contactIds = await presenceService.getUserContactIds(userId);
+
+    // 1. Tell all my contacts that I am online
     if (isFirstConnection) {
-      // Broadcast presence:online to all contacts
-      const contactIds = await presenceService.getUserContactIds(userId);
       for (const contactId of contactIds) {
         io.to(`user:${contactId}`).emit("presence:online", { userId });
+      }
+    }
+
+    // 2. Also tell THIS newly connected socket which of their contacts are ALREADY online
+    for (const contactId of contactIds) {
+      const isOnline = await presenceService.isUserOnline(contactId);
+      if (isOnline) {
+        socket.emit("presence:online", { userId: contactId });
       }
     }
   } catch (err: any) {

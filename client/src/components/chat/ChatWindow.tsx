@@ -41,9 +41,11 @@ export const ChatWindow: FC = () => {
     queryFn: async () => {
       if (!activeConversationId) return [];
       const data = await messageApi.getMessages(activeConversationId, { limit: 30 });
-      setMessages(activeConversationId, data);
+      // Server returns messages sorted newest first { createdAt: -1 }
+      const ordered = [...data].reverse();
+      setMessages(activeConversationId, ordered);
       setHasMore(data.length >= 30);
-      return data;
+      return ordered;
     },
     enabled: !!activeConversationId,
     staleTime: 1000 * 10,
@@ -92,7 +94,8 @@ export const ChatWindow: FC = () => {
           setHasMore(false);
         }
 
-        prependMessages(activeConversationId, older);
+        const orderedOlder = [...older].reverse();
+        prependMessages(activeConversationId, orderedOlder);
 
         // Preserve scroll position
         requestAnimationFrame(() => {
@@ -157,17 +160,22 @@ export const ChatWindow: FC = () => {
   }
 
   const isGroup = activeConv.type === "group";
+  const myId = currentUser?.id || (currentUser as any)?._id;
   const otherParticipant = !isGroup
-    ? activeConv.participants.find((p) => p.id !== currentUser?.id)
+    ? activeConv.participants.find((p) => {
+        const pId = p.id || (p as any)._id;
+        return pId && pId !== myId;
+      })
     : null;
 
   const headerTitle = isGroup
     ? activeConv.groupName || "Group Chat"
     : otherParticipant?.username || "Direct Chat";
 
+  const otherId = otherParticipant ? otherParticipant.id || (otherParticipant as any)._id : null;
   const isParticipantOnline =
-    !isGroup && otherParticipant
-      ? onlineUsers.has(otherParticipant.id) || !!otherParticipant.isOnline
+    !isGroup && otherParticipant && otherId
+      ? onlineUsers.has(otherId) || !!otherParticipant.isOnline
       : false;
 
   const presenceSubtitle = isGroup

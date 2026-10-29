@@ -71,9 +71,15 @@ export const ConversationList: FC = () => {
           const isSelected = conv._id === activeConversationId;
           const isGroup = conv.type === "group";
 
-          // Find other participant for direct chat
+          // Current logged-in user id
+          const myId = currentUser?.id || (currentUser as any)?._id;
+
+          // Find other participant for direct chat by comparing both _id and id
           const otherParticipant = !isGroup
-            ? conv.participants.find((p) => p.id !== currentUser?.id)
+            ? conv.participants.find((p) => {
+                const pId = p.id || (p as any)._id;
+                return pId && pId !== myId;
+              })
             : null;
 
           const title = isGroup
@@ -81,9 +87,10 @@ export const ConversationList: FC = () => {
             : otherParticipant?.username || "Direct Chat";
 
           // Presence check for direct chat: either stored isOnline or dynamic onlineUsers set
+          const otherId = otherParticipant ? otherParticipant.id || (otherParticipant as any)._id : null;
           const isParticipantOnline =
-            !isGroup && otherParticipant
-              ? onlineUsers.has(otherParticipant.id) || !!otherParticipant.isOnline
+            !isGroup && otherParticipant && otherId
+              ? onlineUsers.has(otherId) || !!otherParticipant.isOnline
               : false;
 
           const lastMsg = conv.lastMessage;

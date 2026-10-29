@@ -63,9 +63,9 @@ export const useAuthStore = create<AuthState>((set, get) => {
       set({ isLoading: true });
       try {
         // Try to obtain a fresh access token from httpOnly refresh cookie
-        const { accessToken } = await authApi.refresh();
-        set({ accessToken });
-        const { user } = await authApi.me();
+        const refreshData = await authApi.refresh();
+        set({ accessToken: refreshData.accessToken });
+        const user = refreshData.user || (await authApi.me());
         set({ user, isInitialized: true, isLoading: false });
       } catch {
         // Not authenticated

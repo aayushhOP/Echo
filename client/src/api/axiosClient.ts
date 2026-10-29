@@ -83,13 +83,13 @@ axiosClient.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        const { data } = await axios.post<{ accessToken: string }>(
+        const { data } = await axios.post<{ success: boolean; data: { accessToken: string } }>(
           `${baseURL}/auth/refresh`,
           {},
           { withCredentials: true }
         );
 
-        const newAccessToken = data.accessToken;
+        const newAccessToken = data.data.accessToken;
         setAccessToken(newAccessToken);
         processQueue(null, newAccessToken);
 

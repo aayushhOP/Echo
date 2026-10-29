@@ -128,13 +128,19 @@ export const useChatStore = create<ChatState>((set, get) => ({
       }
 
       // Check if there is an optimistic pending message from the same sender with matching content
-      const senderId = typeof message.senderId === "string" ? message.senderId : message.senderId.id;
-      const pendingIndex = current.findIndex(
-        (m) =>
-          m.status === "pending" &&
-          m.content === message.content &&
-          (typeof m.senderId === "string" ? m.senderId : m.senderId.id) === senderId
-      );
+      const msgSenderId =
+        typeof message.senderId === "string"
+          ? message.senderId
+          : (message.senderId as any)._id || message.senderId.id;
+
+      const pendingIndex = current.findIndex((m) => {
+        if (m.status !== "pending") return false;
+        const pendingSenderId =
+          typeof m.senderId === "string"
+            ? m.senderId
+            : (m.senderId as any)._id || m.senderId.id;
+        return m.content === message.content && pendingSenderId === msgSenderId;
+      });
 
       let nextMessages: Message[];
       if (pendingIndex >= 0) {
