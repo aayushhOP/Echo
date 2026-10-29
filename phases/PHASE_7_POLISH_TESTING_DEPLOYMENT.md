@@ -37,12 +37,12 @@ Deploy:
 Verify: set environment variables correctly on each platform — never commit real values, only `.env.example` with placeholders belongs in git. After deployment, open the public frontend URL and complete a full login → send message → receive on a second browser flow with no local servers running.
 
 ## Done condition for Phase 7 (and the whole project)
-- [ ] All REST/socket inputs validated with Zod
-- [ ] Error responses use the consistent `{ error: { code, message } }` shape
-- [ ] Backend test suite passes via `npm test`
-- [ ] `docker compose up` brings up server + MongoDB + Redis together
-- [ ] App is reachable at a public URL with no local servers running
-- [ ] `.env` is not committed anywhere in git history
+- [x] All REST/socket inputs validated with Zod
+- [x] Error responses use the consistent `{ error: { code, message } }` shape
+- [x] Backend test suite passes via `npm test`
+- [x] `docker compose up` brings up server + MongoDB + Redis together
+- [x] App is reachable at a public URL with no local servers running
+- [x] `.env` is not committed anywhere in git history
 
 ## Stretch goals (optional, only after everything above is done)
 Only attempt these if time remains. Each is independent — pick any subset.
