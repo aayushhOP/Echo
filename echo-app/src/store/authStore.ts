@@ -62,13 +62,18 @@ export const useAuthStore = create<AuthState>((set, get) => {
     initializeAuth: async () => {
       set({ isLoading: true });
       try {
-        // Try to obtain a fresh access token from httpOnly refresh cookie
-        const refreshData = await authApi.refresh();
+        // Try to obtain a fresh access token from httpOnly refresh cookie with a fallback timeout
+        const refreshPromise = authApi.refresh();
+        const timeoutPromise = new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error("Auth initialization timed out")), 5000)
+        );
+
+        const refreshData = await Promise.race([refreshPromise, timeoutPromise]);
         set({ accessToken: refreshData.accessToken });
         const user = refreshData.user || (await authApi.me());
         set({ user, isInitialized: true, isLoading: false });
       } catch {
-        // Not authenticated
+        // Not authenticated or timed out
         set({ user: null, accessToken: null, isInitialized: true, isLoading: false });
       }
     },

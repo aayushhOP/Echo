@@ -5,6 +5,7 @@ const baseURL =
 
 export const axiosClient = axios.create({
   baseURL,
+  timeout: 10000, // 10s timeout prevents indefinitely hanging on cold starts or network drops
   headers: {
     "Content-Type": "application/json",
   },
