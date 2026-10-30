@@ -28,6 +28,28 @@ export interface UploadFileResponse {
   mimeType: string;
 }
 
+export interface MediaItem {
+  _id: string;
+  conversationId: string;
+  senderId: {
+    _id?: string;
+    id?: string;
+    username: string;
+    avatarUrl?: string;
+  };
+  content: string;
+  type: "image" | "file";
+  mediaUrl: string;
+  fileName?: string;
+  fileSize?: number;
+  createdAt: string;
+}
+
+export interface MediaResponse {
+  items: MediaItem[];
+  nextCursor: string | null;
+}
+
 export const messageApi = {
   getConversations: async (): Promise<Conversation[]> => {
     const res = await axiosClient.get<ApiResponse<Conversation[]>>("/conversations");
@@ -60,6 +82,30 @@ export const messageApi = {
       params,
     });
     return res.data.data;
+  },
+
+  getConversationMedia: async (
+    conversationId: string,
+    params?: { type?: "image" | "file"; limit?: number; cursor?: string }
+  ): Promise<MediaResponse> => {
+    const res = await axiosClient.get<MediaResponse>(`/conversations/${conversationId}/media`, {
+      params,
+    });
+    return res.data;
+  },
+
+  togglePinConversation: async (conversationId: string): Promise<{ conversationId: string; isPinned: boolean }> => {
+    const res = await axiosClient.patch<{ conversationId: string; isPinned: boolean }>(
+      `/conversations/${conversationId}/pin`
+    );
+    return res.data;
+  },
+
+  toggleMuteConversation: async (conversationId: string): Promise<{ conversationId: string; isMuted: boolean }> => {
+    const res = await axiosClient.patch<{ conversationId: string; isMuted: boolean }>(
+      `/conversations/${conversationId}/mute`
+    );
+    return res.data;
   },
 
   uploadFile: async (file: File): Promise<UploadFileResponse> => {

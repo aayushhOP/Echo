@@ -1,20 +1,64 @@
 import { FC, useState, useEffect } from "react";
 import { ConversationList } from "../components/chat/ConversationList";
 import { ChatWindow } from "../components/chat/ChatWindow";
+import { ContactDetailDrawer } from "../components/chat/ContactDetailDrawer";
 import { useChatStore } from "../store/chatStore";
+import { useAuthStore } from "../store/authStore";
+import { messageApi } from "../api/messageApi";
 import { AppLoader } from "../components/common/AppLoader";
 
 let hasLoadedInitially = false;
 
 export const ChatPage: FC = () => {
   const activeConversationId = useChatStore((state) => state.activeConversationId);
+  const conversations = useChatStore((state) => state.conversations);
+  const addOrUpdateConversation = useChatStore((state) => state.addOrUpdateConversation);
+  const currentUser = useAuthStore((state) => state.user);
+
   const [isIntroLoading, setIsIntroLoading] = useState(!hasLoadedInitially);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
   useEffect(() => {
     if (!hasLoadedInitially) {
       hasLoadedInitially = true;
     }
   }, []);
+
+  // Close drawer if active conversation changes or becomes null
+  useEffect(() => {
+    setIsDrawerOpen(false);
+  }, [activeConversationId]);
+
+  const activeConversation = conversations.find((c) => c._id === activeConversationId);
+  const currentUserId = currentUser?.id || (currentUser as any)?._id || "";
+
+  const handleTogglePin = async (conversationId: string) => {
+    try {
+      const res = await messageApi.togglePinConversation(conversationId);
+      if (activeConversation && activeConversation._id === conversationId) {
+        addOrUpdateConversation({
+          ...activeConversation,
+          isPinned: res.isPinned,
+        });
+      }
+    } catch (err) {
+      console.error("Failed to toggle pin status", err);
+    }
+  };
+
+  const handleToggleMute = async (conversationId: string) => {
+    try {
+      const res = await messageApi.toggleMuteConversation(conversationId);
+      if (activeConversation && activeConversation._id === conversationId) {
+        addOrUpdateConversation({
+          ...activeConversation,
+          isMuted: res.isMuted,
+        });
+      }
+    } catch (err) {
+      console.error("Failed to toggle mute status", err);
+    }
+  };
 
   return (
     <>
@@ -26,7 +70,7 @@ export const ChatPage: FC = () => {
         />
       )}
 
-      <div className="flex-1 h-full flex overflow-hidden">
+      <div className="flex-1 h-full flex overflow-hidden relative">
         {/* Middle Conversation Panel: 320px width (w-80) on desktop */}
         <div
           className={`w-full md:w-80 h-full shrink-0 ${
@@ -38,11 +82,25 @@ export const ChatPage: FC = () => {
 
         {/* Main Chat Canvas: Fluid flex-1 */}
         <div
-          className={`flex-1 h-full min-w-0 ${
+          className={`flex-1 h-full min-w-0 flex relative ${
             !activeConversationId ? "hidden md:flex" : "flex"
           }`}
         >
-          <ChatWindow />
+          <ChatWindow
+            onHeaderClick={() => setIsDrawerOpen((prev) => !prev)}
+            onOpenMenu={() => setIsDrawerOpen((prev) => !prev)}
+          />
+
+          {activeConversation && (
+            <ContactDetailDrawer
+              isOpen={isDrawerOpen}
+              onClose={() => setIsDrawerOpen(false)}
+              conversation={activeConversation}
+              currentUserId={currentUserId}
+              onTogglePin={handleTogglePin}
+              onToggleMute={handleToggleMute}
+            />
+          )}
         </div>
       </div>
     </>

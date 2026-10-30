@@ -11,7 +11,17 @@ import { TypingIndicator } from "./TypingIndicator";
 import { Message } from "../../types/message";
 import { MessageSquareOff, Loader2 } from "lucide-react";
 
-export const ChatWindow: FC = () => {
+interface ChatWindowProps {
+  onHeaderClick?: () => void;
+  onOpenMenu?: () => void;
+  onSearchClick?: () => void;
+}
+
+export const ChatWindow: FC<ChatWindowProps> = ({
+  onHeaderClick,
+  onOpenMenu,
+  onSearchClick,
+}) => {
   const currentUser = useAuthStore((state) => state.user);
   const {
     activeConversationId,
@@ -192,7 +202,12 @@ export const ChatWindow: FC = () => {
   return (
     <div className="flex-1 h-screen flex flex-col bg-[#0b0e14] relative min-w-0">
       {/* Desktop Header */}
-      <ChatHeader conversation={activeConv} />
+      <ChatHeader
+        conversation={activeConv}
+        onHeaderClick={onHeaderClick}
+        onOpenMenu={onOpenMenu}
+        onSearchClick={onSearchClick}
+      />
 
       {/* Message Stream */}
       <div

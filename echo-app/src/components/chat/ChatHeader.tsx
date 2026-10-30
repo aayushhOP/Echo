@@ -9,9 +9,16 @@ import { formatTime } from "../../utils/date";
 interface ChatHeaderProps {
   conversation: IConversation;
   onSearchClick?: () => void;
+  onHeaderClick?: () => void;
+  onOpenMenu?: () => void;
 }
 
-export const ChatHeader: FC<ChatHeaderProps> = ({ conversation, onSearchClick }) => {
+export const ChatHeader: FC<ChatHeaderProps> = ({
+  conversation,
+  onSearchClick,
+  onHeaderClick,
+  onOpenMenu,
+}) => {
   const currentUser = useAuthStore((state) => state.user);
   const onlineUsers = useChatStore((state) => state.onlineUsers);
   const userLastSeen = useChatStore((state) => state.userLastSeen);
@@ -49,10 +56,14 @@ export const ChatHeader: FC<ChatHeaderProps> = ({ conversation, onSearchClick })
   return (
     <header className="h-16 shrink-0 bg-[#0e121b]/90 backdrop-blur-md border-b border-slate-800/80 px-6 flex items-center justify-between z-10">
       {/* Left: Avatar + Title + Real-time presence indicator */}
-      <div className="flex items-center gap-3.5 min-w-0">
+      <div
+        onClick={onHeaderClick}
+        className="flex items-center gap-3.5 min-w-0 cursor-pointer group hover:opacity-90 transition-opacity"
+        title="View details"
+      >
         <div className="relative">
           {isGroup ? (
-            <div className="w-10 h-10 rounded-full bg-slate-800 border border-slate-700/60 flex items-center justify-center text-slate-300">
+            <div className="w-10 h-10 rounded-full bg-slate-800 border border-slate-700/60 flex items-center justify-center text-slate-300 group-hover:border-indigo-500/50 transition-colors">
               <Users className="w-5 h-5 text-indigo-400" />
             </div>
           ) : (
@@ -72,7 +83,9 @@ export const ChatHeader: FC<ChatHeaderProps> = ({ conversation, onSearchClick })
         </div>
 
         <div className="flex flex-col min-w-0">
-          <h2 className="text-sm font-semibold text-white truncate">{title}</h2>
+          <h2 className="text-sm font-semibold text-white truncate group-hover:text-indigo-200 transition-colors">
+            {title}
+          </h2>
           <div className="flex items-center gap-1.5 text-xs">
             {!isGroup && isOnline && (
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
@@ -108,8 +121,9 @@ export const ChatHeader: FC<ChatHeaderProps> = ({ conversation, onSearchClick })
           <Search className="w-4 h-4" />
         </button>
         <button
-          className="p-2 rounded-xl hover:text-slate-200 hover:bg-slate-800/60 transition-colors cursor-pointer hidden sm:flex"
-          title="More options"
+          onClick={onOpenMenu || onHeaderClick}
+          className="p-2 rounded-xl hover:text-slate-200 hover:bg-slate-800/60 transition-colors cursor-pointer flex"
+          title="More options / Details"
         >
           <MoreVertical className="w-4 h-4" />
         </button>

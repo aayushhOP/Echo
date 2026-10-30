@@ -38,7 +38,11 @@ export interface ConversationParticipant {
   _id: string;
   id?: string;
   username: string;
+  email?: string;
   avatarUrl?: string;
+  bio?: string;
+  status?: string;
+  phone?: string;
   isOnline?: boolean;
   lastSeen?: string;
 }
@@ -47,9 +51,12 @@ export interface Conversation {
   _id: string;
   type: "direct" | "group";
   groupName?: string;
+  groupAvatar?: string;
   participants: (User | ConversationParticipant)[];
   admins?: string[];
   lastMessage?: Message;
+  isPinned?: boolean;
+  isMuted?: boolean;
   unreadCount?: number;
   createdAt?: string;
   updatedAt: string;
