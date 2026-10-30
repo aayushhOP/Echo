@@ -1,5 +1,5 @@
-import { FC, memo } from "react";
-import { Check, CheckCheck, Clock, FileText, Download } from "lucide-react";
+import { FC, memo, useState } from "react";
+import { Check, CheckCheck, Clock, FileText, Download, ImageOff } from "lucide-react";
 import { Message } from "../../types/message";
 import { useAuthStore } from "../../store/authStore";
 import { formatTime } from "../../utils/date";
@@ -18,6 +18,7 @@ const MessageBubbleComponent: FC<MessageBubbleProps> = ({
   onReact,
 }) => {
   const currentUser = useAuthStore((state) => state.user);
+  const [imageError, setImageError] = useState(false);
 
   const senderId =
     typeof message.senderId === "string"
@@ -80,14 +81,27 @@ const MessageBubbleComponent: FC<MessageBubbleProps> = ({
           {/* Image Attachment Preview */}
           {message.type === "image" && message.mediaUrl && (
             <div className="mb-2 rounded-xl overflow-hidden border border-black/20 bg-black/20">
-              <a href={message.mediaUrl} target="_blank" rel="noopener noreferrer">
-                <img
-                  src={message.mediaUrl}
-                  alt={message.fileName || "Image"}
-                  className="max-h-72 w-full object-cover rounded-xl hover:scale-[1.01] transition-transform duration-200"
-                  loading="lazy"
-                />
-              </a>
+              {imageError ? (
+                <div className="p-3 flex items-center gap-2.5 text-xs text-slate-300 bg-black/30">
+                  <div className="w-8 h-8 rounded-lg bg-rose-500/20 text-rose-300 flex items-center justify-center shrink-0">
+                    <ImageOff size={16} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium truncate text-slate-200">{message.fileName || "Image"}</p>
+                    <p className="text-[10px] text-slate-400">Image expired or unavailable</p>
+                  </div>
+                </div>
+              ) : (
+                <a href={message.mediaUrl} target="_blank" rel="noopener noreferrer">
+                  <img
+                    src={message.mediaUrl}
+                    alt={message.fileName || "Image"}
+                    onError={() => setImageError(true)}
+                    className="max-h-72 w-full object-cover rounded-xl hover:scale-[1.01] transition-transform duration-200"
+                    loading="lazy"
+                  />
+                </a>
+              )}
             </div>
           )}
 
