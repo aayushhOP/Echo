@@ -172,14 +172,17 @@ export const ChatWindow: FC<ChatWindowProps> = ({
     reactMessage(activeConversationId, messageId, emoji);
   };
 
-  // Active typing user names
+  // Active typing user names (exclude current user so only recipients see typing indicator)
+  const currentUserId = currentUser?.id || currentUser?._id;
   const activeTypingMap = (activeConversationId && typingUsers[activeConversationId]) || {};
-  const activeTypingUserIds = Object.keys(activeTypingMap);
+  const activeTypingUserIds = Object.keys(activeTypingMap).filter(
+    (id) => !currentUserId || id !== currentUserId
+  );
 
   const activeTypingNames = activeConv?.participants
     .filter((p) => {
       const pId = p.id || (p as any)._id;
-      return pId && activeTypingUserIds.includes(pId);
+      return pId && pId !== currentUserId && activeTypingUserIds.includes(pId);
     })
     .map((p) => p.username) || [];
 
@@ -245,6 +248,7 @@ export const ChatWindow: FC<ChatWindowProps> = ({
             <MessageBubble
               key={msg._id}
               message={msg}
+              isGroup={activeConv?.type === "group"}
               onReact={handleReact}
             />
           ))}

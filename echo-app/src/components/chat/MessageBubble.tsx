@@ -7,12 +7,13 @@ import { Check, CheckCheck, Clock, FileText, Download } from "lucide-react";
 
 interface MessageBubbleProps {
   message: Message;
+  isGroup?: boolean;
   onReact: (messageId: string, emoji: string) => void;
 }
 
 const QUICK_REACTIONS = ["👍", "❤️", "😂", "🔥", "😮", "😢"];
 
-export const MessageBubble: FC<MessageBubbleProps> = ({ message, onReact }) => {
+export const MessageBubble: FC<MessageBubbleProps> = ({ message, isGroup = false, onReact }) => {
   const currentUser = useAuthStore((state) => state.user);
   const [isHovered, setIsHovered] = useState(false);
 
@@ -48,8 +49,8 @@ export const MessageBubble: FC<MessageBubbleProps> = ({ message, onReact }) => {
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      {/* Sender name for received messages */}
-      {!isMine && (
+      {/* Sender name for received messages in group chats only */}
+      {!isMine && isGroup && (
         <span className="text-[11px] font-medium text-slate-400 mb-1 px-1">
           {senderName}
         </span>

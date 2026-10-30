@@ -71,9 +71,9 @@ export const ChatPage: FC = () => {
       )}
 
       <div className="flex-1 h-full flex overflow-hidden relative">
-        {/* Middle Conversation Panel: 320px width (w-80) on desktop */}
+        {/* Middle Conversation Panel: matched to WhatsApp layout (~30-32% of viewport or 380px-440px) */}
         <div
-          className={`w-full md:w-80 h-full shrink-0 ${
+          className={`w-full md:w-[360px] lg:w-[30%] lg:min-w-[380px] lg:max-w-[460px] h-full shrink-0 ${
             activeConversationId ? "hidden md:flex" : "flex"
           }`}
         >

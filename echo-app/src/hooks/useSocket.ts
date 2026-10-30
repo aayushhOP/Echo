@@ -83,6 +83,11 @@ export const useSocket = () => {
     });
 
     newSocket.on("typing:update", ({ conversationId, userId, isTyping }) => {
+      // Ignore typing events originating from the current user (e.g. across multi-tab or local echoes)
+      const currentUserId = user?.id || user?._id;
+      if (currentUserId && userId === currentUserId) {
+        return;
+      }
       setTyping(conversationId, userId, isTyping);
     });
 

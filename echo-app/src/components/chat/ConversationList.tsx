@@ -55,7 +55,7 @@ export const ConversationList: FC = () => {
   }, [conversations, searchQuery, currentUser]);
 
   return (
-    <aside className="w-80 h-full flex flex-col bg-[#111622] border-r border-slate-800/70 shrink-0 select-none">
+    <aside className="w-full h-full flex flex-col bg-[#111622] border-r border-slate-800/70 shrink-0 select-none">
       {/* Header with Title and + New Chat button */}
       <div className="p-4 border-b border-slate-800/80 flex items-center justify-between">
         <div>
