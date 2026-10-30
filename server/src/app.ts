@@ -12,6 +12,9 @@ import { errorHandler } from "./middlewares/errorHandler";
 export const createApp = (): Application => {
   const app = express();
 
+  // Trust reverse proxy (Render, Heroku, etc.) for secure cookie handling
+  app.set("trust proxy", 1);
+
   // Security & Utility Middlewares
   app.use(helmet());
   app.use(
