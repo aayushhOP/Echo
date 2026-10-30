@@ -33,7 +33,8 @@ export const useSocket = () => {
       return;
     }
 
-    const socketUrl = import.meta.env.VITE_SOCKET_URL || "http://localhost:5000";
+    const socketUrl =
+      import.meta.env.VITE_SOCKET_URL || "https://echo-1aal.onrender.com";
 
     const newSocket: AppSocket = io(socketUrl, {
       auth: { token: accessToken },
