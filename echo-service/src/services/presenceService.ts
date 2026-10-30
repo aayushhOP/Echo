@@ -18,16 +18,11 @@ const memoryPresence = new Map<string, boolean>();
  * Returns true if this is the user's FIRST active socket (came online).
  */
 export const trackUserConnection = async (userId: string, socketId: string): Promise<boolean> => {
-  // Always update MongoDB so initial REST queries (getConversations) see isOnline: true
-  await User.findByIdAndUpdate(userId, { isOnline: true }).catch((e) =>
-    console.error("[PresenceService] Failed to update user isOnline in DB:", e)
-  );
-
   const redis = getRedisClient();
 
   if (redis) {
     try {
-      const added = await redis.sAdd(USER_SOCKETS_KEY(userId), socketId);
+      await redis.sAdd(USER_SOCKETS_KEY(userId), socketId);
       // Refresh presence key
       await redis.set(PRESENCE_KEY(userId), "online", { EX: DEFAULT_TTL_SECONDS });
       const socketCount = await redis.sCard(USER_SOCKETS_KEY(userId));

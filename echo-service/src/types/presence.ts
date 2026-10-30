@@ -5,3 +5,7 @@ export const typingEventSchema = z.object({
 });
 
 export type TypingEventDTO = z.infer<typeof typingEventSchema>;
+
+export const presenceSyncRequestSchema = z.array(z.string().min(1));
+export type PresenceSyncRequestDTO = z.infer<typeof presenceSyncRequestSchema>;
+

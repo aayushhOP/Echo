@@ -25,13 +25,10 @@ export const initSocketServer = (httpServer: HttpServer): SocketIOServer => {
     // Register event handlers immediately
     registerMessageHandlers(io, socket);
     registerTypingHandlers(io, socket);
-    await registerPresenceHandlers(io, socket);
+    registerPresenceHandlers(io, socket);
 
     try {
-      // 1. Join personal room
-      socket.join(`user:${userId}`);
-
-      // 2. Look up conversations the user belongs to and join their rooms
+      // 1. Look up conversations the user belongs to and join their rooms
       const conversations = await getConversationsForUser(userId);
       for (const conv of conversations) {
         socket.join(`conversation:${conv._id.toString()}`);

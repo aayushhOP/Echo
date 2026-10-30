@@ -99,6 +99,12 @@ export const useSocket = () => {
       setUserPresence(userId, false, lastSeen);
     });
 
+    newSocket.on("presence:sync", ({ onlineUsers }: { onlineUsers: string[] }) => {
+      if (Array.isArray(onlineUsers)) {
+        useChatStore.getState().setMultipleUsersOnline(onlineUsers);
+      }
+    });
+
     // Explicitly connect
     newSocket.connect();
 
@@ -158,6 +164,11 @@ export const useSocket = () => {
     socket.emit("typing:stop", { conversationId });
   };
 
+  const requestPresenceSync = (contactIds: string[]) => {
+    if (!socket || !isConnected || !Array.isArray(contactIds) || contactIds.length === 0) return;
+    socket.emit("presence:request_sync", contactIds);
+  };
+
   return {
     socket,
     isConnected,
@@ -166,5 +177,6 @@ export const useSocket = () => {
     markAsRead,
     startTyping,
     stopTyping,
+    requestPresenceSync,
   };
 };

@@ -1,53 +1,78 @@
 import type { Server, Socket } from "socket.io";
-import * as presenceService from "../../services/presenceService";
+import User from "../../models/User";
+import { presenceSyncRequestSchema } from "../../types/presence";
 
-export const registerPresenceHandlers = async (io: Server, socket: Socket) => {
+export const registerPresenceHandlers = (io: Server, socket: Socket) => {
   const userId = socket.data.userId;
+  const personalRoom = `user:${userId}`;
 
-  // Track connection synchronously during connection handling
-  try {
-    const isFirstConnection = await presenceService.trackUserConnection(userId, socket.id);
-    const contactIds = await presenceService.getUserContactIds(userId);
+  // 1. Join personal room on connection
+  socket.join(personalRoom);
 
-    // 1. Tell all my contacts that I am online
-    if (isFirstConnection) {
-      for (const contactId of contactIds) {
-        io.to(`user:${contactId}`).emit("presence:online", { userId });
-      }
-    }
-
-    // 2. Also tell THIS newly connected socket which of their contacts are ALREADY online
-    for (const contactId of contactIds) {
-      const isOnline = await presenceService.isUserOnline(contactId);
-      if (isOnline) {
-        socket.emit("presence:online", { userId: contactId });
-      }
-    }
-  } catch (err: any) {
-    console.error("[Socket Presence Connect Error]:", err.message || err);
-  }
-
-  // Handle disconnect
-  socket.on("disconnect", async (reason) => {
-    console.log(`[Socket] User disconnected: ${userId} (socketId: ${socket.id}, reason: ${reason})`);
+  const handleConnect = async () => {
     try {
-      const { wentOffline, lastSeen } = await presenceService.trackUserDisconnection(
-        userId,
-        socket.id
-      );
+      // .allSockets() safely queries across all server instances via Redis or memory adapter
+      const sockets = await io.in(personalRoom).allSockets();
 
-      if (wentOffline) {
-        // Broadcast presence:offline to all contacts
-        const contactIds = await presenceService.getUserContactIds(userId);
-        for (const contactId of contactIds) {
-          io.to(`user:${contactId}`).emit("presence:offline", {
-            userId,
-            lastSeen: lastSeen.toISOString(),
-          });
+      // If exactly 1 socket exists, the user just came online globally
+      if (sockets.size === 1) {
+        socket.broadcast.emit("presence:online", { userId });
+      }
+    } catch (error) {
+      console.error("[Socket Presence Connect Error]:", error);
+    }
+  };
+
+  const handleDisconnect = async () => {
+    try {
+      const sockets = await io.in(personalRoom).allSockets();
+
+      // If 0 sockets exist, ALL tabs/devices are closed
+      if (sockets.size === 0) {
+        const lastSeen = new Date();
+
+        // Broadcast offline status globally
+        io.emit("presence:offline", { userId, lastSeen: lastSeen.toISOString() });
+
+        // Persist offline state and lastSeen to DB safely in the background
+        await User.findByIdAndUpdate(userId, {
+          isOnline: false,
+          lastSeen,
+        }).catch((err) => {
+          console.error("[Socket Presence DB Update Error]:", err);
+        });
+      }
+    } catch (error) {
+      console.error("[Socket Presence Disconnect Error]:", error);
+    }
+  };
+
+  // Listen for client requesting initial presence state (batch-check active rooms)
+  socket.on("presence:request_sync", async (contactIds: unknown) => {
+    const parsed = presenceSyncRequestSchema.safeParse(contactIds);
+    if (!parsed.success || parsed.data.length === 0) return;
+
+    try {
+      const onlineContacts: string[] = [];
+
+      for (const contactId of parsed.data) {
+        const sockets = await io.in(`user:${contactId}`).allSockets();
+        if (sockets.size > 0) {
+          onlineContacts.push(contactId);
         }
       }
-    } catch (err: any) {
-      console.error("[Socket Presence Disconnect Error]:", err.message || err);
+
+      // Send back the array of currently online user IDs
+      socket.emit("presence:sync", { onlineUsers: onlineContacts });
+    } catch (error) {
+      console.error("[Socket Presence Sync Error]:", error);
     }
   });
+
+  // Execute connect logic immediately
+  handleConnect();
+
+  // Attach disconnect listener
+  socket.on("disconnect", handleDisconnect);
 };
+

@@ -30,6 +30,7 @@ interface ChatState {
   setUserPresence: (userId: string, isOnline: boolean, lastSeen?: string) => void;
   setUserOnline: (userId: string, isOnline: boolean, lastSeen?: string) => void;
   setOnlineUsers: (userIds: string[]) => void;
+  setMultipleUsersOnline: (userIds: string[]) => void;
   resetChat: () => void;
 }
 
@@ -352,6 +353,16 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   setOnlineUsers: (userIds) => {
     set({ onlineUsers: new Set(userIds) });
+  },
+
+  setMultipleUsersOnline: (userIds) => {
+    set((state) => {
+      const updated = new Set(state.onlineUsers);
+      for (const id of userIds) {
+        updated.add(id);
+      }
+      return { onlineUsers: updated };
+    });
   },
 
   resetChat: () => {

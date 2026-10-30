@@ -4,6 +4,7 @@ import { ChatWindow } from "../components/chat/ChatWindow";
 import { ContactDetailDrawer } from "../components/chat/ContactDetailDrawer";
 import { useChatStore } from "../store/chatStore";
 import { useAuthStore } from "../store/authStore";
+import { useSocket } from "../hooks/useSocket";
 import { messageApi } from "../api/messageApi";
 import { AppLoader } from "../components/common/AppLoader";
 
@@ -17,12 +18,36 @@ export const ChatPage: FC = () => {
 
   const [isIntroLoading, setIsIntroLoading] = useState(!hasLoadedInitially);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const { requestPresenceSync, isConnected } = useSocket();
 
   useEffect(() => {
     if (!hasLoadedInitially) {
       hasLoadedInitially = true;
     }
   }, []);
+
+  // Request presence sync for all contacts whenever conversations are loaded or socket connects
+  useEffect(() => {
+    if (!isConnected || conversations.length === 0) return;
+
+    const contactIds = new Set<string>();
+    const myId = currentUser?.id || (currentUser as any)?._id;
+
+    for (const conv of conversations) {
+      if (Array.isArray(conv.participants)) {
+        for (const p of conv.participants) {
+          const pId = p.id || (p as any)._id;
+          if (pId && pId !== myId) {
+            contactIds.add(pId);
+          }
+        }
+      }
+    }
+
+    if (contactIds.size > 0) {
+      requestPresenceSync(Array.from(contactIds));
+    }
+  }, [conversations, isConnected, currentUser?.id, requestPresenceSync]);
 
   // Close drawer if active conversation changes or becomes null
   useEffect(() => {

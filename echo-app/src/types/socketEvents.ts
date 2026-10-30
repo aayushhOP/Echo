@@ -21,6 +21,7 @@ export interface ServerToClientEvents {
   }) => void;
   "presence:online": (data: { userId: string }) => void;
   "presence:offline": (data: { userId: string; lastSeen?: string }) => void;
+  "presence:sync": (data: { onlineUsers: string[] }) => void;
 }
 
 export interface ClientToServerEvents {
@@ -50,4 +51,5 @@ export interface ClientToServerEvents {
   ) => void;
   "typing:start": (payload: { conversationId: string }) => void;
   "typing:stop": (payload: { conversationId: string }) => void;
+  "presence:request_sync": (contactIds: string[]) => void;
 }
