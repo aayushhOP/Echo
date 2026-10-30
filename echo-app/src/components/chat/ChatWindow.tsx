@@ -10,6 +10,8 @@ import { MessageInput } from "./MessageInput";
 import { TypingIndicator } from "./TypingIndicator";
 import { Message } from "../../types/message";
 import { MessageSquareOff, Loader2 } from "lucide-react";
+import { formatDateSeparator } from "../../utils/date";
+import chatBg from "../../assets/chat-bg.jpg";
 
 interface ChatWindowProps {
   onHeaderClick?: () => void;
@@ -204,14 +206,14 @@ export const ChatWindow: FC<ChatWindowProps> = ({
 
   if (!activeConversationId || !activeConv) {
     return (
-      <div className="flex-1 h-screen flex flex-col items-center justify-center bg-[#0b0e14] text-slate-500 select-none p-6 text-center">
-        <div className="w-16 h-16 rounded-2xl bg-[#111622] border border-slate-800/80 flex items-center justify-center text-slate-400 mb-4 shadow-xl">
-          <MessageSquareOff className="w-8 h-8 stroke-1 text-slate-500" />
+      <div className="flex-1 h-full flex flex-col items-center justify-center bg-[#171824] text-[#767b93] select-none p-6 text-center">
+        <div className="w-16 h-16 rounded-2xl bg-[#161722] border border-white/[0.04] flex items-center justify-center text-[#505469] mb-4 shadow-xl">
+          <MessageSquareOff className="w-8 h-8 stroke-1 text-[#505469]" />
         </div>
-        <h3 className="text-base font-semibold text-slate-300 mb-1">
+        <h3 className="text-base font-semibold text-white mb-1">
           No Conversation Selected
         </h3>
-        <p className="text-xs text-slate-500 max-w-sm">
+        <p className="text-xs text-[#767b93] max-w-sm">
           Select a chat from the left panel or click New Chat to start communicating.
         </p>
       </div>
@@ -219,7 +221,15 @@ export const ChatWindow: FC<ChatWindowProps> = ({
   }
 
   return (
-    <div className="flex-1 h-screen flex flex-col bg-[#0b0e14] relative min-w-0">
+    <div className="flex-1 h-full flex flex-col bg-[#171824] relative min-w-0 overflow-hidden">
+      {/* Background Wallpaper Image */}
+      <div
+        className="absolute inset-0 bg-cover bg-center pointer-events-none select-none z-0"
+        style={{ backgroundImage: `url(${chatBg})` }}
+      />
+      {/* Subtle Dark Overlay to preserve high message contrast & readability */}
+      <div className="absolute inset-0 bg-[#0b0e17]/85 backdrop-blur-[1px] pointer-events-none select-none z-0" />
+
       {/* Desktop Header */}
       <ChatHeader
         conversation={activeConv}
@@ -232,50 +242,66 @@ export const ChatWindow: FC<ChatWindowProps> = ({
       <div
         ref={messageListRef}
         onScroll={handleScroll}
-        className="flex-1 overflow-y-auto px-4 md:px-8 py-4 flex flex-col"
+        className="flex-1 overflow-y-auto px-4 md:px-6 py-4 flex flex-col justify-start relative z-10"
       >
-        {isLoadingMore && (
-          <div className="flex items-center justify-center py-2 text-xs text-slate-500">
-            <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5 text-indigo-400" />
-            Loading older messages...
-          </div>
-        )}
+        {/* Centered Desktop Column */}
+        <div className="w-full max-w-4xl mx-auto flex flex-col gap-2.5 flex-1 justify-end">
+          {isLoadingMore && (
+            <div className="flex items-center justify-center py-2 text-xs text-[#767b93]">
+              <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5 text-[#0066ff]" />
+              Loading older messages...
+            </div>
+          )}
 
-        {isInitialLoading && currentMessages.length === 0 && (
-          <div className="flex-1 flex flex-col items-center justify-center text-slate-500">
-            <Loader2 className="w-6 h-6 animate-spin text-indigo-500 mb-2" />
-            <p className="text-xs">Loading messages...</p>
-          </div>
-        )}
+          {isInitialLoading && currentMessages.length === 0 && (
+            <div className="flex-1 flex flex-col items-center justify-center text-[#767b93]">
+              <Loader2 className="w-6 h-6 animate-spin text-[#0066ff] mb-2" />
+              <p className="text-xs">Loading messages...</p>
+            </div>
+          )}
 
-        {!isInitialLoading && currentMessages.length === 0 && (
-          <div className="flex-1 flex flex-col items-center justify-center text-slate-500 text-center">
-            <p className="text-sm font-medium text-slate-400 mb-1">
-              Start of conversation
-            </p>
-            <p className="text-xs text-slate-600">
-              Send a message or share a file to get the conversation going.
-            </p>
-          </div>
-        )}
+          {!isInitialLoading && currentMessages.length === 0 && (
+            <div className="flex-1 flex flex-col items-center justify-center text-[#767b93] text-center">
+              <p className="text-sm font-medium text-white mb-1">
+                Start of conversation
+              </p>
+              <p className="text-xs text-[#505469]">
+                Send a message or share a file to get the conversation going.
+              </p>
+            </div>
+          )}
 
-        <div className="flex-1 flex flex-col justify-end space-y-1">
-          {currentMessages.map((msg) => (
-            <MessageBubble
-              key={msg._id}
-              message={msg}
-              isGroup={activeConv?.type === "group"}
-              onReact={handleReact}
-            />
-          ))}
+          <div className="flex flex-col space-y-1">
+            {currentMessages.map((msg, index) => {
+              const prevMsg = currentMessages[index - 1];
+              const currentDate = msg.createdAt ? new Date(msg.createdAt).toDateString() : "";
+              const prevDate = prevMsg?.createdAt ? new Date(prevMsg.createdAt).toDateString() : "";
+              const showDateSeparator = currentDate && currentDate !== prevDate;
+
+              return (
+                <div key={msg._id} className="flex flex-col">
+                  {showDateSeparator && (
+                    <div className="text-[#5f6377] text-[11px] tracking-wide my-4 select-none text-center font-normal">
+                      {formatDateSeparator(msg.createdAt)}
+                    </div>
+                  )}
+                  <MessageBubble
+                    message={msg}
+                    isGroup={activeConv?.type === "group"}
+                    onReact={handleReact}
+                  />
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Real-time typing indicators */}
+          {activeTypingNames.length > 0 && (
+            <div className="pt-2">
+              <TypingIndicator names={activeTypingNames} />
+            </div>
+          )}
         </div>
-
-        {/* Real-time typing indicators */}
-        {activeTypingNames.length > 0 && (
-          <div className="pt-2">
-            <TypingIndicator names={activeTypingNames} />
-          </div>
-        )}
       </div>
 
       {/* Docked Bottom Input Bar with File Attachment Trigger */}

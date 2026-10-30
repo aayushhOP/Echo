@@ -1,5 +1,15 @@
 import { FC, useState, useRef, useEffect, FormEvent, KeyboardEvent, ChangeEvent } from "react";
-import { Send, Smile, Paperclip, Loader2, X, FileText, Image as ImageIcon } from "lucide-react";
+import { createPortal } from "react-dom";
+import {
+  Send,
+  Smile,
+  Paperclip,
+  Loader2,
+  X,
+  FileText,
+  Image as ImageIcon,
+  Camera,
+} from "lucide-react";
 import EmojiPicker, { Theme, EmojiClickData } from "emoji-picker-react";
 import { useTypingIndicator } from "../../hooks/useTypingIndicator";
 import { messageApi } from "../../api/messageApi";
@@ -22,6 +32,7 @@ export const MessageInput: FC<MessageInputProps> = ({
 }) => {
   const [content, setContent] = useState("");
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [showAttachmentMenu, setShowAttachmentMenu] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [pendingFile, setPendingFile] = useState<{
     file: File;
@@ -29,27 +40,55 @@ export const MessageInput: FC<MessageInputProps> = ({
     isImage: boolean;
   } | null>(null);
 
+  // Camera modal streaming state
+  const [isCameraActive, setIsCameraActive] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+
   const pickerRef = useRef<HTMLDivElement>(null);
+  const emojiButtonRef = useRef<HTMLButtonElement>(null);
+  const attachmentMenuRef = useRef<HTMLDivElement>(null);
+  const attachmentButtonRef = useRef<HTMLButtonElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Specific file input refs
+  const docInputRef = useRef<HTMLInputElement>(null);
+  const mediaInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
 
   const { handleKeystroke, handleStopTyping } = useTypingIndicator(conversationId);
 
-  // Close emoji picker when clicking outside
+  // Close emoji picker and attachment menu when clicking outside
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (pickerRef.current && !pickerRef.current.contains(e.target as Node)) {
+      const target = e.target as Node;
+
+      if (
+        pickerRef.current &&
+        !pickerRef.current.contains(target) &&
+        emojiButtonRef.current &&
+        !emojiButtonRef.current.contains(target)
+      ) {
         setShowEmojiPicker(false);
+      }
+
+      if (
+        attachmentMenuRef.current &&
+        !attachmentMenuRef.current.contains(target) &&
+        attachmentButtonRef.current &&
+        !attachmentButtonRef.current.contains(target)
+      ) {
+        setShowAttachmentMenu(false);
       }
     };
 
-    if (showEmojiPicker) {
+    if (showEmojiPicker || showAttachmentMenu) {
       document.addEventListener("mousedown", handleClickOutside);
     }
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, [showEmojiPicker]);
+  }, [showEmojiPicker, showAttachmentMenu]);
 
   // Clean up preview object URL
   useEffect(() => {
@@ -59,6 +98,117 @@ export const MessageInput: FC<MessageInputProps> = ({
       }
     };
   }, [pendingFile]);
+
+  // Clean up camera stream on unmount
+  useEffect(() => {
+    return () => {
+      stopCameraStream();
+    };
+  }, []);
+
+  const stopCameraStream = () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+    }
+  };
+
+  const startCamera = async () => {
+    setShowAttachmentMenu(false);
+    setShowEmojiPicker(false);
+
+    // If getUserMedia is not supported in this browser/protocol context (e.g. non-https on remote host)
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      console.warn("getUserMedia is not supported, falling back to native file input");
+      cameraInputRef.current?.click();
+      return;
+    }
+
+    try {
+      let stream: MediaStream;
+      try {
+        // First try simple video request
+        stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+      } catch (firstErr) {
+        // Fallback constraint attempt if exact facingMode was rejected
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: "user" } },
+          audio: false,
+        });
+      }
+
+      streamRef.current = stream;
+      setIsCameraActive(true);
+    } catch (err: any) {
+      console.error("Camera access failed:", err);
+      const isPermissionDenied =
+        err?.name === "NotAllowedError" || err?.name === "PermissionDeniedError";
+      const isNotFound =
+        err?.name === "NotFoundError" || err?.name === "DevicesNotFoundError";
+      const isOverconstrained = err?.name === "OverconstrainedError";
+
+      let errorMessage = "Could not access camera.";
+      if (isPermissionDenied) {
+        errorMessage =
+          "Camera permission was blocked. Please click the camera/tune icon in your browser address bar to allow camera access.";
+      } else if (isNotFound) {
+        errorMessage = "No camera was detected on your device.";
+      } else if (isOverconstrained) {
+        errorMessage = "Camera constraints not satisfied by device hardware.";
+      } else if (err?.message) {
+        errorMessage = `Camera error: ${err.message}`;
+      }
+
+      alert(errorMessage);
+    }
+  };
+
+  const closeCamera = () => {
+    stopCameraStream();
+    setIsCameraActive(false);
+  };
+
+  const capturePhoto = () => {
+    if (!videoRef.current) return;
+    const video = videoRef.current;
+    const canvas = document.createElement("canvas");
+    canvas.width = video.videoWidth || 640;
+    canvas.height = video.videoHeight || 480;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    canvas.toBlob(
+      (blob) => {
+        if (!blob) return;
+        const photoFile = new File([blob], `photo_${Date.now()}.jpg`, {
+          type: "image/jpeg",
+        });
+        const previewUrl = URL.createObjectURL(photoFile);
+        setPendingFile({
+          file: photoFile,
+          previewUrl,
+          isImage: true,
+        });
+        closeCamera();
+      },
+      "image/jpeg",
+      0.9
+    );
+  };
+
+  // Wire video element when camera is mounted or stream changes
+  useEffect(() => {
+    if (isCameraActive && videoRef.current && streamRef.current) {
+      const video = videoRef.current;
+      video.srcObject = streamRef.current;
+      video.onloadedmetadata = () => {
+        video.play().catch((err) => {
+          console.warn("Video play error on loadedmetadata:", err);
+        });
+      };
+    }
+  }, [isCameraActive]);
 
   const handleFileSelect = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -78,10 +228,9 @@ export const MessageInput: FC<MessageInputProps> = ({
       isImage,
     });
 
-    // Reset input
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
+    // Reset input value so same file can be selected again
+    e.target.value = "";
+    setShowAttachmentMenu(false);
   };
 
   const removePendingFile = () => {
@@ -99,37 +248,39 @@ export const MessageInput: FC<MessageInputProps> = ({
 
     // If there is an attached file, upload first
     if (pendingFile) {
-      setIsUploading(true);
       try {
-        const uploadResult = await messageApi.uploadFile(pendingFile.file);
-        const msgType = pendingFile.isImage ? "image" : "file";
+        setIsUploading(true);
+        const uploadRes = await messageApi.uploadFile(pendingFile.file);
 
-        handleStopTyping();
-        onSendMessage(trimmed, msgType, {
-          mediaUrl: uploadResult.url,
-          fileName: uploadResult.fileName || pendingFile.file.name,
-          fileSize: uploadResult.fileSize || pendingFile.file.size,
+        const type = pendingFile.isImage ? "image" : "file";
+        onSendMessage(trimmed, type, {
+          mediaUrl: uploadRes.url,
+          fileName: uploadRes.fileName,
+          fileSize: uploadRes.fileSize,
         });
 
         setContent("");
         removePendingFile();
-        setShowEmojiPicker(false);
+        handleStopTyping();
       } catch (err: any) {
-        console.error("Upload failed", err);
-        alert(err?.response?.data?.message || "Failed to upload file");
+        console.error("Upload error", err);
+        alert(err?.response?.data?.error?.message || "Failed to upload file attachment.");
       } finally {
         setIsUploading(false);
       }
       return;
     }
 
-    // Standard text message
+    // Regular text message
     if (!trimmed) return;
 
-    handleStopTyping();
     onSendMessage(trimmed, "text");
     setContent("");
-    setShowEmojiPicker(false);
+    handleStopTyping();
+
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "auto";
+    }
   };
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -139,106 +290,207 @@ export const MessageInput: FC<MessageInputProps> = ({
     }
   };
 
-  const handleChange = (val: string) => {
-    setContent(val);
-    if (val.trim().length > 0) {
-      handleKeystroke();
-    } else {
-      handleStopTyping();
-    }
-  };
-
   const handleEmojiClick = (emojiData: EmojiClickData) => {
     setContent((prev) => prev + emojiData.emoji);
-    handleKeystroke();
     textareaRef.current?.focus();
   };
 
-  const canSend = (content.trim().length > 0 || !!pendingFile) && !isUploading && !disabled;
+  const handleChange = (val: string) => {
+    setContent(val);
+    handleKeystroke();
+
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "auto";
+      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 120)}px`;
+    }
+  };
+
+  const canSend = !disabled && !isUploading && (content.trim().length > 0 || !!pendingFile);
 
   return (
-    <div className="p-4 bg-[#0b0e14] shrink-0">
-      <div className="max-w-4xl mx-auto w-full relative">
-        {/* Emoji Picker Popup */}
-        {showEmojiPicker && (
-          <div
-            ref={pickerRef}
-            className="absolute bottom-16 left-3 z-50 shadow-2xl rounded-2xl overflow-hidden border border-slate-700/80"
-          >
-            <EmojiPicker
-              onEmojiClick={handleEmojiClick}
-              theme={Theme.DARK}
-              lazyLoadEmojis
-              searchPlaceHolder="Search emoji..."
-              width={320}
-              height={380}
-            />
-          </div>
-        )}
+    <div className="px-4 pt-1.5 pb-3 bg-transparent shrink-0 relative z-10">
+      <div className="max-w-4xl mx-auto flex flex-col gap-2 relative">
+        {/* Floating Emoji Picker Portal with Smooth Enter/Exit Transitions */}
+        <div
+          ref={pickerRef}
+          className={cn(
+            "absolute bottom-16 left-0 z-50 shadow-2xl rounded-2xl overflow-hidden border border-white/[0.06] transition-all duration-200 ease-out origin-bottom-left",
+            showEmojiPicker
+              ? "opacity-100 scale-100 translate-y-0 pointer-events-auto"
+              : "opacity-0 scale-95 translate-y-2 pointer-events-none"
+          )}
+        >
+          <EmojiPicker
+            onEmojiClick={handleEmojiClick}
+            theme={Theme.DARK}
+            lazyLoadEmojis
+            previewConfig={{ showPreview: false }}
+            width={340}
+            height={380}
+          />
+        </div>
 
-        {/* Upload Progress / Staging Preview */}
+        {/* Attachment Options Dropdown Menu */}
+        <div
+          ref={attachmentMenuRef}
+          className={cn(
+            "absolute bottom-16 left-0 z-50 min-w-[200px] bg-[#161722] border border-white/[0.08] rounded-2xl p-1.5 shadow-2xl transition-all duration-200 ease-out origin-bottom-left",
+            showAttachmentMenu
+              ? "opacity-100 scale-100 translate-y-0 pointer-events-auto"
+              : "opacity-0 scale-95 translate-y-2 pointer-events-none"
+          )}
+        >
+          <div className="flex flex-col gap-1">
+            {/* 1. Document Option */}
+            <button
+              type="button"
+              onClick={() => docInputRef.current?.click()}
+              className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-medium text-[#f0f2f8] hover:bg-white/[0.06] hover:text-white transition-all cursor-pointer text-left w-full group"
+            >
+              <div className="w-8 h-8 rounded-lg bg-indigo-500/15 text-indigo-400 group-hover:bg-indigo-500/25 flex items-center justify-center shrink-0 transition-colors">
+                <FileText size={17} />
+              </div>
+              <div className="flex flex-col">
+                <span className="font-semibold text-xs">Document</span>
+                <span className="text-[10px] text-[#767b93]">PDF, DOCX, ZIP, TXT</span>
+              </div>
+            </button>
+
+            {/* 2. Photos & Videos Option */}
+            <button
+              type="button"
+              onClick={() => mediaInputRef.current?.click()}
+              className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-medium text-[#f0f2f8] hover:bg-white/[0.06] hover:text-white transition-all cursor-pointer text-left w-full group"
+            >
+              <div className="w-8 h-8 rounded-lg bg-[#0066ff]/15 text-[#0066ff] group-hover:bg-[#0066ff]/25 flex items-center justify-center shrink-0 transition-colors">
+                <ImageIcon size={17} />
+              </div>
+              <div className="flex flex-col">
+                <span className="font-semibold text-xs">Photos & Videos</span>
+                <span className="text-[10px] text-[#767b93]">Images and video clips</span>
+              </div>
+            </button>
+
+            {/* 3. Camera Option */}
+            <button
+              type="button"
+              onClick={startCamera}
+              className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-medium text-[#f0f2f8] hover:bg-white/[0.06] hover:text-white transition-all cursor-pointer text-left w-full group"
+            >
+              <div className="w-8 h-8 rounded-lg bg-rose-500/15 text-rose-400 group-hover:bg-rose-500/25 flex items-center justify-center shrink-0 transition-colors">
+                <Camera size={17} />
+              </div>
+              <div className="flex flex-col">
+                <span className="font-semibold text-xs">Camera</span>
+                <span className="text-[10px] text-[#767b93]">Capture a live photo</span>
+              </div>
+            </button>
+          </div>
+        </div>
+
+        {/* Attachment Preview Card */}
         {pendingFile && (
-          <div className="mb-2 px-3 py-1.5 rounded-lg bg-[#182030] border border-slate-700 flex items-center justify-between text-xs text-slate-200">
-            <div className="flex items-center gap-2 truncate">
-              {pendingFile.isImage ? <ImageIcon size={14} className="text-indigo-400 shrink-0" /> : <FileText size={14} className="text-indigo-400 shrink-0" />}
-              <span className="truncate font-medium">{pendingFile.file.name}</span>
-              <span className="text-[10px] text-slate-400 shrink-0">
-                ({Math.round(pendingFile.file.size / 1024)} KB)
-              </span>
+          <div className="flex items-center gap-3 p-2.5 rounded-2xl bg-[#13141d] border border-white/[0.04] w-fit max-w-sm animate-in fade-in duration-150 shadow-lg">
+            {pendingFile.isImage && pendingFile.previewUrl ? (
+              <img
+                src={pendingFile.previewUrl}
+                alt="Upload preview"
+                className="w-12 h-12 rounded-xl object-cover border border-white/10"
+              />
+            ) : (
+              <div className="w-12 h-12 rounded-xl bg-[#232533] border border-white/10 flex items-center justify-center text-[#0066ff]">
+                <FileText size={22} />
+              </div>
+            )}
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-semibold text-white truncate">
+                {pendingFile.file.name}
+              </p>
+              <p className="text-[10px] text-[#767b93]">
+                {Math.round(pendingFile.file.size / 1024)} KB
+              </p>
             </div>
             <button
               type="button"
               onClick={removePendingFile}
-              className="text-slate-400 hover:text-white p-1 rounded transition-colors cursor-pointer"
+              className="text-[#767b93] hover:text-white p-1 rounded-lg transition-colors cursor-pointer"
               title="Remove attachment"
             >
-              <X size={14} />
+              <X size={15} />
             </button>
           </div>
         )}
 
-        {/* Main Docked Input Surface */}
+        {/* Main Docked Floating Input Surface */}
         <form
           onSubmit={handleSubmit}
-          className="bg-[#161c29] border border-slate-700/60 rounded-xl px-3 py-2 flex items-center gap-2 focus-within:border-indigo-500/80 transition-colors shadow-lg"
+          className="bg-[#13141d] border border-white/[0.04] rounded-2xl px-4 py-2.5 flex items-center gap-2.5 shadow-inner focus-within:border-white/[0.08] transition-colors"
         >
-          {/* Hidden File Input */}
+          {/* Hidden File Inputs for Options */}
           <input
             type="file"
-            ref={fileInputRef}
+            ref={docInputRef}
             onChange={handleFileSelect}
             className="hidden"
-            accept="image/*,.pdf,.zip,.docx,.txt"
+            accept=".pdf,.zip,.docx,.txt,.doc,.xlsx,.xls,.csv"
+          />
+          <input
+            type="file"
+            ref={mediaInputRef}
+            onChange={handleFileSelect}
+            className="hidden"
+            accept="image/*,video/*"
+          />
+          <input
+            type="file"
+            ref={cameraInputRef}
+            onChange={handleFileSelect}
+            className="hidden"
+            accept="image/*"
+            capture="environment"
           />
 
-          {/* Attachment Paperclip Button */}
+          {/* Attachment Paperclip Button (Left Side) */}
           <button
+            ref={attachmentButtonRef}
             type="button"
             disabled={disabled || isUploading}
-            onClick={() => fileInputRef.current?.click()}
-            className="p-2 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 transition-colors shrink-0 cursor-pointer disabled:opacity-50"
-            title="Attach file (Images, PDFs up to 10MB)"
-          >
-            <Paperclip className="w-4 h-4" />
-          </button>
-
-          {/* Emoji Trigger */}
-          <button
-            type="button"
-            disabled={disabled || isUploading}
-            onClick={() => setShowEmojiPicker((prev) => !prev)}
+            onClick={() => {
+              setShowAttachmentMenu((prev) => !prev);
+              setShowEmojiPicker(false);
+            }}
             className={cn(
-              "p-2 rounded-lg transition-colors shrink-0 cursor-pointer disabled:opacity-50",
-              showEmojiPicker
-                ? "text-indigo-400 bg-indigo-500/10"
-                : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/60"
+              "transition-colors p-1.5 shrink-0 cursor-pointer disabled:opacity-40 rounded-lg hover:bg-white/[0.04]",
+              showAttachmentMenu
+                ? "text-[#0066ff] bg-white/[0.06]"
+                : "text-[#505469] hover:text-[#767b93]"
             )}
-            title="Pick an emoji"
+            title="Attach file, photo or open camera"
           >
-            <Smile className="w-4 h-4" />
+            <Paperclip size={18} />
           </button>
 
-          {/* Textarea */}
+          {/* Emoji Trigger (Left Side) */}
+          <button
+            ref={emojiButtonRef}
+            type="button"
+            disabled={disabled || isUploading}
+            onClick={() => {
+              setShowEmojiPicker((prev) => !prev);
+              setShowAttachmentMenu(false);
+            }}
+            className={cn(
+              "transition-colors p-1.5 shrink-0 cursor-pointer disabled:opacity-40 rounded-lg hover:bg-white/[0.04]",
+              showEmojiPicker
+                ? "text-[#0066ff] bg-white/[0.06]"
+                : "text-[#505469] hover:text-[#767b93]"
+            )}
+            title={showEmojiPicker ? "Close emoji picker" : "Pick an emoji"}
+          >
+            <Smile size={18} />
+          </button>
+
+          {/* Text input / textarea */}
           <textarea
             ref={textareaRef}
             rows={1}
@@ -249,33 +501,88 @@ export const MessageInput: FC<MessageInputProps> = ({
               isUploading
                 ? "Uploading attachment..."
                 : pendingFile
-                ? "Add an optional caption (Press Enter to send)..."
-                : "Type a message... (Press Enter to send)"
+                ? "Add an optional caption..."
+                : "Type something..."
             }
             disabled={disabled || isUploading}
-            className="flex-1 bg-transparent text-slate-100 placeholder-slate-500 text-sm outline-none resize-none max-h-32 py-1 leading-relaxed"
+            className="flex-1 bg-transparent text-sm text-[#f0f2f8] placeholder-[#505469] focus:outline-none resize-none max-h-32 py-1 leading-relaxed px-1"
           />
 
-          {/* Send Button */}
+          {/* Send Button (Right Side) */}
           <button
             type="submit"
             disabled={!canSend}
             className={cn(
-              "w-9 h-9 rounded-xl flex items-center justify-center transition-all shrink-0 cursor-pointer",
+              "transition-all p-1.5 shrink-0 cursor-pointer rounded-lg hover:bg-white/[0.04]",
               canSend
-                ? "bg-indigo-600 hover:bg-indigo-500 text-white shadow-md shadow-indigo-600/30 scale-100"
-                : "bg-slate-800 text-slate-500 cursor-not-allowed scale-95"
+                ? "text-[#0066ff] hover:text-[#3385ff] active:scale-95"
+                : "text-[#313545] cursor-not-allowed"
             )}
             title="Send message"
           >
             {isUploading ? (
-              <Loader2 className="w-4 h-4 animate-spin text-white" />
+              <Loader2 className="w-4 h-4 animate-spin text-[#0066ff]" />
             ) : (
-              <Send className="w-4 h-4" />
+              <Send size={18} />
             )}
           </button>
         </form>
       </div>
+
+      {/* Live Webcam Capture Modal Portaled Directly to document.body */}
+      {isCameraActive &&
+        createPortal(
+          <div className="fixed inset-0 z-[9999] bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
+            <div className="w-full max-w-lg bg-[#161722] border border-white/[0.08] rounded-3xl p-5 flex flex-col gap-4 shadow-2xl relative animate-in fade-in zoom-in-95 duration-200">
+              {/* Modal Header */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-pulse" />
+                  <h3 className="text-sm font-semibold text-white">Live Camera</h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={closeCamera}
+                  className="p-1.5 rounded-lg text-[#767b93] hover:text-white hover:bg-white/[0.06] transition cursor-pointer"
+                  title="Cancel camera"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* Video Viewport */}
+              <div className="relative aspect-video rounded-2xl overflow-hidden bg-black border border-white/10 flex items-center justify-center shadow-inner">
+                <video
+                  ref={videoRef}
+                  autoPlay
+                  playsInline
+                  muted
+                  className="w-full h-full object-cover -scale-x-100"
+                />
+              </div>
+
+              {/* Actions */}
+              <div className="flex items-center justify-center gap-4 pt-1">
+                <button
+                  type="button"
+                  onClick={closeCamera}
+                  className="px-4 py-2 rounded-xl text-xs font-medium text-[#767b93] hover:text-white hover:bg-white/[0.04] transition cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={capturePhoto}
+                  className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-[#0066ff] hover:bg-[#005ce6] text-xs font-semibold text-white shadow-lg shadow-[#0066ff]/30 transition-transform active:scale-95 cursor-pointer"
+                >
+                  <Camera size={16} />
+                  <span>Take Photo</span>
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
     </div>
   );
 };

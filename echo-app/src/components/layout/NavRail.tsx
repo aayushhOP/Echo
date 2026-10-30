@@ -23,12 +23,12 @@ export const NavRail: FC = () => {
   ];
 
   return (
-    <aside className="w-16 h-full bg-[#0e121b] border-r border-slate-800/80 flex flex-col items-center py-4 justify-between shrink-0 select-none z-20">
+    <aside className="w-16 h-full bg-[#1b1c27] border-r border-white/[0.04] flex flex-col items-center py-4 justify-between shrink-0 select-none z-20">
       {/* Top: Brand Logo / App Monogram */}
       <div className="flex flex-col items-center gap-6 w-full">
         <Link
           to="/chat"
-          className="w-11 h-11 rounded-2xl bg-gradient-to-br from-indigo-500 to-indigo-700 flex items-center justify-center text-white font-extrabold text-xl shadow-lg shadow-indigo-600/30 hover:scale-105 transition-transform"
+          className="w-11 h-11 rounded-2xl bg-[#0066ff] flex items-center justify-center text-white font-extrabold text-xl shadow-lg shadow-[#0066ff]/25 hover:scale-105 transition-transform"
           title="Echo Chat"
         >
           E
@@ -48,15 +48,14 @@ export const NavRail: FC = () => {
                 key={item.path}
                 to={item.path}
                 className={cn(
-                  "w-12 h-12 flex items-center justify-center rounded-xl transition-all duration-150 mx-auto group relative cursor-pointer",
+                  "w-11 h-11 flex items-center justify-center rounded-xl transition-all duration-150 mx-auto group relative cursor-pointer",
                   isActive
-                    ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/25"
-                    : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
+                    ? "bg-[#0066ff] text-white shadow-md shadow-[#0066ff]/25"
+                    : "text-[#767b93] hover:text-[#f0f2f8] hover:bg-white/[0.04]"
                 )}
                 title={item.label}
               >
                 <Icon className="w-5 h-5 stroke-[2]" />
-                {/* Active indicator dot or tooltip */}
                 <span className="sr-only">{item.label}</span>
               </Link>
             );
@@ -68,7 +67,7 @@ export const NavRail: FC = () => {
       <div className="flex flex-col items-center gap-4 w-full px-2">
         <button
           onClick={handleLogout}
-          className="w-10 h-10 rounded-xl flex items-center justify-center text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer"
+          className="w-10 h-10 rounded-xl flex items-center justify-center text-[#767b93] hover:text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer"
           title="Sign out"
         >
           <LogOut className="w-5 h-5" />
@@ -76,14 +75,16 @@ export const NavRail: FC = () => {
 
         {currentUser && (
           <div className="relative group cursor-pointer" onClick={() => navigate("/profile")}>
-            <Avatar
-              name={currentUser.username}
-              avatarUrl={currentUser.avatarUrl}
-              size="sm"
-            />
-            {/* Absolute online indicator badge */}
+            <div className="rounded-full ring-2 ring-[#0066ff]/40 p-0.5">
+              <Avatar
+                name={currentUser.username}
+                avatarUrl={currentUser.avatarUrl}
+                size="sm"
+              />
+            </div>
+            {/* Online indicator badge */}
             <span
-              className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-emerald-500 ring-2 ring-[#0e121b]"
+              className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-emerald-500 ring-2 ring-[#1b1c27]"
               title="Online"
             />
           </div>

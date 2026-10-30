@@ -135,19 +135,19 @@ export const ContactDetailDrawer: React.FC<ContactDetailDrawerProps> = ({
 
   return (
     <aside
-      className={`fixed top-0 right-0 h-screen w-80 bg-[#0e121b] border-l border-slate-800/80 z-40 flex flex-col transition-transform duration-300 ease-in-out select-none shadow-2xl ${
+      className={`fixed top-0 right-0 h-screen w-80 bg-[#161722] border-l border-white/[0.04] z-40 flex flex-col transition-transform duration-300 ease-in-out select-none shadow-2xl ${
         isOpen ? "translate-x-0" : "translate-x-full"
       }`}
       aria-label="Conversation Details"
     >
       {/* Drawer Header */}
-      <div className="h-16 px-5 border-b border-slate-800/70 flex items-center justify-between shrink-0">
-        <h3 className="font-semibold text-sm text-slate-100">
+      <div className="h-16 px-5 border-b border-white/[0.04] flex items-center justify-between shrink-0">
+        <h3 className="font-semibold text-sm text-[#f0f2f8]">
           {conversation.type === "group" ? "Group Info" : "Contact Info"}
         </h3>
         <button
           onClick={onClose}
-          className="p-1.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 transition-colors cursor-pointer"
+          className="p-1.5 rounded-lg text-[#767b93] hover:text-white hover:bg-white/[0.04] transition-colors cursor-pointer"
           title="Close drawer"
           type="button"
         >
@@ -158,9 +158,9 @@ export const ContactDetailDrawer: React.FC<ContactDetailDrawerProps> = ({
       {/* Scrollable Content Container */}
       <div className="flex-1 overflow-y-auto">
         {/* Profile Card Section */}
-        <div className="flex flex-col items-center py-6 px-4 border-b border-slate-800/60 text-center">
+        <div className="flex flex-col items-center py-6 px-4 border-b border-white/[0.04] text-center">
           <div className="relative">
-            <div className="w-20 h-20 rounded-full bg-slate-800 border-2 border-slate-700/80 flex items-center justify-center text-lg font-bold text-slate-200 overflow-hidden shadow-inner">
+            <div className="w-20 h-20 rounded-full bg-[#1b1c27] border-2 border-white/[0.08] flex items-center justify-center text-lg font-bold text-white overflow-hidden shadow-inner ring-2 ring-[#0066ff]/20">
               {conversation.type === "group" ? (
                 (conversation as any).groupAvatar ? (
                   <img
@@ -169,7 +169,7 @@ export const ContactDetailDrawer: React.FC<ContactDetailDrawerProps> = ({
                     className="w-full h-full object-cover"
                   />
                 ) : (
-                  <Users className="w-9 h-9 text-indigo-400" />
+                  <Users className="w-9 h-9 text-[#0066ff]" />
                 )
               ) : counterpart?.avatarUrl ? (
                 <img
@@ -178,14 +178,14 @@ export const ContactDetailDrawer: React.FC<ContactDetailDrawerProps> = ({
                   className="w-full h-full object-cover"
                 />
               ) : (
-                <div className="flex items-center justify-center w-full h-full bg-indigo-900/60 text-indigo-200">
+                <div className="flex items-center justify-center w-full h-full bg-[#0066ff] text-white">
                   {displayName.slice(0, 2).toUpperCase()}
                 </div>
               )}
             </div>
             {conversation.type === "direct" && isOnline && (
               <span
-                className="absolute bottom-1 right-1 w-4 h-4 bg-emerald-500 border-2 border-[#0e121b] rounded-full ring-2 ring-emerald-500/20"
+                className="absolute bottom-1 right-1 w-4 h-4 bg-emerald-500 border-2 border-[#161722] rounded-full ring-2 ring-emerald-500/20"
                 title="Online"
               />
             )}
@@ -194,24 +194,24 @@ export const ContactDetailDrawer: React.FC<ContactDetailDrawerProps> = ({
           <h4 className="text-base font-semibold text-white mt-3 truncate max-w-full px-2">
             {displayName}
           </h4>
-          <p className="text-xs text-slate-400 mt-1 leading-relaxed max-w-xs px-2 break-words">
+          <p className="text-xs text-[#767b93] mt-1 leading-relaxed max-w-xs px-2 break-words">
             {displayBio}
           </p>
 
           {conversation.type === "direct" && (counterpart as any)?.email && (
-            <p className="text-[11px] text-slate-500 mt-1">
+            <p className="text-[11px] text-[#505469] mt-1">
               {(counterpart as any).email}
             </p>
           )}
         </div>
 
         {/* Quick Action Strip */}
-        <div className="grid grid-cols-4 gap-1.5 px-4 py-3 border-b border-slate-800/60">
+        <div className="grid grid-cols-4 gap-1.5 px-4 py-3 border-b border-white/[0.04]">
           <button
             onClick={handleMuteClick}
             disabled={isTogglingMute}
-            className={`flex flex-col items-center gap-1.5 p-2 rounded-xl hover:bg-slate-800/50 transition-colors cursor-pointer ${
-              conversation.isMuted ? "text-rose-400" : "text-slate-400 hover:text-slate-200"
+            className={`flex flex-col items-center gap-1.5 p-2 rounded-xl hover:bg-white/[0.04] transition-colors cursor-pointer ${
+              conversation.isMuted ? "text-rose-400" : "text-[#767b93] hover:text-[#0066ff]"
             }`}
             title={conversation.isMuted ? "Unmute conversation" : "Mute conversation"}
             type="button"
@@ -227,22 +227,22 @@ export const ContactDetailDrawer: React.FC<ContactDetailDrawerProps> = ({
           <button
             onClick={handlePinClick}
             disabled={isTogglingPin}
-            className={`flex flex-col items-center gap-1.5 p-2 rounded-xl hover:bg-slate-800/50 transition-colors cursor-pointer ${
-              conversation.isPinned ? "text-indigo-400" : "text-slate-400 hover:text-slate-200"
+            className={`flex flex-col items-center gap-1.5 p-2 rounded-xl hover:bg-white/[0.04] transition-colors cursor-pointer ${
+              conversation.isPinned ? "text-[#0066ff]" : "text-[#767b93] hover:text-[#0066ff]"
             }`}
             title={conversation.isPinned ? "Unpin conversation" : "Pin conversation"}
             type="button"
           >
             <Pin
               size={17}
-              className={conversation.isPinned ? "text-indigo-400 fill-indigo-400" : ""}
+              className={conversation.isPinned ? "text-[#0066ff] fill-[#0066ff]" : ""}
             />
             <span className="text-[10px] font-medium">{conversation.isPinned ? "Pinned" : "Pin"}</span>
           </button>
 
           <button
             onClick={onSearchClick}
-            className="flex flex-col items-center gap-1.5 p-2 rounded-xl hover:bg-slate-800/50 text-slate-400 hover:text-slate-200 transition-colors cursor-pointer"
+            className="flex flex-col items-center gap-1.5 p-2 rounded-xl hover:bg-white/[0.04] text-[#767b93] hover:text-[#0066ff] transition-colors cursor-pointer"
             title="Search messages"
             type="button"
           >
@@ -252,7 +252,7 @@ export const ContactDetailDrawer: React.FC<ContactDetailDrawerProps> = ({
 
           <button
             onClick={() => alert("Voice & Video calls coming soon!")}
-            className="flex flex-col items-center gap-1.5 p-2 rounded-xl hover:bg-slate-800/50 text-slate-400 hover:text-slate-200 transition-colors cursor-pointer"
+            className="flex flex-col items-center gap-1.5 p-2 rounded-xl hover:bg-white/[0.04] text-[#767b93] hover:text-[#0066ff] transition-colors cursor-pointer"
             title="Audio/Video call"
             type="button"
           >
@@ -263,9 +263,9 @@ export const ContactDetailDrawer: React.FC<ContactDetailDrawerProps> = ({
 
         {/* Group Participants (Rendered only for group chats) */}
         {conversation.type === "group" && (
-          <div className="py-4 border-b border-slate-800/60">
+          <div className="py-4 border-b border-white/[0.04]">
             <div className="px-5 mb-2 flex items-center justify-between">
-              <span className="text-xs font-semibold text-slate-300">
+              <span className="text-xs font-semibold text-[#f0f2f8]">
                 Members ({conversation.participants.length})
               </span>
             </div>
@@ -282,11 +282,11 @@ export const ContactDetailDrawer: React.FC<ContactDetailDrawerProps> = ({
                 return (
                   <div
                     key={memberId || member.username}
-                    className="flex items-center justify-between p-2 rounded-lg hover:bg-slate-800/30 transition-colors"
+                    className="flex items-center justify-between p-2 rounded-lg hover:bg-white/[0.02] transition-colors"
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
                       <div className="relative">
-                        <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-xs text-slate-300 shrink-0 font-medium overflow-hidden">
+                        <div className="w-8 h-8 rounded-full bg-[#1b1c27] flex items-center justify-center text-xs text-white shrink-0 font-medium overflow-hidden">
                           {member.avatarUrl ? (
                             <img
                               src={member.avatarUrl}
@@ -298,25 +298,25 @@ export const ContactDetailDrawer: React.FC<ContactDetailDrawerProps> = ({
                           )}
                         </div>
                         {isMemberOnline && (
-                          <span className="absolute bottom-0 right-0 w-2 h-2 rounded-full bg-emerald-500 ring-1 ring-[#0e121b]" />
+                          <span className="absolute bottom-0 right-0 w-2 h-2 rounded-full bg-emerald-500 ring-1 ring-[#161722]" />
                         )}
                       </div>
                       <div className="min-w-0">
-                        <span className="text-xs text-slate-200 font-medium truncate block">
+                        <span className="text-xs text-[#f0f2f8] font-medium truncate block">
                           {member.username}
                           {memberId === currentUserId && (
-                            <span className="text-[10px] text-slate-500 ml-1">(You)</span>
+                            <span className="text-[10px] text-[#505469] ml-1">(You)</span>
                           )}
                         </span>
                         {(member as any).status && (
-                          <span className="text-[10px] text-slate-500 truncate block">
+                          <span className="text-[10px] text-[#767b93] truncate block">
                             {(member as any).status}
                           </span>
                         )}
                       </div>
                     </div>
                     {isAdmin && (
-                      <span className="text-[10px] bg-indigo-950/80 text-indigo-400 border border-indigo-800/50 px-1.5 py-0.5 rounded font-medium flex items-center gap-1 shrink-0">
+                      <span className="text-[10px] bg-[#0066ff]/20 text-[#0066ff] border border-[#0066ff]/30 px-1.5 py-0.5 rounded font-medium flex items-center gap-1 shrink-0">
                         <ShieldCheck size={11} /> Admin
                       </span>
                     )}
@@ -329,13 +329,13 @@ export const ContactDetailDrawer: React.FC<ContactDetailDrawerProps> = ({
 
         {/* Shared Media & Files Section */}
         <div className="py-4">
-          <div className="flex items-center border-b border-slate-800/60 px-5 mb-3 gap-6">
+          <div className="flex items-center border-b border-white/[0.04] px-5 mb-3 gap-6">
             <button
               onClick={() => setActiveTab("media")}
               className={`pb-2 text-xs font-medium border-b-2 transition-colors cursor-pointer ${
                 activeTab === "media"
-                  ? "border-indigo-500 text-indigo-400 font-semibold"
-                  : "border-transparent text-slate-400 hover:text-slate-200"
+                  ? "border-[#0066ff] text-[#0066ff] font-semibold"
+                  : "border-transparent text-[#767b93] hover:text-[#f0f2f8]"
               }`}
               type="button"
             >
@@ -345,8 +345,8 @@ export const ContactDetailDrawer: React.FC<ContactDetailDrawerProps> = ({
               onClick={() => setActiveTab("docs")}
               className={`pb-2 text-xs font-medium border-b-2 transition-colors cursor-pointer ${
                 activeTab === "docs"
-                  ? "border-indigo-500 text-indigo-400 font-semibold"
-                  : "border-transparent text-slate-400 hover:text-slate-200"
+                  ? "border-[#0066ff] text-[#0066ff] font-semibold"
+                  : "border-transparent text-[#767b93] hover:text-[#f0f2f8]"
               }`}
               type="button"
             >
@@ -358,11 +358,11 @@ export const ContactDetailDrawer: React.FC<ContactDetailDrawerProps> = ({
           {activeTab === "media" && (
             <div className="px-5">
               {loadingMedia ? (
-                <div className="text-center py-8 text-xs text-slate-500 animate-pulse">
+                <div className="text-center py-8 text-xs text-[#767b93] animate-pulse">
                   Loading media...
                 </div>
               ) : mediaItems.length === 0 ? (
-                <div className="text-center py-8 text-xs text-slate-500">
+                <div className="text-center py-8 text-xs text-[#505469]">
                   No media shared yet
                 </div>
               ) : (
@@ -371,7 +371,7 @@ export const ContactDetailDrawer: React.FC<ContactDetailDrawerProps> = ({
                     <button
                       key={item._id}
                       onClick={() => handleImageClick(item.mediaUrl)}
-                      className="aspect-square bg-slate-800 rounded-lg overflow-hidden border border-slate-700/60 hover:opacity-80 transition cursor-pointer relative group block w-full p-0 text-left"
+                      className="aspect-square bg-[#1b1c27] rounded-xl overflow-hidden border border-white/[0.06] hover:opacity-80 transition cursor-pointer relative group block w-full p-0 text-left"
                       title={item.fileName || "View image"}
                       type="button"
                     >
@@ -395,26 +395,26 @@ export const ContactDetailDrawer: React.FC<ContactDetailDrawerProps> = ({
           {activeTab === "docs" && (
             <div className="px-4 space-y-2">
               {loadingMedia ? (
-                <div className="text-center py-8 text-xs text-slate-500 animate-pulse">
+                <div className="text-center py-8 text-xs text-[#767b93] animate-pulse">
                   Loading files...
                 </div>
               ) : mediaItems.length === 0 ? (
-                <div className="text-center py-8 text-xs text-slate-500">
+                <div className="text-center py-8 text-xs text-[#505469]">
                   No documents shared yet
                 </div>
               ) : (
                 mediaItems.map((item) => (
                   <div
                     key={item._id}
-                    className="flex items-center justify-between p-2.5 rounded-lg bg-slate-800/30 border border-slate-800 hover:border-slate-700/80 transition"
+                    className="flex items-center justify-between p-2.5 rounded-xl bg-[#1b1c27] border border-white/[0.04] hover:border-white/[0.08] transition"
                   >
                     <div className="flex items-center gap-2.5 min-w-0 pr-2">
-                      <FileText size={18} className="text-indigo-400 shrink-0" />
+                      <FileText size={18} className="text-[#0066ff] shrink-0" />
                       <div className="min-w-0">
-                        <p className="text-xs text-slate-200 truncate font-medium">
+                        <p className="text-xs text-[#f0f2f8] truncate font-medium">
                           {item.fileName || "Document"}
                         </p>
-                        <p className="text-[10px] text-slate-500">
+                        <p className="text-[10px] text-[#767b93]">
                           {item.fileSize ? `${Math.round(item.fileSize / 1024)} KB` : "File"}
                         </p>
                       </div>
@@ -424,7 +424,7 @@ export const ContactDetailDrawer: React.FC<ContactDetailDrawerProps> = ({
                       download={item.fileName || "document"}
                       target="_blank"
                       rel="noreferrer"
-                      className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-700/50 transition-colors shrink-0"
+                      className="p-1.5 text-[#767b93] hover:text-white rounded-lg hover:bg-white/[0.06] transition-colors shrink-0"
                       title="Download file"
                     >
                       <Download size={14} />

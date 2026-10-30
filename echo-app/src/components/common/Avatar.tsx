@@ -53,7 +53,7 @@ export const Avatar: FC<AvatarProps> = ({
       ) : (
         <div
           className={cn(
-            "rounded-full flex items-center justify-center font-semibold bg-indigo-600 text-white select-none",
+            "rounded-full flex items-center justify-center font-semibold bg-[#0066ff] text-white select-none",
             sizeStyles[size]
           )}
         >

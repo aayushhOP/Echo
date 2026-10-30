@@ -8,11 +8,13 @@ export const AppLayout: FC = () => {
   useSocket();
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-[#0b0e14] text-slate-100 select-none">
-      <NavRail />
-      <main className="flex-1 h-full overflow-hidden flex min-w-0">
-        <Outlet />
-      </main>
+    <div className="h-screen w-screen bg-[#13141d] p-2 md:p-3 flex select-none overflow-hidden">
+      <div className="flex-1 flex overflow-hidden rounded-2xl md:rounded-3xl bg-[#171824] border border-white/[0.04] shadow-2xl">
+        <NavRail />
+        <main className="flex-1 h-full overflow-hidden flex min-w-0">
+          <Outlet />
+        </main>
+      </div>
     </div>
   );
 };

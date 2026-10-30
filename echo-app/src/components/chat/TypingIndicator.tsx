@@ -17,12 +17,8 @@ export const TypingIndicator: FC<TypingIndicatorProps> = ({ names }) => {
   }
 
   return (
-    <div className="flex items-center gap-2 px-4 py-1.5 text-xs text-slate-400 bg-slate-900/60">
-      <div className="flex items-center gap-1">
-        <span className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-bounce [animation-delay:-0.3s]" />
-        <span className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-bounce [animation-delay:-0.15s]" />
-        <span className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-bounce" />
-      </div>
+    <div className="flex items-center gap-2 px-3 py-1.5 text-xs text-[#767b93] my-1 select-none">
+      <span className="w-1.5 h-1.5 rounded-full bg-[#0066ff] animate-pulse shrink-0" />
       <span>{text}</span>
     </div>
   );

@@ -16,17 +16,11 @@ export function formatTime(isoString: string): string {
 export function formatDateSeparator(isoString: string): string {
   try {
     const date = new Date(isoString);
-    const today = new Date();
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-
-    if (date.toDateString() === today.toDateString()) {
-      return "Today";
-    }
-    if (date.toDateString() === yesterday.toDateString()) {
-      return "Yesterday";
-    }
-    return date.toLocaleDateString([], { month: "short", day: "numeric" });
+    const day = date.toLocaleDateString("en-US", { weekday: "long" });
+    const dd = String(date.getDate()).padStart(2, "0");
+    const mm = String(date.getMonth() + 1).padStart(2, "0");
+    const yyyy = date.getFullYear();
+    return `${day}, ${dd}.${mm}.${yyyy}`;
   } catch {
     return "";
   }
