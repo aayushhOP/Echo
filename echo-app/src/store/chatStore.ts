@@ -21,6 +21,11 @@ interface ChatState {
   updateMessageReadStatus: (conversationId: string, messageIds: string[], readerId?: string) => void;
   markMessagesAsRead: (messageIds: string[]) => void;
   updateReactions: (messageId: string, reactions: IReaction[]) => void;
+  toggleOptimisticReaction: (
+    messageId: string,
+    emoji: string,
+    user: { id: string; username: string; avatarUrl?: string }
+  ) => void;
   setTyping: (conversationId: string, userId: string, isTyping: boolean) => void;
   setUserPresence: (userId: string, isOnline: boolean, lastSeen?: string) => void;
   setUserOnline: (userId: string, isOnline: boolean, lastSeen?: string) => void;
@@ -238,6 +243,67 @@ export const useChatStore = create<ChatState>((set, get) => ({
             return {
               ...msg,
               reactions,
+            };
+          }
+          return msg;
+        });
+      }
+      return found ? { messages: nextMessages } : state;
+    });
+  },
+
+  toggleOptimisticReaction: (messageId, emoji, user) => {
+    set((state) => {
+      let found = false;
+      const nextMessages: Record<string, Message[]> = {};
+      for (const [convId, list] of Object.entries(state.messages)) {
+        nextMessages[convId] = list.map((msg) => {
+          if (msg._id === messageId) {
+            found = true;
+            const currentReactions = [...(msg.reactions || [])];
+            const reactionIndex = currentReactions.findIndex((r) => r.emoji === emoji);
+
+            if (reactionIndex > -1) {
+              const r = currentReactions[reactionIndex];
+              const userIndex = r.users.findIndex((u) =>
+                typeof u === "string" ? u === user.id : u._id === user.id
+              );
+
+              let updatedUsers = [...r.users];
+              if (userIndex > -1) {
+                updatedUsers.splice(userIndex, 1);
+              } else {
+                updatedUsers.push({
+                  _id: user.id,
+                  username: user.username,
+                  avatarUrl: user.avatarUrl,
+                });
+              }
+
+              if (updatedUsers.length === 0) {
+                currentReactions.splice(reactionIndex, 1);
+              } else {
+                currentReactions[reactionIndex] = {
+                  ...r,
+                  users: updatedUsers,
+                };
+              }
+            } else {
+              currentReactions.push({
+                emoji,
+                users: [
+                  {
+                    _id: user.id,
+                    username: user.username,
+                    avatarUrl: user.avatarUrl,
+                  },
+                ],
+              });
+            }
+
+            return {
+              ...msg,
+              reactions: currentReactions,
             };
           }
           return msg;

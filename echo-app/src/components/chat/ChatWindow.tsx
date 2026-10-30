@@ -31,6 +31,7 @@ export const ChatWindow: FC<ChatWindowProps> = ({
     prependMessages,
     addOptimisticMessage,
     reconcileMessage,
+    toggleOptimisticReaction,
     typingUsers,
   } = useChatStore();
 
@@ -168,7 +169,15 @@ export const ChatWindow: FC<ChatWindowProps> = ({
   };
 
   const handleReact = (messageId: string, emoji: string) => {
-    if (!activeConversationId) return;
+    if (!activeConversationId || !currentUser) return;
+    const currentId = currentUser.id || (currentUser as any)._id;
+    if (currentId) {
+      toggleOptimisticReaction(messageId, emoji, {
+        id: currentId,
+        username: currentUser.username,
+        avatarUrl: currentUser.avatarUrl,
+      });
+    }
     reactMessage(activeConversationId, messageId, emoji);
   };
 

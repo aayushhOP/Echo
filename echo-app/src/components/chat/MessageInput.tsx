@@ -1,5 +1,5 @@
 import { FC, useState, useRef, useEffect, FormEvent, KeyboardEvent, ChangeEvent } from "react";
-import { Send, Smile, Paperclip, Loader2, X, FileText } from "lucide-react";
+import { Send, Smile, Paperclip, Loader2, X, FileText, Image as ImageIcon } from "lucide-react";
 import EmojiPicker, { Theme, EmojiClickData } from "emoji-picker-react";
 import { useTypingIndicator } from "../../hooks/useTypingIndicator";
 import { messageApi } from "../../api/messageApi";
@@ -176,36 +176,23 @@ export const MessageInput: FC<MessageInputProps> = ({
           </div>
         )}
 
-        {/* Pending File Attachment Preview */}
+        {/* Upload Progress / Staging Preview */}
         {pendingFile && (
-          <div className="mb-2 p-2.5 bg-[#161c29] border border-slate-700/60 rounded-xl flex items-center justify-between max-w-sm">
-            <div className="flex items-center gap-2.5 min-w-0">
-              {pendingFile.isImage && pendingFile.previewUrl ? (
-                <img
-                  src={pendingFile.previewUrl}
-                  alt="Preview"
-                  className="w-10 h-10 object-cover rounded-lg border border-slate-700"
-                />
-              ) : (
-                <div className="p-2 bg-indigo-500/20 text-indigo-400 rounded-lg">
-                  <FileText className="w-5 h-5" />
-                </div>
-              )}
-              <div className="min-w-0">
-                <p className="text-xs font-medium text-slate-200 truncate">
-                  {pendingFile.file.name}
-                </p>
-                <p className="text-[10px] text-slate-400">
-                  {(pendingFile.file.size / 1024).toFixed(1)} KB
-                </p>
-              </div>
+          <div className="mb-2 px-3 py-1.5 rounded-lg bg-[#182030] border border-slate-700 flex items-center justify-between text-xs text-slate-200">
+            <div className="flex items-center gap-2 truncate">
+              {pendingFile.isImage ? <ImageIcon size={14} className="text-indigo-400 shrink-0" /> : <FileText size={14} className="text-indigo-400 shrink-0" />}
+              <span className="truncate font-medium">{pendingFile.file.name}</span>
+              <span className="text-[10px] text-slate-400 shrink-0">
+                ({Math.round(pendingFile.file.size / 1024)} KB)
+              </span>
             </div>
             <button
               type="button"
               onClick={removePendingFile}
-              className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700/50 transition-colors cursor-pointer"
+              className="text-slate-400 hover:text-white p-1 rounded transition-colors cursor-pointer"
+              title="Remove attachment"
             >
-              <X className="w-4 h-4" />
+              <X size={14} />
             </button>
           </div>
         )}
@@ -221,7 +208,7 @@ export const MessageInput: FC<MessageInputProps> = ({
             ref={fileInputRef}
             onChange={handleFileSelect}
             className="hidden"
-            accept="image/*,.pdf,.doc,.docx,.txt,.zip"
+            accept="image/*,.pdf,.zip,.docx,.txt"
           />
 
           {/* Attachment Paperclip Button */}

@@ -3,9 +3,15 @@ import { User } from "./user";
 export type MessageType = "text" | "image" | "file";
 export type MessageStatus = "pending" | "sent" | "delivered" | "read";
 
+export interface IReactionUser {
+  _id: string;
+  username: string;
+  avatarUrl?: string;
+}
+
 export interface IReaction {
   emoji: string;
-  users: string[]; // User IDs who reacted
+  users: (string | IReactionUser)[];
 }
 
 export interface MessageSender {
