@@ -31,7 +31,7 @@ const reactionSchema = new Schema<IReaction>(
 
 const messageSchema = new Schema<IMessage>(
   {
-    conversationId: { type: Schema.Types.ObjectId, ref: "Conversation", required: true, index: true },
+    conversationId: { type: Schema.Types.ObjectId, ref: "Conversation", required: true },
     senderId: { type: Schema.Types.ObjectId, ref: "User", required: true },
     content: { type: String, default: "" },
     type: { type: String, enum: ["text", "image", "file"], default: "text" },

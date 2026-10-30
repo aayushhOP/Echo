@@ -1,4 +1,4 @@
-import { FC } from "react";
+import { FC, memo } from "react";
 import { Check, CheckCheck, Clock, FileText, Download } from "lucide-react";
 import { Message } from "../../types/message";
 import { useAuthStore } from "../../store/authStore";
@@ -12,7 +12,7 @@ interface MessageBubbleProps {
 
 const PRESET_EMOJIS = ["👍", "❤️", "😂", "🔥", "😮", "😢"];
 
-export const MessageBubble: FC<MessageBubbleProps> = ({
+const MessageBubbleComponent: FC<MessageBubbleProps> = ({
   message,
   isGroup = false,
   onReact,
@@ -184,3 +184,14 @@ export const MessageBubble: FC<MessageBubbleProps> = ({
     </div>
   );
 };
+
+export const MessageBubble = memo(MessageBubbleComponent, (prevProps, nextProps) => {
+  return (
+    prevProps.message._id === nextProps.message._id &&
+    prevProps.message.status === nextProps.message.status &&
+    prevProps.message.content === nextProps.message.content &&
+    prevProps.message.reactions === nextProps.message.reactions &&
+    prevProps.message.readBy?.length === nextProps.message.readBy?.length &&
+    prevProps.isGroup === nextProps.isGroup
+  );
+});

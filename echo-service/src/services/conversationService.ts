@@ -282,37 +282,42 @@ export const getConversationMessages = async (
     throw new AppError("Invalid conversation ID", 400);
   }
 
-  const conversation = await Conversation.findById(conversationId);
-  if (!conversation) {
-    throw new AppError("Conversation not found", 404);
-  }
+  const convObjectId = new Types.ObjectId(conversationId);
+  const userObjectId = new Types.ObjectId(userId);
 
-  const isParticipant = conversation.participants.some(
-    (pid) => pid.toString() === userId
-  );
+  // Fast existence check using index-covered participant query
+  const isParticipant = await Conversation.exists({
+    _id: convObjectId,
+    participants: userObjectId,
+  });
 
   if (!isParticipant) {
+    // Distinguish between not found and unauthorized
+    const exists = await Conversation.exists({ _id: convObjectId });
+    if (!exists) {
+      throw new AppError("Conversation not found", 404);
+    }
     throw new AppError("Access denied: You are not a participant in this conversation", 403);
   }
 
   const limit = Math.min(Math.max(query.limit ?? 30, 1), 100);
 
   const filter: any = {
-    conversationId: new Types.ObjectId(conversationId),
+    conversationId: convObjectId,
   };
 
   if (query.before) {
-    // If 'before' is a valid ObjectId, we can paginate by _id ($lt) or look up its createdAt
     if (Types.ObjectId.isValid(query.before)) {
-      const cursorMessage = await Message.findById(query.before);
-      if (cursorMessage) {
+      // Direct ObjectId timestamp boundary or lookup
+      const cursorObjId = new Types.ObjectId(query.before);
+      const cursorMessage = await Message.findById(cursorObjId, { createdAt: 1 }).lean();
+      if (cursorMessage && (cursorMessage as any).createdAt) {
         filter.createdAt = { $lt: (cursorMessage as any).createdAt };
       } else {
-        // Fallback to ObjectId comparison as Mongo ObjectIds are chronologically ordered
-        filter._id = { $lt: new Types.ObjectId(query.before) };
+        filter._id = { $lt: cursorObjId };
       }
     } else {
-      // Check if it's an ISO date string
+      // ISO date string
       const dateCursor = new Date(query.before);
       if (!isNaN(dateCursor.getTime())) {
         filter.createdAt = { $lt: dateCursor };
@@ -322,11 +327,12 @@ export const getConversationMessages = async (
     }
   }
 
-  // Fetch limit + 1 to determine if there is a next page
+  // Fetch limit + 1 to determine if there is a next page with .lean() for high-performance POJO serialization
   const messages = await Message.find(filter)
     .sort({ createdAt: -1 })
     .limit(limit + 1)
-    .populate(messagePopulation);
+    .populate(messagePopulation)
+    .lean<IMessage[]>();
 
   const hasMore = messages.length > limit;
   const returnedMessages = hasMore ? messages.slice(0, limit) : messages;

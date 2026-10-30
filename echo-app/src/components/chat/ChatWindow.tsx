@@ -1,4 +1,4 @@
-import { FC, useEffect, useRef, useState, UIEvent } from "react";
+import { FC, useEffect, useRef, useState, useCallback, UIEvent } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { messageApi } from "../../api/messageApi";
 import { useChatStore } from "../../store/chatStore";
@@ -43,9 +43,10 @@ export const ChatWindow: FC<ChatWindowProps> = ({
 
   const activeConv = conversations.find((c) => c._id === activeConversationId);
   const currentMessages = activeConversationId ? messages[activeConversationId] || [] : [];
+  const hasCachedMessages = currentMessages.length > 0;
 
-  // Initial fetch for the conversation messages
-  const { isLoading: isInitialLoading } = useQuery({
+  // Initial fetch for the conversation messages with cached data as initialData
+  const { isFetching: isQueryFetching } = useQuery({
     queryKey: ["messages", activeConversationId],
     queryFn: async () => {
       if (!activeConversationId) return [];
@@ -57,8 +58,10 @@ export const ChatWindow: FC<ChatWindowProps> = ({
       return ordered;
     },
     enabled: !!activeConversationId,
-    staleTime: 1000 * 10,
+    staleTime: 1000 * 30, // 30s cache freshness
   });
+
+  const isInitialLoading = isQueryFetching && !hasCachedMessages;
 
   // Auto-scroll to bottom on new messages
   useEffect(() => {
@@ -67,11 +70,12 @@ export const ChatWindow: FC<ChatWindowProps> = ({
     }
   }, [currentMessages.length]);
 
+  const myId = currentUser?.id || (currentUser as any)?._id;
+
   // Mark unread messages as read
   useEffect(() => {
-    if (!activeConversationId || !currentUser || currentMessages.length === 0) return;
+    if (!activeConversationId || !myId || currentMessages.length === 0) return;
 
-    const myId = currentUser.id || (currentUser as any)?._id;
     const unreadMessageIds = currentMessages
       .filter((m) => {
         const senderId =
@@ -85,7 +89,7 @@ export const ChatWindow: FC<ChatWindowProps> = ({
     if (unreadMessageIds.length > 0) {
       markAsRead(activeConversationId, unreadMessageIds);
     }
-  }, [activeConversationId, currentMessages, currentUser?.id]);
+  }, [activeConversationId, currentMessages.length, myId]);
 
   // Infinite scroll upward to load older messages
   const handleScroll = async (e: UIEvent<HTMLDivElement>) => {
@@ -168,18 +172,21 @@ export const ChatWindow: FC<ChatWindowProps> = ({
     );
   };
 
-  const handleReact = (messageId: string, emoji: string) => {
-    if (!activeConversationId || !currentUser) return;
-    const currentId = currentUser.id || (currentUser as any)._id;
-    if (currentId) {
-      toggleOptimisticReaction(messageId, emoji, {
-        id: currentId,
-        username: currentUser.username,
-        avatarUrl: currentUser.avatarUrl,
-      });
-    }
-    reactMessage(activeConversationId, messageId, emoji);
-  };
+  const handleReact = useCallback(
+    (messageId: string, emoji: string) => {
+      if (!activeConversationId || !currentUser) return;
+      const currentId = currentUser.id || (currentUser as any)._id;
+      if (currentId) {
+        toggleOptimisticReaction(messageId, emoji, {
+          id: currentId,
+          username: currentUser.username,
+          avatarUrl: currentUser.avatarUrl,
+        });
+      }
+      reactMessage(activeConversationId, messageId, emoji);
+    },
+    [activeConversationId, currentUser, toggleOptimisticReaction, reactMessage]
+  );
 
   // Active typing user names (exclude current user so only recipients see typing indicator)
   const currentUserId = currentUser?.id || currentUser?._id;
