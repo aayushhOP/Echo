@@ -4,18 +4,17 @@ import { messageApi } from "../../api/messageApi";
 import { useChatStore } from "../../store/chatStore";
 import { useAuthStore } from "../../store/authStore";
 import { useSocket } from "../../hooks/useSocket";
+import { ChatHeader } from "./ChatHeader";
 import { MessageBubble } from "./MessageBubble";
 import { MessageInput } from "./MessageInput";
 import { TypingIndicator } from "./TypingIndicator";
-import { Avatar } from "../common/Avatar";
 import { Message } from "../../types/message";
-import { Users, Loader2, ArrowLeft, MessageSquareOff } from "lucide-react";
+import { MessageSquareOff, Loader2 } from "lucide-react";
 
 export const ChatWindow: FC = () => {
   const currentUser = useAuthStore((state) => state.user);
   const {
     activeConversationId,
-    setActiveConversationId,
     conversations,
     messages,
     setMessages,
@@ -23,10 +22,9 @@ export const ChatWindow: FC = () => {
     addOptimisticMessage,
     reconcileMessage,
     typingUsers,
-    onlineUsers,
   } = useChatStore();
 
-  const { sendMessage, markAsRead } = useSocket();
+  const { sendMessage, reactMessage, markAsRead } = useSocket();
 
   const messageListRef = useRef<HTMLDivElement>(null);
   const [hasMore, setHasMore] = useState(true);
@@ -62,10 +60,14 @@ export const ChatWindow: FC = () => {
   useEffect(() => {
     if (!activeConversationId || !currentUser || currentMessages.length === 0) return;
 
+    const myId = currentUser.id || (currentUser as any)?._id;
     const unreadMessageIds = currentMessages
       .filter((m) => {
-        const senderId = typeof m.senderId === "string" ? m.senderId : m.senderId.id;
-        return senderId !== currentUser.id && !m.readBy?.includes(currentUser.id);
+        const senderId =
+          typeof m.senderId === "string"
+            ? m.senderId
+            : m.senderId?._id || m.senderId?.id;
+        return senderId !== myId && !m.readBy?.includes(myId);
       })
       .map((m) => m._id);
 
@@ -100,7 +102,8 @@ export const ChatWindow: FC = () => {
         // Preserve scroll position
         requestAnimationFrame(() => {
           if (messageListRef.current) {
-            messageListRef.current.scrollTop = messageListRef.current.scrollHeight - prevHeight;
+            messageListRef.current.scrollTop =
+              messageListRef.current.scrollHeight - prevHeight;
           }
         });
       } catch (err) {
@@ -111,163 +114,136 @@ export const ChatWindow: FC = () => {
     }
   };
 
-  // Optimistic message send
-  const handleSendMessage = (content: string) => {
+  const handleSendMessage = (
+    content: string,
+    type: "text" | "image" | "file" = "text",
+    metadata?: { mediaUrl?: string; fileName?: string; fileSize?: number }
+  ) => {
     if (!activeConversationId || !currentUser) return;
 
-    const tempId = `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    const optimisticMessage: Message = {
+    const tempId = `temp-${Date.now()}-${Math.random()}`;
+    const optimisticMsg: Message = {
       _id: tempId,
       conversationId: activeConversationId,
       senderId: {
         id: currentUser.id,
+        _id: currentUser.id,
         username: currentUser.username,
-        email: currentUser.email,
         avatarUrl: currentUser.avatarUrl,
-        isOnline: true,
       },
       content,
-      type: "text",
+      type,
+      mediaUrl: metadata?.mediaUrl,
+      fileName: metadata?.fileName,
+      fileSize: metadata?.fileSize,
+      reactions: [],
       readBy: [currentUser.id],
       status: "pending",
       createdAt: new Date().toISOString(),
     };
 
-    // Render immediately in pending state
-    addOptimisticMessage(optimisticMessage);
+    addOptimisticMessage(optimisticMsg);
 
-    // Emit through socket with ack reconciliation fallback
-    sendMessage(activeConversationId, content, "text", (ack) => {
-      if (ack?.success && ack.message) {
-        reconcileMessage(tempId, ack.message);
+    sendMessage(
+      activeConversationId,
+      content,
+      type,
+      metadata,
+      (res) => {
+        if (res.success && res.message) {
+          reconcileMessage(tempId, res.message);
+        }
       }
-    });
+    );
   };
 
-  // If no conversation selected
+  const handleReact = (messageId: string, emoji: string) => {
+    if (!activeConversationId) return;
+    reactMessage(activeConversationId, messageId, emoji);
+  };
+
+  // Active typing user names
+  const activeTypingMap = (activeConversationId && typingUsers[activeConversationId]) || {};
+  const activeTypingUserIds = Object.keys(activeTypingMap);
+
+  const activeTypingNames = activeConv?.participants
+    .filter((p) => {
+      const pId = p.id || (p as any)._id;
+      return pId && activeTypingUserIds.includes(pId);
+    })
+    .map((p) => p.username) || [];
+
   if (!activeConversationId || !activeConv) {
     return (
-      <div className="hidden md:flex flex-1 flex-col items-center justify-center bg-slate-950 p-8 text-center">
-        <div className="w-16 h-16 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center text-slate-500 mb-4 shadow-inner">
-          <MessageSquareOff className="w-8 h-8" />
+      <div className="flex-1 h-screen flex flex-col items-center justify-center bg-[#0b0e14] text-slate-500 select-none p-6 text-center">
+        <div className="w-16 h-16 rounded-2xl bg-[#111622] border border-slate-800/80 flex items-center justify-center text-slate-400 mb-4 shadow-xl">
+          <MessageSquareOff className="w-8 h-8 stroke-1 text-slate-500" />
         </div>
-        <h2 className="text-lg font-semibold text-white mb-1">No Chat Selected</h2>
-        <p className="text-sm text-slate-400 max-w-sm">
-          Select a conversation from the sidebar or click the “+” button to start a new chat.
+        <h3 className="text-base font-semibold text-slate-300 mb-1">
+          No Conversation Selected
+        </h3>
+        <p className="text-xs text-slate-500 max-w-sm">
+          Select a chat from the left panel or click New Chat to start communicating.
         </p>
       </div>
     );
   }
 
-  const isGroup = activeConv.type === "group";
-  const myId = currentUser?.id || (currentUser as any)?._id;
-  const otherParticipant = !isGroup
-    ? activeConv.participants.find((p) => {
-        const pId = p.id || (p as any)._id;
-        return pId && pId !== myId;
-      })
-    : null;
-
-  const headerTitle = isGroup
-    ? activeConv.groupName || "Group Chat"
-    : otherParticipant?.username || "Direct Chat";
-
-  const otherId = otherParticipant ? otherParticipant.id || (otherParticipant as any)._id : null;
-  const isParticipantOnline =
-    !isGroup && otherParticipant && otherId
-      ? onlineUsers.has(otherId) || !!otherParticipant.isOnline
-      : false;
-
-  const presenceSubtitle = isGroup
-    ? `${activeConv.participants.length} members`
-    : isParticipantOnline
-    ? "Online"
-    : otherParticipant?.status || "Offline";
-
-  // Typing users list
-  const activeTypingMap = typingUsers[activeConversationId] || {};
-  const typingUserIds = Object.keys(activeTypingMap).filter(
-    (uid) => uid !== currentUser?.id && activeTypingMap[uid]
-  );
-  const typingNames = typingUserIds.map((uid) => {
-    const p = activeConv.participants.find((part) => part.id === uid);
-    return p ? p.username : "Someone";
-  });
-
   return (
-    <div className="flex-1 h-full flex flex-col bg-slate-950">
-      {/* Chat Header */}
-      <div className="h-16 px-4 border-b border-slate-800 bg-slate-900/90 backdrop-blur-sm flex items-center justify-between z-10 shrink-0">
-        <div className="flex items-center gap-3">
-          {/* Mobile Back Button */}
-          <button
-            onClick={() => setActiveConversationId(null)}
-            className="md:hidden p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </button>
+    <div className="flex-1 h-screen flex flex-col bg-[#0b0e14] relative min-w-0">
+      {/* Desktop Header */}
+      <ChatHeader conversation={activeConv} />
 
-          {isGroup ? (
-            <div className="w-10 h-10 rounded-full bg-indigo-950/80 border border-indigo-700/60 flex items-center justify-center text-indigo-300 shrink-0">
-              <Users className="w-5 h-5" />
-            </div>
-          ) : (
-            <Avatar
-              name={headerTitle}
-              avatarUrl={otherParticipant?.avatarUrl}
-              isOnline={isParticipantOnline}
-              showPresence
-              size="md"
-            />
-          )}
-
-          <div>
-            <h2 className="text-sm font-semibold text-white leading-tight">{headerTitle}</h2>
-            <p
-              className={`text-xs ${
-                isParticipantOnline ? "text-emerald-400 font-medium" : "text-slate-400"
-              }`}
-            >
-              {presenceSubtitle}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Message List */}
+      {/* Message Stream */}
       <div
         ref={messageListRef}
         onScroll={handleScroll}
-        className="flex-1 overflow-y-auto p-4 flex flex-col"
+        className="flex-1 overflow-y-auto px-4 md:px-8 py-4 flex flex-col"
       >
         {isLoadingMore && (
-          <div className="flex justify-center py-2">
-            <Loader2 className="w-5 h-5 text-indigo-400 animate-spin" />
+          <div className="flex items-center justify-center py-2 text-xs text-slate-500">
+            <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5 text-indigo-400" />
+            Loading older messages...
           </div>
         )}
 
-        {isInitialLoading && (
-          <div className="flex-1 flex items-center justify-center">
-            <Loader2 className="w-8 h-8 text-indigo-400 animate-spin" />
+        {isInitialLoading && currentMessages.length === 0 && (
+          <div className="flex-1 flex flex-col items-center justify-center text-slate-500">
+            <Loader2 className="w-6 h-6 animate-spin text-indigo-500 mb-2" />
+            <p className="text-xs">Loading messages...</p>
           </div>
         )}
 
         {!isInitialLoading && currentMessages.length === 0 && (
-          <div className="flex-1 flex flex-col items-center justify-center text-center text-slate-400">
-            <p className="text-sm text-slate-300">No messages yet</p>
-            <p className="text-xs text-slate-500 mt-1">Say hello and start the conversation!</p>
+          <div className="flex-1 flex flex-col items-center justify-center text-slate-500 text-center">
+            <p className="text-sm font-medium text-slate-400 mb-1">
+              Start of conversation
+            </p>
+            <p className="text-xs text-slate-600">
+              Send a message or share a file to get the conversation going.
+            </p>
           </div>
         )}
 
-        {currentMessages.map((msg) => (
-          <MessageBubble key={msg._id} message={msg} />
-        ))}
+        <div className="flex-1 flex flex-col justify-end space-y-1">
+          {currentMessages.map((msg) => (
+            <MessageBubble
+              key={msg._id}
+              message={msg}
+              onReact={handleReact}
+            />
+          ))}
+        </div>
+
+        {/* Real-time typing indicators */}
+        {activeTypingNames.length > 0 && (
+          <div className="pt-2">
+            <TypingIndicator names={activeTypingNames} />
+          </div>
+        )}
       </div>
 
-      {/* Typing Indicator */}
-      <TypingIndicator names={typingNames} />
-
-      {/* Message Input */}
+      {/* Docked Bottom Input Bar with File Attachment Trigger */}
       <MessageInput
         conversationId={activeConversationId}
         onSendMessage={handleSendMessage}

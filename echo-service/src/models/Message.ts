@@ -1,22 +1,45 @@
 import { Schema, model, Document, Types } from "mongoose";
 
+export interface IReaction {
+  emoji: string;
+  users: Types.ObjectId[];
+}
+
 export interface IMessage extends Document {
   conversationId: Types.ObjectId;
   senderId: Types.ObjectId;
   content: string;
   type: "text" | "image" | "file";
-  mediaUrl?: string;
+  mediaUrl?: string | null;
+  fileName?: string | null;
+  fileSize?: number | null;
+  reactions: IReaction[];
+  replyTo?: Types.ObjectId | null;
   readBy: Types.ObjectId[];
   status: "sent" | "delivered" | "read";
+  createdAt: Date;
+  updatedAt: Date;
 }
+
+const reactionSchema = new Schema<IReaction>(
+  {
+    emoji: { type: String, required: true },
+    users: [{ type: Schema.Types.ObjectId, ref: "User" }],
+  },
+  { _id: false }
+);
 
 const messageSchema = new Schema<IMessage>(
   {
     conversationId: { type: Schema.Types.ObjectId, ref: "Conversation", required: true, index: true },
     senderId: { type: Schema.Types.ObjectId, ref: "User", required: true },
-    content: { type: String, required: true },
+    content: { type: String, default: "" },
     type: { type: String, enum: ["text", "image", "file"], default: "text" },
-    mediaUrl: { type: String },
+    mediaUrl: { type: String, default: null },
+    fileName: { type: String, default: null },
+    fileSize: { type: Number, default: null },
+    reactions: { type: [reactionSchema], default: [] },
+    replyTo: { type: Schema.Types.ObjectId, ref: "Message", default: null },
     readBy: [{ type: Schema.Types.ObjectId, ref: "User" }],
     status: { type: String, enum: ["sent", "delivered", "read"], default: "sent" },
   },

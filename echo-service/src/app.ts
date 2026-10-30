@@ -1,4 +1,5 @@
 import express, { Application } from "express";
+import path from "path";
 import cors from "cors";
 import helmet from "helmet";
 import cookieParser from "cookie-parser";
@@ -7,6 +8,7 @@ import { ENV } from "./config/env";
 import { authRoutes } from "./routes/authRoutes";
 import { userRoutes } from "./routes/userRoutes";
 import { conversationRoutes } from "./routes/conversationRoutes";
+import { messageRoutes } from "./routes/messageRoutes";
 import { errorHandler } from "./middlewares/errorHandler";
 
 export const createApp = (): Application => {
@@ -16,7 +18,7 @@ export const createApp = (): Application => {
   app.set("trust proxy", 1);
 
   // Security & Utility Middlewares
-  app.use(helmet());
+  app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
   app.use(
     cors({
       origin: ENV.CLIENT_ORIGIN,
@@ -26,6 +28,9 @@ export const createApp = (): Application => {
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
   app.use(cookieParser());
+
+  // Serve static uploads
+  app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 
   if (ENV.NODE_ENV !== "test") {
     app.use(morgan("dev"));
@@ -40,6 +45,7 @@ export const createApp = (): Application => {
   app.use("/api/auth", authRoutes);
   app.use("/api/users", userRoutes);
   app.use("/api/conversations", conversationRoutes);
+  app.use("/api/messages", messageRoutes);
 
   // Global Error Handler
   app.use(errorHandler);

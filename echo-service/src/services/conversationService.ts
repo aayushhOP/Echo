@@ -9,17 +9,59 @@ import {
   MessageQueryDTO,
 } from "../types/conversation";
 
+export const messagePopulation = [
+  { path: "senderId", select: "_id username avatarUrl" },
+  {
+    path: "replyTo",
+    select: "_id content senderId type mediaUrl fileName",
+    populate: { path: "senderId", select: "_id username avatarUrl" },
+  },
+  { path: "reactions.users", select: "_id username avatarUrl" },
+];
+
 export const getConversationsForUser = async (userId: string) => {
   const userObjectId = new Types.ObjectId(userId);
   const conversations = await Conversation.find({
     participants: userObjectId,
   })
-    .populate("participants", "_id username avatarUrl status isOnline lastSeen")
+    .populate("participants", "_id username avatarUrl status bio phone isOnline lastSeen")
     .populate("admins", "_id username avatarUrl")
-    .populate("lastMessage")
+    .populate({
+      path: "lastMessage",
+      populate: { path: "senderId", select: "_id username avatarUrl" },
+    })
     .sort({ updatedAt: -1 });
 
-  return conversations;
+  // Calculate unreadCount, isPinned, isMuted for each conversation
+  const results = await Promise.all(
+    conversations.map(async (conv) => {
+      const convObj: any = conv.toObject();
+
+      // Count unread messages where user is not in readBy array
+      const unreadCount = await Message.countDocuments({
+        conversationId: conv._id,
+        senderId: { $ne: userObjectId },
+        readBy: { $ne: userObjectId },
+      });
+
+      const isPinned = Array.isArray(conv.pinnedBy)
+        ? conv.pinnedBy.some((id: any) => id.toString() === userId)
+        : false;
+
+      const isMuted = Array.isArray(conv.mutedBy)
+        ? conv.mutedBy.some((id: any) => id.toString() === userId)
+        : false;
+
+      return {
+        ...convObj,
+        unreadCount,
+        isPinned,
+        isMuted,
+      };
+    })
+  );
+
+  return results;
 };
 
 export const getConversationById = async (conversationId: string, userId: string) => {
@@ -28,7 +70,7 @@ export const getConversationById = async (conversationId: string, userId: string
   }
 
   const conversation = await Conversation.findById(conversationId)
-    .populate("participants", "_id username avatarUrl status isOnline lastSeen")
+    .populate("participants", "_id username avatarUrl status bio phone isOnline lastSeen")
     .populate("admins", "_id username avatarUrl")
     .populate("lastMessage");
 
@@ -284,7 +326,7 @@ export const getConversationMessages = async (
   const messages = await Message.find(filter)
     .sort({ createdAt: -1 })
     .limit(limit + 1)
-    .populate("senderId", "_id username avatarUrl");
+    .populate(messagePopulation);
 
   const hasMore = messages.length > limit;
   const returnedMessages = hasMore ? messages.slice(0, limit) : messages;
@@ -298,5 +340,152 @@ export const getConversationMessages = async (
     messages: returnedMessages,
     nextCursor,
     hasMore,
+  };
+};
+
+export const togglePinConversation = async (
+  conversationId: string,
+  userId: string
+): Promise<boolean> => {
+  if (!Types.ObjectId.isValid(conversationId)) {
+    throw new AppError("Invalid conversation ID", 400);
+  }
+
+  const conversation = await Conversation.findById(conversationId);
+  if (!conversation) {
+    throw new AppError("Conversation not found", 404);
+  }
+
+  const isParticipant = conversation.participants.some(
+    (pid) => pid.toString() === userId
+  );
+
+  if (!isParticipant) {
+    throw new AppError("Access denied: You are not a participant in this conversation", 403);
+  }
+
+  const userObjectId = new Types.ObjectId(userId);
+  if (!Array.isArray(conversation.pinnedBy)) {
+    conversation.pinnedBy = [];
+  }
+
+  const index = conversation.pinnedBy.findIndex((id) => id.toString() === userId);
+  let isPinned = false;
+
+  if (index > -1) {
+    conversation.pinnedBy.splice(index, 1);
+    isPinned = false;
+  } else {
+    conversation.pinnedBy.push(userObjectId);
+    isPinned = true;
+  }
+
+  await conversation.save();
+  return isPinned;
+};
+
+export const toggleMuteConversation = async (
+  conversationId: string,
+  userId: string
+): Promise<boolean> => {
+  if (!Types.ObjectId.isValid(conversationId)) {
+    throw new AppError("Invalid conversation ID", 400);
+  }
+
+  const conversation = await Conversation.findById(conversationId);
+  if (!conversation) {
+    throw new AppError("Conversation not found", 404);
+  }
+
+  const isParticipant = conversation.participants.some(
+    (pid) => pid.toString() === userId
+  );
+
+  if (!isParticipant) {
+    throw new AppError("Access denied: You are not a participant in this conversation", 403);
+  }
+
+  const userObjectId = new Types.ObjectId(userId);
+  if (!Array.isArray(conversation.mutedBy)) {
+    conversation.mutedBy = [];
+  }
+
+  const index = conversation.mutedBy.findIndex((id) => id.toString() === userId);
+  let isMuted = false;
+
+  if (index > -1) {
+    conversation.mutedBy.splice(index, 1);
+    isMuted = false;
+  } else {
+    conversation.mutedBy.push(userObjectId);
+    isMuted = true;
+  }
+
+  await conversation.save();
+  return isMuted;
+};
+
+export const getConversationMedia = async (
+  conversationId: string,
+  userId: string,
+  query: { type?: "image" | "file"; limit?: number; cursor?: string }
+): Promise<{ items: IMessage[]; nextCursor: string | null }> => {
+  if (!Types.ObjectId.isValid(conversationId)) {
+    throw new AppError("Invalid conversation ID", 400);
+  }
+
+  const conversation = await Conversation.findById(conversationId);
+  if (!conversation) {
+    throw new AppError("Conversation not found", 404);
+  }
+
+  const isParticipant = conversation.participants.some(
+    (pid) => pid.toString() === userId
+  );
+
+  if (!isParticipant) {
+    throw new AppError("Access denied: You are not a participant in this conversation", 403);
+  }
+
+  const limit = Math.min(Math.max(query.limit ?? 30, 1), 100);
+
+  const filter: any = {
+    conversationId: new Types.ObjectId(conversationId),
+    mediaUrl: { $ne: null, $exists: true },
+  };
+
+  if (query.type) {
+    filter.type = query.type;
+  } else {
+    filter.type = { $in: ["image", "file"] };
+  }
+
+  if (query.cursor) {
+    if (Types.ObjectId.isValid(query.cursor)) {
+      const cursorMessage = await Message.findById(query.cursor);
+      if (cursorMessage) {
+        filter.createdAt = { $lt: (cursorMessage as any).createdAt };
+      } else {
+        filter._id = { $lt: new Types.ObjectId(query.cursor) };
+      }
+    }
+  }
+
+  const items = await Message.find(filter)
+    .sort({ createdAt: -1 })
+    .limit(limit + 1)
+    .populate("senderId", "_id username avatarUrl");
+
+  const hasMore = items.length > limit;
+  const returnedItems = hasMore ? items.slice(0, limit) : items;
+
+  const nextCursor =
+    hasMore && returnedItems.length > 0
+      ? returnedItems[returnedItems.length - 1]._id.toString()
+      : null;
+
+  return {
+    items: returnedItems,
+    nextCursor,
   };
 };

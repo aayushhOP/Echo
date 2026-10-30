@@ -21,6 +21,13 @@ export interface MessageQueryDTO {
   limit?: number;
 }
 
+export interface UploadFileResponse {
+  url: string;
+  fileName: string;
+  fileSize: number;
+  mimeType: string;
+}
+
 export const messageApi = {
   getConversations: async (): Promise<Conversation[]> => {
     const res = await axiosClient.get<ApiResponse<Conversation[]>>("/conversations");
@@ -53,5 +60,16 @@ export const messageApi = {
       params,
     });
     return res.data.data;
+  },
+
+  uploadFile: async (file: File): Promise<UploadFileResponse> => {
+    const formData = new FormData();
+    formData.append("file", file);
+    const res = await axiosClient.post<UploadFileResponse>("/messages/upload", formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+    return res.data;
   },
 };

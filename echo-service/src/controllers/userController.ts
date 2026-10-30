@@ -3,13 +3,30 @@ import { z } from "zod";
 import { AuthenticatedRequest } from "../middlewares/authMiddleware";
 import { AppError } from "../middlewares/errorHandler";
 import * as userService from "../services/userService";
+import { getOnlineUserIds } from "../services/presenceService";
 
 const updateProfileSchema = z
   .object({
     status: z.string().max(200, "Status must be at most 200 characters").optional(),
     avatarUrl: z.string().url("Must be a valid URL").or(z.literal("")).optional(),
+    bio: z.string().max(500, "Bio must be at most 500 characters").optional(),
+    phone: z.string().max(30).optional(),
+    preferences: z
+      .object({
+        soundEnabled: z.boolean().optional(),
+        theme: z.string().max(50).optional(),
+        notifications: z.boolean().optional(),
+      })
+      .optional(),
   })
   .strict();
+
+const updatePreferencesSchema = z.object({
+  soundEnabled: z.boolean().optional(),
+  theme: z.string().max(50).optional(),
+  notifications: z.boolean().optional(),
+  bio: z.string().max(500).optional(),
+});
 
 export const getMeHandler = async (
   req: AuthenticatedRequest,
@@ -30,6 +47,24 @@ export const getMeHandler = async (
   }
 };
 
+export const getOnlineUsersHandler = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    if (!req.userId) {
+      throw new AppError("Authentication required", 401);
+    }
+    const onlineUserIds = await getOnlineUserIds();
+    res.status(200).json({
+      onlineUserIds,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const updateMeHandler = async (
   req: AuthenticatedRequest,
   res: Response,
@@ -41,6 +76,33 @@ export const updateMeHandler = async (
     }
     const validatedData = updateProfileSchema.parse(req.body);
     const updatedProfile = await userService.updateCurrentUserProfile(req.userId, validatedData);
+    res.status(200).json({
+      success: true,
+      data: updatedProfile,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updatePreferencesHandler = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    if (!req.userId) {
+      throw new AppError("Authentication required", 401);
+    }
+    const validatedData = updatePreferencesSchema.parse(req.body);
+    const updatedProfile = await userService.updateCurrentUserProfile(req.userId, {
+      bio: validatedData.bio,
+      preferences: {
+        soundEnabled: validatedData.soundEnabled,
+        theme: validatedData.theme,
+        notifications: validatedData.notifications,
+      },
+    });
     res.status(200).json({
       success: true,
       data: updatedProfile,

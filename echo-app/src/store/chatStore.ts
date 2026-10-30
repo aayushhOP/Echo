@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { Conversation, Message } from "../types/message";
+import { Conversation, Message, IReaction } from "../types/message";
 
 interface ChatState {
   activeConversationId: string | null;
@@ -7,6 +7,7 @@ interface ChatState {
   messages: Record<string, Message[]>; // conversationId -> messages
   typingUsers: Record<string, Record<string, boolean>>; // conversationId -> { userId: isTyping }
   onlineUsers: Set<string>; // set of online userIds
+  userLastSeen: Record<string, string>; // userId -> ISO timestamp
 
   setActiveConversationId: (id: string | null) => void;
   setConversations: (conversations: Conversation[]) => void;
@@ -16,9 +17,13 @@ interface ChatState {
   addOptimisticMessage: (message: Message) => void;
   reconcileMessage: (tempId: string, confirmedMessage: Message) => void;
   handleNewMessage: (message: Message) => void;
-  updateMessageReadStatus: (conversationId: string, messageIds: string[], readerId: string) => void;
+  addMessage: (message: Message) => void;
+  updateMessageReadStatus: (conversationId: string, messageIds: string[], readerId?: string) => void;
+  markMessagesAsRead: (messageIds: string[]) => void;
+  updateReactions: (messageId: string, reactions: IReaction[]) => void;
   setTyping: (conversationId: string, userId: string, isTyping: boolean) => void;
-  setUserPresence: (userId: string, isOnline: boolean) => void;
+  setUserPresence: (userId: string, isOnline: boolean, lastSeen?: string) => void;
+  setUserOnline: (userId: string, isOnline: boolean, lastSeen?: string) => void;
   setOnlineUsers: (userIds: string[]) => void;
   resetChat: () => void;
 }
@@ -29,6 +34,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   messages: {},
   typingUsers: {},
   onlineUsers: new Set<string>(),
+  userLastSeen: {},
 
   setActiveConversationId: (id) => set({ activeConversationId: id }),
 
@@ -58,7 +64,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
   prependMessages: (conversationId, olderMessages) => {
     set((state) => {
       const current = state.messages[conversationId] || [];
-      // Filter duplicates by _id
       const existingIds = new Set(current.map((m) => m._id));
       const freshOlder = olderMessages.filter((m) => !existingIds.has(m._id));
       return {
@@ -98,7 +103,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
           },
         };
       } else {
-        // If not found by tempId, add if not duplicate
         if (!current.some((m) => m._id === confirmedMessage._id)) {
           return {
             messages: {
@@ -117,7 +121,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
     set((state) => {
       const current = state.messages[conversationId] || [];
 
-      // Check if message already exists (e.g. by _id)
       const existingIndex = current.findIndex((m) => m._id === message._id);
       if (existingIndex >= 0) {
         const updated = [...current];
@@ -127,7 +130,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
         };
       }
 
-      // Check if there is an optimistic pending message from the same sender with matching content
       const msgSenderId =
         typeof message.senderId === "string"
           ? message.senderId
@@ -150,7 +152,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
         nextMessages = [...current, message];
       }
 
-      // Also update lastMessage in conversation list
       const convList = state.conversations.map((c) => {
         if (c._id === conversationId) {
           return {
@@ -162,7 +163,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
         return c;
       });
 
-      // Sort conversations by lastMessage/updatedAt
       convList.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
 
       return {
@@ -175,6 +175,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
     });
   },
 
+  addMessage: (message) => {
+    get().handleNewMessage(message);
+  },
+
   updateMessageReadStatus: (conversationId, messageIds, readerId) => {
     set((state) => {
       const current = state.messages[conversationId];
@@ -183,9 +187,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
       const idsSet = new Set(messageIds);
       const updatedMessages = current.map((msg) => {
         if (idsSet.has(msg._id)) {
-          const readBy = msg.readBy.includes(readerId)
-            ? msg.readBy
-            : [...msg.readBy, readerId];
+          const readBy = readerId
+            ? (msg.readBy.includes(readerId) ? msg.readBy : [...msg.readBy, readerId])
+            : msg.readBy;
           return {
             ...msg,
             readBy,
@@ -201,6 +205,45 @@ export const useChatStore = create<ChatState>((set, get) => ({
           [conversationId]: updatedMessages,
         },
       };
+    });
+  },
+
+  markMessagesAsRead: (messageIds) => {
+    const idsSet = new Set(messageIds);
+    set((state) => {
+      const nextMessages: Record<string, Message[]> = {};
+      for (const [convId, list] of Object.entries(state.messages)) {
+        nextMessages[convId] = list.map((msg) => {
+          if (idsSet.has(msg._id)) {
+            return {
+              ...msg,
+              status: "read" as const,
+            };
+          }
+          return msg;
+        });
+      }
+      return { messages: nextMessages };
+    });
+  },
+
+  updateReactions: (messageId, reactions) => {
+    set((state) => {
+      let found = false;
+      const nextMessages: Record<string, Message[]> = {};
+      for (const [convId, list] of Object.entries(state.messages)) {
+        nextMessages[convId] = list.map((msg) => {
+          if (msg._id === messageId) {
+            found = true;
+            return {
+              ...msg,
+              reactions,
+            };
+          }
+          return msg;
+        });
+      }
+      return found ? { messages: nextMessages } : state;
     });
   },
 
@@ -221,16 +264,24 @@ export const useChatStore = create<ChatState>((set, get) => ({
     });
   },
 
-  setUserPresence: (userId, isOnline) => {
+  setUserPresence: (userId, isOnline, lastSeen) => {
     set((state) => {
       const updated = new Set(state.onlineUsers);
+      const updatedLastSeen = { ...state.userLastSeen };
       if (isOnline) {
         updated.add(userId);
       } else {
         updated.delete(userId);
+        if (lastSeen) {
+          updatedLastSeen[userId] = lastSeen;
+        }
       }
-      return { onlineUsers: updated };
+      return { onlineUsers: updated, userLastSeen: updatedLastSeen };
     });
+  },
+
+  setUserOnline: (userId, isOnline, lastSeen) => {
+    get().setUserPresence(userId, isOnline, lastSeen);
   },
 
   setOnlineUsers: (userIds) => {
@@ -244,6 +295,14 @@ export const useChatStore = create<ChatState>((set, get) => ({
       messages: {},
       typingUsers: {},
       onlineUsers: new Set<string>(),
+      userLastSeen: {},
     });
   },
 }));
+
+// Export chatStore alias as well to match spec section 6
+export const chatStore = {
+  getState: useChatStore.getState,
+  setState: useChatStore.setState,
+  subscribe: useChatStore.subscribe,
+};

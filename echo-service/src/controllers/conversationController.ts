@@ -143,3 +143,72 @@ export const getMessagesHandler = async (
     next(error);
   }
 };
+
+export const getConversationMediaHandler = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    if (!req.userId) {
+      throw new AppError("Authentication required", 401);
+    }
+    const { id } = req.params;
+    const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 30;
+    const cursor = typeof req.query.cursor === "string" ? req.query.cursor : undefined;
+    const type = req.query.type === "image" || req.query.type === "file" ? req.query.type : undefined;
+
+    const result = await conversationService.getConversationMedia(id as string, req.userId, {
+      type,
+      limit,
+      cursor,
+    });
+
+    res.status(200).json({
+      items: result.items,
+      nextCursor: result.nextCursor,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const pinConversationHandler = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    if (!req.userId) {
+      throw new AppError("Authentication required", 401);
+    }
+    const { id } = req.params;
+    const isPinned = await conversationService.togglePinConversation(id as string, req.userId);
+    res.status(200).json({
+      conversationId: id,
+      isPinned,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const muteConversationHandler = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    if (!req.userId) {
+      throw new AppError("Authentication required", 401);
+    }
+    const { id } = req.params;
+    const isMuted = await conversationService.toggleMuteConversation(id as string, req.userId);
+    res.status(200).json({
+      conversationId: id,
+      isMuted,
+    });
+  } catch (error) {
+    next(error);
+  }
+};

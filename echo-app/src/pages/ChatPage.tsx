@@ -27,18 +27,18 @@ export const ChatPage: FC = () => {
       )}
 
       <div className="flex-1 h-full flex overflow-hidden">
-        {/* Sidebar / ConversationList: full width on mobile if no active conv, fixed 340px-380px on desktop */}
+        {/* Middle Conversation Panel: 320px width (w-80) on desktop */}
         <div
-          className={`w-full md:w-80 lg:w-96 h-full shrink-0 ${
+          className={`w-full md:w-80 h-full shrink-0 ${
             activeConversationId ? "hidden md:flex" : "flex"
           }`}
         >
           <ConversationList />
         </div>
 
-        {/* ChatWindow: full width on mobile when active conv is set, flex-1 on desktop */}
+        {/* Main Chat Canvas: Fluid flex-1 */}
         <div
-          className={`flex-1 h-full ${
+          className={`flex-1 h-full min-w-0 ${
             !activeConversationId ? "hidden md:flex" : "flex"
           }`}
         >

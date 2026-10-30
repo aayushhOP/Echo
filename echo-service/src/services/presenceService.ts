@@ -135,6 +135,44 @@ export const isUserOnline = async (userId: string): Promise<boolean> => {
 };
 
 /**
+ * Get all online user IDs currently connected.
+ */
+export const getOnlineUserIds = async (): Promise<string[]> => {
+  const redis = getRedisClient();
+
+  if (redis) {
+    try {
+      const keys = await redis.keys("presence:*");
+      const onlineIds: string[] = [];
+      for (const key of keys) {
+        const val = await redis.get(key);
+        if (val === "online") {
+          onlineIds.push(key.replace("presence:", ""));
+        }
+      }
+      if (onlineIds.length > 0) {
+        return onlineIds;
+      }
+    } catch (err) {
+      console.warn("[PresenceService] Redis getOnlineUserIds failed, using DB/memory fallback:", err);
+    }
+  }
+
+  // Memory fallback
+  const memoryOnlineIds = Array.from(memoryPresence.entries())
+    .filter(([_, isOnline]) => isOnline)
+    .map(([uid]) => uid);
+
+  if (memoryOnlineIds.length > 0) {
+    return memoryOnlineIds;
+  }
+
+  // DB fallback
+  const onlineUsers = await User.find({ isOnline: true }).select("_id");
+  return onlineUsers.map((u) => u._id.toString());
+};
+
+/**
  * Get distinct contact user IDs who share a conversation with the given user.
  */
 export const getUserContactIds = async (userId: string): Promise<string[]> => {

@@ -3,6 +3,7 @@ import { io } from "socket.io-client";
 import { useAuthStore } from "../store/authStore";
 import { useSocketStore, AppSocket } from "../store/socketStore";
 import { useChatStore } from "../store/chatStore";
+import { Message, IReaction } from "../types/message";
 
 export const useSocket = () => {
   const accessToken = useAuthStore((state) => state.accessToken);
@@ -12,6 +13,7 @@ export const useSocket = () => {
 
   const {
     handleNewMessage,
+    updateReactions,
     updateMessageReadStatus,
     setTyping,
     setUserPresence,
@@ -63,8 +65,17 @@ export const useSocket = () => {
     });
 
     // Real-time chat events
-    newSocket.on("message:new", ({ message }) => {
-      handleNewMessage(message);
+    newSocket.on("message:new", (data: any) => {
+      const msg: Message = data?.message || data;
+      if (msg && msg._id) {
+        handleNewMessage(msg);
+      }
+    });
+
+    newSocket.on("message:reaction:update", (data: { messageId: string; reactions: IReaction[] }) => {
+      if (data?.messageId && data?.reactions) {
+        updateReactions(data.messageId, data.reactions);
+      }
     });
 
     newSocket.on("message:read:update", ({ conversationId, messageIds, readerId }) => {
@@ -79,15 +90,14 @@ export const useSocket = () => {
       setUserPresence(userId, true);
     });
 
-    newSocket.on("presence:offline", ({ userId }) => {
-      setUserPresence(userId, false);
+    newSocket.on("presence:offline", ({ userId, lastSeen }) => {
+      setUserPresence(userId, false, lastSeen);
     });
 
     // Explicitly connect
     newSocket.connect();
 
     return () => {
-      // Disconnect on cleanup/unmount or token change
       newSocket.removeAllListeners();
       newSocket.disconnect();
       socketRef.current = null;
@@ -100,10 +110,32 @@ export const useSocket = () => {
     conversationId: string,
     content: string,
     type: "text" | "image" | "file" = "text",
+    metadata?: { mediaUrl?: string | null; fileName?: string | null; fileSize?: number | null },
     callback?: (response: { success: boolean; message?: any; error?: string }) => void
   ) => {
     if (!socket || !isConnected) return;
-    socket.emit("message:send", { conversationId, content, type }, callback);
+    socket.emit(
+      "message:send",
+      {
+        conversationId,
+        content,
+        type,
+        mediaUrl: metadata?.mediaUrl,
+        fileName: metadata?.fileName,
+        fileSize: metadata?.fileSize,
+      },
+      callback
+    );
+  };
+
+  const reactMessage = (
+    conversationId: string,
+    messageId: string,
+    emoji: string,
+    callback?: (response: { success: boolean; reactions?: IReaction[]; error?: string }) => void
+  ) => {
+    if (!socket || !isConnected) return;
+    socket.emit("message:react", { conversationId, messageId, emoji }, callback);
   };
 
   const markAsRead = (conversationId: string, messageIds: string[]) => {
@@ -125,6 +157,7 @@ export const useSocket = () => {
     socket,
     isConnected,
     sendMessage,
+    reactMessage,
     markAsRead,
     startTyping,
     stopTyping,

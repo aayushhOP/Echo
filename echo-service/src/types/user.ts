@@ -1,4 +1,4 @@
-import { IUser } from "../models/User";
+import { IUser, IUserPreferences } from "../models/User";
 
 export interface UserProfileDTO {
   id: string;
@@ -6,6 +6,9 @@ export interface UserProfileDTO {
   email: string;
   avatarUrl?: string;
   status?: string;
+  bio?: string;
+  phone?: string;
+  preferences?: IUserPreferences;
   isOnline: boolean;
   lastSeen: Date;
   createdAt: Date;
@@ -17,6 +20,7 @@ export interface UserSearchItemDTO {
   username: string;
   avatarUrl?: string;
   status?: string;
+  bio?: string;
   isOnline: boolean;
   lastSeen: Date;
 }
@@ -24,6 +28,9 @@ export interface UserSearchItemDTO {
 export interface UpdateProfileDTO {
   status?: string;
   avatarUrl?: string;
+  bio?: string;
+  phone?: string;
+  preferences?: Partial<IUserPreferences>;
 }
 
 export const formatUserProfile = (user: IUser & { createdAt: Date; updatedAt: Date }): UserProfileDTO => ({
@@ -32,6 +39,9 @@ export const formatUserProfile = (user: IUser & { createdAt: Date; updatedAt: Da
   email: user.email,
   avatarUrl: user.avatarUrl,
   status: user.status,
+  bio: user.bio,
+  phone: user.phone,
+  preferences: user.preferences,
   isOnline: user.isOnline,
   lastSeen: user.lastSeen,
   createdAt: user.createdAt,
@@ -43,6 +53,7 @@ export const formatUserSearchItem = (user: IUser): UserSearchItemDTO => ({
   username: user.username,
   avatarUrl: user.avatarUrl,
   status: user.status,
+  bio: user.bio,
   isOnline: user.isOnline,
   lastSeen: user.lastSeen,
 });

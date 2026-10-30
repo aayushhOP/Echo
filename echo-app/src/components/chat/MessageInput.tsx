@@ -1,11 +1,17 @@
-import { FC, useState, useRef, useEffect, FormEvent, KeyboardEvent } from "react";
-import { Send, Smile } from "lucide-react";
+import { FC, useState, useRef, useEffect, FormEvent, KeyboardEvent, ChangeEvent } from "react";
+import { Send, Smile, Paperclip, Loader2, X, FileText } from "lucide-react";
 import EmojiPicker, { Theme, EmojiClickData } from "emoji-picker-react";
 import { useTypingIndicator } from "../../hooks/useTypingIndicator";
+import { messageApi } from "../../api/messageApi";
+import { cn } from "../../utils/cn";
 
 interface MessageInputProps {
   conversationId: string;
-  onSendMessage: (content: string) => void;
+  onSendMessage: (
+    content: string,
+    type?: "text" | "image" | "file",
+    metadata?: { mediaUrl?: string; fileName?: string; fileSize?: number }
+  ) => void;
   disabled?: boolean;
 }
 
@@ -16,8 +22,16 @@ export const MessageInput: FC<MessageInputProps> = ({
 }) => {
   const [content, setContent] = useState("");
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [pendingFile, setPendingFile] = useState<{
+    file: File;
+    previewUrl?: string;
+    isImage: boolean;
+  } | null>(null);
+
   const pickerRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { handleKeystroke, handleStopTyping } = useTypingIndicator(conversationId);
 
@@ -37,13 +51,83 @@ export const MessageInput: FC<MessageInputProps> = ({
     };
   }, [showEmojiPicker]);
 
-  const handleSubmit = (e?: FormEvent) => {
+  // Clean up preview object URL
+  useEffect(() => {
+    return () => {
+      if (pendingFile?.previewUrl) {
+        URL.revokeObjectURL(pendingFile.previewUrl);
+      }
+    };
+  }, [pendingFile]);
+
+  const handleFileSelect = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 10 * 1024 * 1024) {
+      alert("File size exceeds 10MB limit.");
+      return;
+    }
+
+    const isImage = file.type.startsWith("image/");
+    const previewUrl = isImage ? URL.createObjectURL(file) : undefined;
+
+    setPendingFile({
+      file,
+      previewUrl,
+      isImage,
+    });
+
+    // Reset input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  const removePendingFile = () => {
+    if (pendingFile?.previewUrl) {
+      URL.revokeObjectURL(pendingFile.previewUrl);
+    }
+    setPendingFile(null);
+  };
+
+  const handleSubmit = async (e?: FormEvent) => {
     if (e) e.preventDefault();
+    if (disabled || isUploading) return;
+
     const trimmed = content.trim();
-    if (!trimmed || disabled) return;
+
+    // If there is an attached file, upload first
+    if (pendingFile) {
+      setIsUploading(true);
+      try {
+        const uploadResult = await messageApi.uploadFile(pendingFile.file);
+        const msgType = pendingFile.isImage ? "image" : "file";
+
+        handleStopTyping();
+        onSendMessage(trimmed, msgType, {
+          mediaUrl: uploadResult.url,
+          fileName: uploadResult.fileName || pendingFile.file.name,
+          fileSize: uploadResult.fileSize || pendingFile.file.size,
+        });
+
+        setContent("");
+        removePendingFile();
+        setShowEmojiPicker(false);
+      } catch (err: any) {
+        console.error("Upload failed", err);
+        alert(err?.response?.data?.message || "Failed to upload file");
+      } finally {
+        setIsUploading(false);
+      }
+      return;
+    }
+
+    // Standard text message
+    if (!trimmed) return;
 
     handleStopTyping();
-    onSendMessage(trimmed);
+    onSendMessage(trimmed, "text");
     setContent("");
     setShowEmojiPicker(false);
   };
@@ -70,63 +154,141 @@ export const MessageInput: FC<MessageInputProps> = ({
     textareaRef.current?.focus();
   };
 
+  const canSend = (content.trim().length > 0 || !!pendingFile) && !isUploading && !disabled;
+
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="relative p-3 bg-slate-900 border-t border-slate-800 flex items-end gap-2"
-    >
-      {/* Emoji Picker Popup */}
-      {showEmojiPicker && (
-        <div
-          ref={pickerRef}
-          className="absolute bottom-16 left-3 z-50 shadow-2xl rounded-2xl overflow-hidden border border-slate-800"
+    <div className="p-4 bg-[#0b0e14] shrink-0">
+      <div className="max-w-4xl mx-auto w-full relative">
+        {/* Emoji Picker Popup */}
+        {showEmojiPicker && (
+          <div
+            ref={pickerRef}
+            className="absolute bottom-16 left-3 z-50 shadow-2xl rounded-2xl overflow-hidden border border-slate-700/80"
+          >
+            <EmojiPicker
+              onEmojiClick={handleEmojiClick}
+              theme={Theme.DARK}
+              lazyLoadEmojis
+              searchPlaceHolder="Search emoji..."
+              width={320}
+              height={380}
+            />
+          </div>
+        )}
+
+        {/* Pending File Attachment Preview */}
+        {pendingFile && (
+          <div className="mb-2 p-2.5 bg-[#161c29] border border-slate-700/60 rounded-xl flex items-center justify-between max-w-sm">
+            <div className="flex items-center gap-2.5 min-w-0">
+              {pendingFile.isImage && pendingFile.previewUrl ? (
+                <img
+                  src={pendingFile.previewUrl}
+                  alt="Preview"
+                  className="w-10 h-10 object-cover rounded-lg border border-slate-700"
+                />
+              ) : (
+                <div className="p-2 bg-indigo-500/20 text-indigo-400 rounded-lg">
+                  <FileText className="w-5 h-5" />
+                </div>
+              )}
+              <div className="min-w-0">
+                <p className="text-xs font-medium text-slate-200 truncate">
+                  {pendingFile.file.name}
+                </p>
+                <p className="text-[10px] text-slate-400">
+                  {(pendingFile.file.size / 1024).toFixed(1)} KB
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={removePendingFile}
+              className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700/50 transition-colors cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+
+        {/* Main Docked Input Surface */}
+        <form
+          onSubmit={handleSubmit}
+          className="bg-[#161c29] border border-slate-700/60 rounded-xl px-3 py-2 flex items-center gap-2 focus-within:border-indigo-500/80 transition-colors shadow-lg"
         >
-          <EmojiPicker
-            onEmojiClick={handleEmojiClick}
-            theme={Theme.DARK}
-            lazyLoadEmojis
-            searchPlaceHolder="Search emoji..."
-            width={320}
-            height={380}
+          {/* Hidden File Input */}
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileSelect}
+            className="hidden"
+            accept="image/*,.pdf,.doc,.docx,.txt,.zip"
           />
-        </div>
-      )}
 
-      {/* Emoji Button */}
-      <button
-        type="button"
-        disabled={disabled}
-        onClick={() => setShowEmojiPicker((prev) => !prev)}
-        className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors shrink-0 cursor-pointer ${
-          showEmojiPicker
-            ? "bg-indigo-600/20 text-indigo-400 border border-indigo-500/30"
-            : "text-slate-400 hover:text-white hover:bg-slate-800"
-        }`}
-        title="Choose emoji"
-      >
-        <Smile className="w-5 h-5" />
-      </button>
+          {/* Attachment Paperclip Button */}
+          <button
+            type="button"
+            disabled={disabled || isUploading}
+            onClick={() => fileInputRef.current?.click()}
+            className="p-2 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 transition-colors shrink-0 cursor-pointer disabled:opacity-50"
+            title="Attach file (Images, PDFs up to 10MB)"
+          >
+            <Paperclip className="w-4 h-4" />
+          </button>
 
-      {/* Text input */}
-      <textarea
-        ref={textareaRef}
-        value={content}
-        onChange={(e) => handleChange(e.target.value)}
-        onKeyDown={handleKeyDown}
-        placeholder="Type a message..."
-        rows={1}
-        disabled={disabled}
-        className="flex-1 max-h-32 min-h-[42px] bg-slate-800 text-slate-100 placeholder-slate-400 text-sm rounded-xl px-4 py-2.5 resize-none border border-slate-700/70 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-colors"
-      />
+          {/* Emoji Trigger */}
+          <button
+            type="button"
+            disabled={disabled || isUploading}
+            onClick={() => setShowEmojiPicker((prev) => !prev)}
+            className={cn(
+              "p-2 rounded-lg transition-colors shrink-0 cursor-pointer disabled:opacity-50",
+              showEmojiPicker
+                ? "text-indigo-400 bg-indigo-500/10"
+                : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/60"
+            )}
+            title="Pick an emoji"
+          >
+            <Smile className="w-4 h-4" />
+          </button>
 
-      {/* Send Button */}
-      <button
-        type="submit"
-        disabled={!content.trim() || disabled}
-        className="w-10 h-10 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 disabled:hover:bg-indigo-600 text-white flex items-center justify-center transition-all shrink-0 cursor-pointer disabled:cursor-not-allowed shadow-sm"
-      >
-        <Send className="w-4 h-4 ml-0.5" />
-      </button>
-    </form>
+          {/* Textarea */}
+          <textarea
+            ref={textareaRef}
+            rows={1}
+            value={content}
+            onChange={(e) => handleChange(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder={
+              isUploading
+                ? "Uploading attachment..."
+                : pendingFile
+                ? "Add an optional caption (Press Enter to send)..."
+                : "Type a message... (Press Enter to send)"
+            }
+            disabled={disabled || isUploading}
+            className="flex-1 bg-transparent text-slate-100 placeholder-slate-500 text-sm outline-none resize-none max-h-32 py-1 leading-relaxed"
+          />
+
+          {/* Send Button */}
+          <button
+            type="submit"
+            disabled={!canSend}
+            className={cn(
+              "w-9 h-9 rounded-xl flex items-center justify-center transition-all shrink-0 cursor-pointer",
+              canSend
+                ? "bg-indigo-600 hover:bg-indigo-500 text-white shadow-md shadow-indigo-600/30 scale-100"
+                : "bg-slate-800 text-slate-500 cursor-not-allowed scale-95"
+            )}
+            title="Send message"
+          >
+            {isUploading ? (
+              <Loader2 className="w-4 h-4 animate-spin text-white" />
+            ) : (
+              <Send className="w-4 h-4" />
+            )}
+          </button>
+        </form>
+      </div>
+    </div>
   );
 };

@@ -6,6 +6,9 @@ import {
   getConversationByIdHandler,
   updateConversationHandler,
   getMessagesHandler,
+  getConversationMediaHandler,
+  pinConversationHandler,
+  muteConversationHandler,
 } from "../controllers/conversationController";
 
 const router = Router();
@@ -18,5 +21,8 @@ router.post("/", createConversationHandler);
 router.get("/:id", getConversationByIdHandler);
 router.patch("/:id", updateConversationHandler);
 router.get("/:id/messages", getMessagesHandler);
+router.get("/:id/media", getConversationMediaHandler);
+router.patch("/:id/pin", pinConversationHandler);
+router.patch("/:id/mute", muteConversationHandler);
 
 export { router as conversationRoutes };

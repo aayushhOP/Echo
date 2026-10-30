@@ -1,0 +1,119 @@
+import { FC } from "react";
+import { Avatar } from "../common/Avatar";
+import { Phone, Video, Search, MoreVertical, Users } from "lucide-react";
+import { IConversation } from "../../types/chat";
+import { useAuthStore } from "../../store/authStore";
+import { useChatStore } from "../../store/chatStore";
+import { formatTime } from "../../utils/date";
+
+interface ChatHeaderProps {
+  conversation: IConversation;
+  onSearchClick?: () => void;
+}
+
+export const ChatHeader: FC<ChatHeaderProps> = ({ conversation, onSearchClick }) => {
+  const currentUser = useAuthStore((state) => state.user);
+  const onlineUsers = useChatStore((state) => state.onlineUsers);
+  const userLastSeen = useChatStore((state) => state.userLastSeen);
+
+  const isGroup = conversation.type === "group";
+  const myId = currentUser?.id || (currentUser as any)?._id;
+
+  const otherParticipant = !isGroup
+    ? conversation.participants.find((p) => {
+        const pId = p.id || (p as any)._id;
+        return pId && pId !== myId;
+      })
+    : null;
+
+  const otherId = otherParticipant ? otherParticipant.id || (otherParticipant as any)._id : null;
+  const isOnline = !isGroup && otherId ? onlineUsers.has(otherId) || !!otherParticipant?.isOnline : false;
+
+  const title = isGroup
+    ? conversation.groupName || "Group Chat"
+    : otherParticipant?.username || "Chat";
+
+  const lastSeenIso = otherId ? userLastSeen[otherId] || otherParticipant?.lastSeen : undefined;
+
+  let subtitle = "";
+  if (isGroup) {
+    subtitle = `${conversation.participants.length} members`;
+  } else if (isOnline) {
+    subtitle = "Active now";
+  } else if (lastSeenIso) {
+    subtitle = `Last seen ${formatTime(lastSeenIso)}`;
+  } else {
+    subtitle = "Offline";
+  }
+
+  return (
+    <header className="h-16 shrink-0 bg-[#0e121b]/90 backdrop-blur-md border-b border-slate-800/80 px-6 flex items-center justify-between z-10">
+      {/* Left: Avatar + Title + Real-time presence indicator */}
+      <div className="flex items-center gap-3.5 min-w-0">
+        <div className="relative">
+          {isGroup ? (
+            <div className="w-10 h-10 rounded-full bg-slate-800 border border-slate-700/60 flex items-center justify-center text-slate-300">
+              <Users className="w-5 h-5 text-indigo-400" />
+            </div>
+          ) : (
+            <Avatar
+              name={title}
+              avatarUrl={otherParticipant?.avatarUrl}
+              size="md"
+            />
+          )}
+
+          {!isGroup && isOnline && (
+            <span
+              className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-emerald-500 ring-2 ring-[#0e121b]"
+              title="Active now"
+            />
+          )}
+        </div>
+
+        <div className="flex flex-col min-w-0">
+          <h2 className="text-sm font-semibold text-white truncate">{title}</h2>
+          <div className="flex items-center gap-1.5 text-xs">
+            {!isGroup && isOnline && (
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            )}
+            <span className={isOnline ? "text-emerald-400 font-medium" : "text-slate-400"}>
+              {subtitle}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Right Action controls: Audio Call, Video Call, and Conversation Search */}
+      <div className="flex items-center gap-1 sm:gap-2 text-slate-400">
+        <button
+          className="p-2 rounded-xl hover:text-slate-200 hover:bg-slate-800/60 transition-colors cursor-pointer"
+          title="Start voice call"
+          onClick={() => alert("Voice call feature coming soon!")}
+        >
+          <Phone className="w-4 h-4" />
+        </button>
+        <button
+          className="p-2 rounded-xl hover:text-slate-200 hover:bg-slate-800/60 transition-colors cursor-pointer"
+          title="Start video call"
+          onClick={() => alert("Video call feature coming soon!")}
+        >
+          <Video className="w-4 h-4" />
+        </button>
+        <button
+          className="p-2 rounded-xl hover:text-slate-200 hover:bg-slate-800/60 transition-colors cursor-pointer"
+          title="Search conversation"
+          onClick={onSearchClick}
+        >
+          <Search className="w-4 h-4" />
+        </button>
+        <button
+          className="p-2 rounded-xl hover:text-slate-200 hover:bg-slate-800/60 transition-colors cursor-pointer hidden sm:flex"
+          title="More options"
+        >
+          <MoreVertical className="w-4 h-4" />
+        </button>
+      </div>
+    </header>
+  );
+};
