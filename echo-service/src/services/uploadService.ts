@@ -80,7 +80,7 @@ export const uploadFile = async (
   if (ENV.CLOUDINARY_URL) {
     try {
       const uploadResult = await cloudinary.uploader.upload(file.path, {
-        resource_type: isImage ? "image" : "raw",
+        resource_type: "auto",
         folder: "echo-uploads",
         use_filename: true,
       });
