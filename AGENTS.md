@@ -2,8 +2,8 @@
 
 ## Overview
 Real-time chat application — college major project (7th semester). Two apps in this repo:
-- `client/` — React 19 + TypeScript + Vite
-- `server/` — Node.js + Express 5 + Socket.IO + MongoDB
+- `echo-app/` — React 19 + TypeScript + Vite
+- `echo-service/` — Node.js + Express 5 + Socket.IO + MongoDB
 
 Full design lives in `ARCHITECTURE.md` at the repo root. Read the relevant section before generating code for a new feature — don't improvise structure that contradicts it.
 
