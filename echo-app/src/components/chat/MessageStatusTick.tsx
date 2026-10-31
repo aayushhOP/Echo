@@ -20,33 +20,33 @@ export const MessageStatusTick: React.FC<MessageStatusTickProps> = ({
     case "sent":
       // Single Grey Tick
       return (
-        <span title="Sent (Delivered to server)" className="inline-flex items-center">
+        <span title="Sent (Delivered to server)" className="inline-flex items-center self-end mb-[-1px]">
           <Check
-            size={14}
-            strokeWidth={2.5}
-            className={`text-slate-400 inline-block ml-1 transition-colors duration-200 ${className}`}
+            size={13}
+            strokeWidth={2.2}
+            className={`text-slate-400 inline-block transition-colors duration-200 ${className}`}
           />
         </span>
       );
     case "delivered":
       // Double Grey Tick
       return (
-        <span title="Delivered to recipient" className="inline-flex items-center">
+        <span title="Delivered to recipient" className="inline-flex items-center self-end mb-[-1px]">
           <CheckCheck
-            size={15}
-            strokeWidth={2.5}
-            className={`text-slate-400 inline-block ml-1 transition-colors duration-200 ${className}`}
+            size={14}
+            strokeWidth={2.2}
+            className={`text-slate-400 inline-block transition-colors duration-200 ${className}`}
           />
         </span>
       );
     case "read":
-      // Double Blue Tick (Electric blue matching the theme #0066ff)
+      // Double Blue Tick (WhatsApp Electric Cyan/Blue #34b7f1 or #38bdf8)
       return (
-        <span title="Read by recipient" className="inline-flex items-center">
+        <span title="Read by recipient" className="inline-flex items-center self-end mb-[-1px]">
           <CheckCheck
-            size={15}
-            strokeWidth={2.5}
-            className={`text-[#0066ff] inline-block ml-1 transition-colors duration-200 ${className}`}
+            size={14}
+            strokeWidth={2.2}
+            className={`text-[#38bdf8] inline-block transition-colors duration-200 ${className}`}
           />
         </span>
       );

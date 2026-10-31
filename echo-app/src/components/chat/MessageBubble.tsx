@@ -143,7 +143,7 @@ const MessageBubbleComponent: FC<MessageBubbleProps> = ({
           {/* File Attachment Type */}
           {message.type === "file" && message.mediaUrl && (
             <div
-              className={`p-3 rounded-2xl border transition-colors shadow-sm min-w-[260px] max-w-sm ${
+              className={`p-2.5 rounded-2xl border transition-colors shadow-sm min-w-[240px] max-w-sm ${
                 isOwn
                   ? "bg-[#0066ff] border-transparent text-white rounded-tr-sm shadow-md shadow-[#0066ff]/20"
                   : "bg-[#232533] border-white/[0.04] text-[#f0f2f8] rounded-tl-sm hover:bg-[#282a3b]"
@@ -151,11 +151,11 @@ const MessageBubbleComponent: FC<MessageBubbleProps> = ({
             >
               <div className="flex items-center gap-3">
                 <div
-                  className={`p-2.5 rounded-xl shrink-0 flex items-center justify-center ${
+                  className={`p-2 rounded-xl shrink-0 flex items-center justify-center ${
                     isOwn ? "bg-white/10 text-white" : "bg-[#0066ff]/15 text-[#0066ff] border border-[#0066ff]/20"
                   }`}
                 >
-                  <FileText size={20} />
+                  <FileText size={18} />
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-medium truncate">{message.fileName || "Document"}</p>
@@ -173,19 +173,19 @@ const MessageBubbleComponent: FC<MessageBubbleProps> = ({
                   }`}
                   title="Download file"
                 >
-                  <Download size={16} />
+                  <Download size={15} />
                 </a>
               </div>
               <div
-                className={`flex items-center justify-end gap-1 text-[10px] mt-2 select-none ${
-                  isOwn ? "text-white/80" : "text-[#767b93]"
+                className={`flex items-center justify-end gap-1 text-[10px] mt-1 select-none ${
+                  isOwn ? "text-white/70" : "text-[#767b93]"
                 }`}
               >
                 <span>{formattedTime}</span>
                 {isOwn && (
                   <span>
                     {isPending ? (
-                      <Clock className="w-3 h-3 text-white/80 animate-pulse" />
+                      <Clock className="w-2.5 h-2.5 text-white/70 animate-pulse ml-0.5" />
                     ) : (
                       <MessageStatusTick status={message.status as any} isOwnMessage={isOwn} />
                     )}
@@ -198,28 +198,33 @@ const MessageBubbleComponent: FC<MessageBubbleProps> = ({
           {/* Standard Text Type */}
           {message.type === "text" && message.content && (
             <div
-              className={`px-4 py-2.5 rounded-2xl text-xs md:text-sm leading-relaxed transition-all shadow-sm ${
+              className={`px-3 py-1.5 rounded-2xl text-[13px] md:text-sm leading-normal transition-all shadow-sm ${
                 isOwn
                   ? "bg-gradient-to-r from-[#0052cc] via-[#0066ff] to-[#0070f3] text-white rounded-tr-sm shadow-md shadow-[#0066ff]/25 border border-white/10"
                   : "bg-[#232533] text-[#f0f2f8] rounded-tl-sm hover:bg-[#282a3b] border border-white/[0.04] shadow-sm"
               } ${isPending ? "opacity-75 ring-1 ring-[#0066ff]/40" : ""}`}
             >
-              <p className="whitespace-pre-wrap break-words">{message.content}</p>
-              <div
-                className={`flex items-center justify-end gap-1 text-[10px] mt-1 select-none ${
-                  isOwn ? "text-white/80" : "text-[#767b93]"
-                }`}
-              >
-                <span>{formattedTime}</span>
-                {isOwn && (
-                  <span>
-                    {isPending ? (
-                      <Clock className="w-3 h-3 text-white/80 animate-pulse" />
-                    ) : (
-                      <MessageStatusTick status={message.status as any} isOwnMessage={isOwn} />
-                    )}
-                  </span>
-                )}
+              <div className="flex flex-wrap items-baseline justify-end gap-x-2 gap-y-0.5">
+                <span className="whitespace-pre-wrap break-words mr-auto text-left flex-1 min-w-[20px] select-text">
+                  {message.content}
+                </span>
+
+                <span
+                  className={`inline-flex items-center gap-1 text-[10px] shrink-0 select-none self-end translate-y-[2px] ${
+                    isOwn ? "text-white/70" : "text-[#767b93]"
+                  }`}
+                >
+                  <span className="leading-none">{formattedTime}</span>
+                  {isOwn && (
+                    <span className="inline-flex items-center">
+                      {isPending ? (
+                        <Clock className="w-2.5 h-2.5 text-white/70 animate-pulse ml-0.5" />
+                      ) : (
+                        <MessageStatusTick status={message.status as any} isOwnMessage={isOwn} />
+                      )}
+                    </span>
+                  )}
+                </span>
               </div>
             </div>
           )}
