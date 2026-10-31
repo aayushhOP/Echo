@@ -169,7 +169,7 @@ export const ConversationList: FC = () => {
               )}
             >
               {/* Avatar + Live Online Indicator */}
-              <div className="relative shrink-0">
+              <div className="relative shrink-0 flex items-center justify-center">
                 {isGroup ? (
                   <div
                     className={cn(
@@ -184,7 +184,7 @@ export const ConversationList: FC = () => {
                 ) : (
                   <div
                     className={cn(
-                      "rounded-full",
+                      "rounded-full flex items-center justify-center",
                       isSelected
                         ? "ring-2 ring-white/30"
                         : hasUnread

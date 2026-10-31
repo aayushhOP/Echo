@@ -67,7 +67,7 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
               <Users className="w-5 h-5 text-[#0066ff]" />
             </div>
           ) : (
-            <div className="rounded-full ring-1 ring-white/10 group-hover:ring-[#0066ff]/50 transition-all">
+            <div className="rounded-full ring-1 ring-white/10 group-hover:ring-[#0066ff]/50 transition-all flex items-center justify-center">
               <Avatar
                 name={title}
                 avatarUrl={otherParticipant?.avatarUrl}

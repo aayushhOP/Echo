@@ -40,13 +40,13 @@ export const Avatar: FC<AvatarProps> = ({
   };
 
   return (
-    <div className={cn("relative inline-flex shrink-0", className)}>
+    <div className={cn("relative inline-flex items-center justify-center shrink-0 rounded-full", className)}>
       {avatarUrl ? (
         <img
           src={avatarUrl}
           alt={name}
           className={cn(
-            "rounded-full object-cover bg-slate-800",
+            "rounded-full object-cover bg-slate-800 block",
             sizeStyles[size]
           )}
         />

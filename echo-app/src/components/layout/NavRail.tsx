@@ -84,8 +84,11 @@ export const NavRail: FC = () => {
         </button>
 
         {currentUser && (
-          <div className="relative group cursor-pointer" onClick={() => navigate("/profile")}>
-            <div className="rounded-full ring-2 ring-[#0066ff]/50 p-0.5 shadow-md shadow-[#0066ff]/20 group-hover:ring-[#0066ff] transition-all">
+          <div
+            className="relative group cursor-pointer flex items-center justify-center shrink-0"
+            onClick={() => navigate("/profile")}
+          >
+            <div className="flex items-center justify-center rounded-full ring-2 ring-[#0066ff]/50 p-0.5 shadow-md shadow-[#0066ff]/20 group-hover:ring-[#0066ff] transition-all">
               <Avatar
                 name={currentUser.username}
                 avatarUrl={currentUser.avatarUrl}
