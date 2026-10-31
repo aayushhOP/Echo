@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useCallback } from "react";
 import { io } from "socket.io-client";
 import { useAuthStore } from "../store/authStore";
 import { useSocketStore, AppSocket } from "../store/socketStore";
@@ -83,7 +83,7 @@ export const useSocket = () => {
     });
 
     newSocket.on("typing:update", ({ conversationId, userId, isTyping }) => {
-      // Ignore typing events originating from the current user (e.g. across multi-tab or local echoes)
+      // Ignore typing events originating from the current user
       const currentUserId = user?.id || user?._id;
       if (currentUserId && userId === currentUserId) {
         return;
@@ -117,57 +117,73 @@ export const useSocket = () => {
     };
   }, [accessToken, user?.id]);
 
-  const sendMessage = (
-    conversationId: string,
-    content: string,
-    type: "text" | "image" | "file" = "text",
-    metadata?: { mediaUrl?: string | null; fileName?: string | null; fileSize?: number | null },
-    callback?: (response: { success: boolean; message?: any; error?: string }) => void
-  ) => {
-    if (!socket || !isConnected) return;
-    socket.emit(
-      "message:send",
-      {
-        conversationId,
-        content,
-        type,
-        mediaUrl: metadata?.mediaUrl,
-        fileName: metadata?.fileName,
-        fileSize: metadata?.fileSize,
-      },
-      callback
-    );
-  };
+  const sendMessage = useCallback(
+    (
+      conversationId: string,
+      content: string,
+      type: "text" | "image" | "file" = "text",
+      metadata?: { mediaUrl?: string | null; fileName?: string | null; fileSize?: number | null },
+      callback?: (response: { success: boolean; message?: any; error?: string }) => void
+    ) => {
+      const activeSock = socketRef.current || useSocketStore.getState().socket;
+      if (!activeSock || !activeSock.connected) {
+        console.warn("[useSocket] Cannot send message: socket not connected");
+        if (callback) callback({ success: false, error: "Socket not connected" });
+        return;
+      }
+      activeSock.emit(
+        "message:send",
+        {
+          conversationId,
+          content,
+          type,
+          mediaUrl: metadata?.mediaUrl,
+          fileName: metadata?.fileName,
+          fileSize: metadata?.fileSize,
+        },
+        callback
+      );
+    },
+    []
+  );
 
-  const reactMessage = (
-    conversationId: string,
-    messageId: string,
-    emoji: string,
-    callback?: (response: { success: boolean; reactions?: IReaction[]; error?: string }) => void
-  ) => {
-    if (!socket || !isConnected) return;
-    socket.emit("message:react", { conversationId, messageId, emoji }, callback);
-  };
+  const reactMessage = useCallback(
+    (
+      conversationId: string,
+      messageId: string,
+      emoji: string,
+      callback?: (response: { success: boolean; reactions?: IReaction[]; error?: string }) => void
+    ) => {
+      const activeSock = socketRef.current || useSocketStore.getState().socket;
+      if (!activeSock || !activeSock.connected) return;
+      activeSock.emit("message:react", { conversationId, messageId, emoji }, callback);
+    },
+    []
+  );
 
-  const markAsRead = (conversationId: string, messageIds: string[]) => {
-    if (!socket || !isConnected || messageIds.length === 0) return;
-    socket.emit("message:read", { conversationId, messageIds });
-  };
+  const markAsRead = useCallback((conversationId: string, messageIds: string[]) => {
+    const activeSock = socketRef.current || useSocketStore.getState().socket;
+    if (!activeSock || !activeSock.connected || messageIds.length === 0) return;
+    activeSock.emit("message:read", { conversationId, messageIds });
+  }, []);
 
-  const startTyping = (conversationId: string) => {
-    if (!socket || !isConnected) return;
-    socket.emit("typing:start", { conversationId });
-  };
+  const startTyping = useCallback((conversationId: string) => {
+    const activeSock = socketRef.current || useSocketStore.getState().socket;
+    if (!activeSock || !activeSock.connected) return;
+    activeSock.emit("typing:start", { conversationId });
+  }, []);
 
-  const stopTyping = (conversationId: string) => {
-    if (!socket || !isConnected) return;
-    socket.emit("typing:stop", { conversationId });
-  };
+  const stopTyping = useCallback((conversationId: string) => {
+    const activeSock = socketRef.current || useSocketStore.getState().socket;
+    if (!activeSock || !activeSock.connected) return;
+    activeSock.emit("typing:stop", { conversationId });
+  }, []);
 
-  const requestPresenceSync = (contactIds: string[]) => {
-    if (!socket || !isConnected || !Array.isArray(contactIds) || contactIds.length === 0) return;
-    socket.emit("presence:request_sync", contactIds);
-  };
+  const requestPresenceSync = useCallback((contactIds: string[]) => {
+    const activeSock = socketRef.current || useSocketStore.getState().socket;
+    if (!activeSock || !activeSock.connected || !Array.isArray(contactIds) || contactIds.length === 0) return;
+    activeSock.emit("presence:request_sync", contactIds);
+  }, []);
 
   return {
     socket,
