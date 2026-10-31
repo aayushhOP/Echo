@@ -1,7 +1,7 @@
 import type { Socket } from "socket.io";
 import { verifyToken } from "@clerk/backend";
 import { ENV } from "../config/env";
-import User from "../models/User";
+import { getOrProvisionUser } from "../services/userSyncService";
 
 export const socketAuthMiddleware = async (
   socket: Socket,
@@ -25,15 +25,8 @@ export const socketAuthMiddleware = async (
     // Attach clerkId to socket.data
     socket.data.clerkId = clerkId;
 
-    // Resolve or auto-provision corresponding MongoDB user
-    let user = await User.findOne({ clerkId });
-    if (!user) {
-      user = await User.create({
-        clerkId,
-        email: `${clerkId}@placeholder.echo`,
-        username: `user_${clerkId.slice(-6)}`,
-      });
-    }
+    // Resolve or auto-provision corresponding MongoDB user with actual profile details
+    const user = await getOrProvisionUser(clerkId);
 
     // Attach MongoDB user ObjectId string as socket.data.userId for compatibility with all handlers
     socket.data.userId = user._id.toString();

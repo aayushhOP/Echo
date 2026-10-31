@@ -207,8 +207,8 @@ const MessageBubbleComponent: FC<MessageBubbleProps> = ({
             <div
               className={`px-4 py-2.5 rounded-2xl text-xs md:text-sm leading-relaxed transition-all shadow-sm ${
                 isOwn
-                  ? "bg-[#0066ff] text-white rounded-tr-sm shadow-md shadow-[#0066ff]/20"
-                  : "bg-[#232533] text-[#f0f2f8] rounded-tl-sm hover:bg-[#282a3b]"
+                  ? "bg-gradient-to-r from-[#0052cc] via-[#0066ff] to-[#0070f3] text-white rounded-tr-sm shadow-md shadow-[#0066ff]/25 border border-white/10"
+                  : "bg-[#232533] text-[#f0f2f8] rounded-tl-sm hover:bg-[#282a3b] border border-white/[0.04] shadow-sm"
               } ${isPending ? "opacity-75 ring-1 ring-[#0066ff]/40" : ""}`}
             >
               <p className="whitespace-pre-wrap break-words">{message.content}</p>

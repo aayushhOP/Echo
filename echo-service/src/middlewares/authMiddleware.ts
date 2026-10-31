@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import { getAuth } from "@clerk/express";
-import User from "../models/User";
 import { AppError } from "./errorHandler";
+import { getOrProvisionUser } from "../services/userSyncService";
 
 export interface AuthenticatedRequest extends Request {
   userId?: string;
@@ -21,16 +21,8 @@ export const authMiddleware = async (
       return next(new AppError("Authentication required: missing or invalid session", 401));
     }
 
-    // Resolve or sync user in MongoDB
-    let user = await User.findOne({ clerkId: clerkUserId });
-    if (!user) {
-      // In case webhook hasn't fired yet, create minimal user record
-      user = await User.create({
-        clerkId: clerkUserId,
-        email: `${clerkUserId}@placeholder.echo`,
-        username: `user_${clerkUserId.slice(-6)}`,
-      });
-    }
+    // Resolve or sync user with full Clerk profile details in MongoDB
+    const user = await getOrProvisionUser(clerkUserId);
 
     // req.userId is set to the MongoDB _id string for backward compatibility with existing services
     req.userId = user._id.toString();

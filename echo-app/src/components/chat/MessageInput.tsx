@@ -424,7 +424,7 @@ export const MessageInput: FC<MessageInputProps> = ({
         {/* Main Docked Floating Input Surface */}
         <form
           onSubmit={handleSubmit}
-          className="bg-[#13141d] border border-white/[0.04] rounded-2xl px-4 py-2.5 flex items-center gap-2.5 shadow-inner focus-within:border-white/[0.08] transition-colors"
+          className="bg-[#13141d] border border-white/[0.08] focus-within:border-[#0066ff]/50 focus-within:shadow-[0_0_20px_rgba(0,102,255,0.18)] rounded-2xl px-4 py-2.5 flex items-center gap-2.5 shadow-inner transition-all"
         >
           {/* Hidden File Inputs for Options */}
           <input
@@ -513,17 +513,17 @@ export const MessageInput: FC<MessageInputProps> = ({
             type="submit"
             disabled={!canSend}
             className={cn(
-              "transition-all p-1.5 shrink-0 cursor-pointer rounded-lg hover:bg-white/[0.04]",
+              "transition-all p-2 shrink-0 cursor-pointer rounded-xl",
               canSend
-                ? "text-[#0066ff] hover:text-[#3385ff] active:scale-95"
-                : "text-[#313545] cursor-not-allowed"
+                ? "bg-gradient-to-tr from-[#0052cc] to-[#0066ff] text-white shadow-md shadow-[#0066ff]/40 hover:scale-105 active:scale-95"
+                : "text-[#313545] cursor-not-allowed hover:bg-white/[0.02]"
             )}
             title="Send message"
           >
             {isUploading ? (
-              <Loader2 className="w-4 h-4 animate-spin text-[#0066ff]" />
+              <Loader2 className="w-4 h-4 animate-spin text-white" />
             ) : (
-              <Send size={18} />
+              <Send size={16} />
             )}
           </button>
         </form>
