@@ -7,16 +7,16 @@ import { AppLayout } from "../components/layout/AppLayout";
 import { ProtectedRoute, PublicRoute } from "./RouteGuards";
 
 export const appRouter = createBrowserRouter([
-  // Public routes (login, register)
+  // Public routes (login, register with wildcard sub-routes for Clerk flows)
   {
     element: <PublicRoute />,
     children: [
       {
-        path: "/login",
+        path: "/login/*",
         element: <LoginPage />,
       },
       {
-        path: "/register",
+        path: "/register/*",
         element: <RegisterPage />,
       },
     ],
