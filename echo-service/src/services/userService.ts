@@ -71,3 +71,70 @@ export const searchUsersByUsername = async (
 
   return users.map(formatUserSearchItem);
 };
+
+export const blockUser = async (currentUserId: string, targetIdentifier: string): Promise<string> => {
+  if (currentUserId === targetIdentifier) {
+    throw new AppError("You cannot block yourself", 400);
+  }
+
+  // Find target user by _id or clerkId
+  let targetUser = null;
+  if (targetIdentifier.match(/^[0-9a-fA-F]{24}$/)) {
+    targetUser = await User.findById(targetIdentifier);
+  }
+  if (!targetUser) {
+    targetUser = await User.findOne({ clerkId: targetIdentifier });
+  }
+
+  if (!targetUser) {
+    throw new AppError("User to block not found", 404);
+  }
+
+  const targetObjectId = targetUser._id;
+
+  if (targetObjectId.toString() === currentUserId) {
+    throw new AppError("You cannot block yourself", 400);
+  }
+
+  await User.findByIdAndUpdate(
+    currentUserId,
+    { $addToSet: { blockedUsers: targetObjectId } },
+    { runValidators: true }
+  );
+
+  return targetObjectId.toString();
+};
+
+export const unblockUser = async (currentUserId: string, targetIdentifier: string): Promise<string> => {
+  let targetUser = null;
+  if (targetIdentifier.match(/^[0-9a-fA-F]{24}$/)) {
+    targetUser = await User.findById(targetIdentifier);
+  }
+  if (!targetUser) {
+    targetUser = await User.findOne({ clerkId: targetIdentifier });
+  }
+
+  const targetObjectId = targetUser ? targetUser._id : targetIdentifier;
+
+  await User.findByIdAndUpdate(
+    currentUserId,
+    { $pull: { blockedUsers: targetObjectId } },
+    { runValidators: true }
+  );
+
+  return targetObjectId.toString();
+};
+
+export const getBlockedUsers = async (currentUserId: string): Promise<UserSearchItemDTO[]> => {
+  const user = await User.findById(currentUserId).populate<{ blockedUsers: any[] }>(
+    "blockedUsers",
+    "_id username avatarUrl status isOnline lastSeen"
+  );
+
+  if (!user) {
+    throw new AppError("User not found", 404);
+  }
+
+  const blocked = user.blockedUsers || [];
+  return blocked.map(formatUserSearchItem);
+};

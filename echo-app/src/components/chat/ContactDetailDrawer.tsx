@@ -11,10 +11,13 @@ import {
   Video,
   Users,
   ExternalLink,
+  Ban,
 } from "lucide-react";
 import { messageApi, MediaItem } from "../../api/messageApi";
+import { userApi } from "../../api/userApi";
 import { Conversation } from "../../types/message";
 import { useChatStore } from "../../store/chatStore";
+import { useAuthStore } from "../../store/authStore";
 
 export interface ContactDetailDrawerProps {
   isOpen: boolean;
@@ -42,8 +45,12 @@ export const ContactDetailDrawer: React.FC<ContactDetailDrawerProps> = ({
   const [loadingMedia, setLoadingMedia] = useState(false);
   const [isTogglingPin, setIsTogglingPin] = useState(false);
   const [isTogglingMute, setIsTogglingMute] = useState(false);
+  const [isTogglingBlock, setIsTogglingBlock] = useState(false);
 
   const onlineUsers = useChatStore((state) => state.onlineUsers);
+  const currentUser = useAuthStore((state) => state.user);
+  const addBlockedUser = useAuthStore((state) => state.addBlockedUser);
+  const removeBlockedUser = useAuthStore((state) => state.removeBlockedUser);
 
   // Identify display counterpart for 1-on-1 chats
   const counterpart =
@@ -55,6 +62,11 @@ export const ContactDetailDrawer: React.FC<ContactDetailDrawerProps> = ({
       : null;
 
   const counterpartId = counterpart ? (counterpart as any)._id || (counterpart as any).id : null;
+  const isBlocked =
+    conversation.type === "direct" && counterpartId && currentUser?.blockedUsers
+      ? currentUser.blockedUsers.includes(counterpartId)
+      : false;
+
   const isOnline =
     conversation.type === "direct" && counterpartId
       ? onlineUsers.has(counterpartId) || !!counterpart?.isOnline
@@ -122,6 +134,25 @@ export const ContactDetailDrawer: React.FC<ContactDetailDrawerProps> = ({
       await onToggleMute(conversation._id);
     } finally {
       setIsTogglingMute(false);
+    }
+  };
+
+  const handleToggleBlock = async () => {
+    if (!counterpartId || isTogglingBlock) return;
+    try {
+      setIsTogglingBlock(true);
+      if (isBlocked) {
+        await userApi.unblockUser(counterpartId);
+        removeBlockedUser(counterpartId);
+      } else {
+        await userApi.blockUser(counterpartId);
+        addBlockedUser(counterpartId);
+      }
+    } catch (err: any) {
+      console.error("Failed to toggle block status:", err);
+      alert(err.response?.data?.message || err.message || "Failed to update block status");
+    } finally {
+      setIsTogglingBlock(false);
     }
   };
 
@@ -435,6 +466,30 @@ export const ContactDetailDrawer: React.FC<ContactDetailDrawerProps> = ({
             </div>
           )}
         </div>
+
+        {/* Danger zone for 1-on-1 direct conversations */}
+        {conversation.type === "direct" && counterpartId && (
+          <div className="mt-auto p-4 border-t border-slate-800/60 bg-[#12131c]">
+            <button
+              onClick={handleToggleBlock}
+              disabled={isTogglingBlock}
+              className={`w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium transition-colors ${
+                isBlocked
+                  ? "bg-slate-800 text-slate-300 hover:bg-slate-700"
+                  : "bg-rose-500/10 text-rose-500 hover:bg-rose-500/20"
+              } disabled:opacity-50`}
+            >
+              <Ban size={16} />
+              {isTogglingBlock
+                ? isBlocked
+                  ? "Unblocking..."
+                  : "Blocking..."
+                : isBlocked
+                ? "Unblock Contact"
+                : "Block Contact"}
+            </button>
+          </div>
+        )}
       </div>
     </aside>
   );

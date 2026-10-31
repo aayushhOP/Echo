@@ -30,4 +30,23 @@ export const userApi = {
     });
     return res.data.data;
   },
+
+  blockUser: async (targetUserId: string): Promise<{ success: boolean; blockedUserId: string }> => {
+    const res = await axiosClient.post<{ success: boolean; blockedUserId: string }>("/users/block", {
+      targetUserId,
+    });
+    return res.data;
+  },
+
+  unblockUser: async (targetUserId: string): Promise<{ success: boolean; unblockedUserId: string }> => {
+    const res = await axiosClient.post<{ success: boolean; unblockedUserId: string }>("/users/unblock", {
+      targetUserId,
+    });
+    return res.data;
+  },
+
+  getBlockedUsers: async (): Promise<UserSearchItem[]> => {
+    const res = await axiosClient.get<{ success: boolean; blockedUsers: UserSearchItem[] }>("/users/blocked");
+    return res.data.blockedUsers;
+  },
 };

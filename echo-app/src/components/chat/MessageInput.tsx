@@ -23,12 +23,16 @@ interface MessageInputProps {
     metadata?: { mediaUrl?: string; fileName?: string; fileSize?: number }
   ) => void;
   disabled?: boolean;
+  isBlocked?: boolean;
+  onUnblock?: () => void;
 }
 
 export const MessageInput: FC<MessageInputProps> = ({
   conversationId,
   onSendMessage,
   disabled = false,
+  isBlocked = false,
+  onUnblock,
 }) => {
   const [content, setContent] = useState("");
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
@@ -306,6 +310,23 @@ export const MessageInput: FC<MessageInputProps> = ({
   };
 
   const canSend = !disabled && !isUploading && (content.trim().length > 0 || !!pendingFile);
+
+  if (isBlocked) {
+    return (
+      <div className="p-4 bg-[#171824] flex items-center justify-center border-t border-white/[0.04] shrink-0">
+        <div className="bg-[#1b1c27] text-slate-400 text-xs px-6 py-3 rounded-2xl border border-white/[0.04]">
+          You blocked this contact.{" "}
+          <button
+            type="button"
+            onClick={onUnblock}
+            className="text-[#0066ff] hover:underline font-medium ml-1 cursor-pointer"
+          >
+            Unblock to send a message.
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="px-4 pt-1.5 pb-3 bg-transparent shrink-0 relative z-10">

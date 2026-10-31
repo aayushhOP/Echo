@@ -28,6 +28,10 @@ const updatePreferencesSchema = z.object({
   bio: z.string().max(500).optional(),
 });
 
+const blockUserSchema = z.object({
+  targetUserId: z.string().min(1, "targetUserId is required"),
+});
+
 export const getMeHandler = async (
   req: AuthenticatedRequest,
   res: Response,
@@ -126,6 +130,65 @@ export const searchUsersHandler = async (
     res.status(200).json({
       success: true,
       data: users,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const blockUserHandler = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    if (!req.userId) {
+      throw new AppError("Authentication required", 401);
+    }
+    const { targetUserId } = blockUserSchema.parse(req.body);
+    const blockedUserId = await userService.blockUser(req.userId, targetUserId);
+    res.status(200).json({
+      success: true,
+      blockedUserId,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const unblockUserHandler = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    if (!req.userId) {
+      throw new AppError("Authentication required", 401);
+    }
+    const { targetUserId } = blockUserSchema.parse(req.body);
+    const unblockedUserId = await userService.unblockUser(req.userId, targetUserId);
+    res.status(200).json({
+      success: true,
+      unblockedUserId,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getBlockedUsersHandler = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    if (!req.userId) {
+      throw new AppError("Authentication required", 401);
+    }
+    const blockedUsers = await userService.getBlockedUsers(req.userId);
+    res.status(200).json({
+      success: true,
+      blockedUsers,
     });
   } catch (error) {
     next(error);

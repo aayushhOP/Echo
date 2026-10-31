@@ -16,7 +16,23 @@ export const registerPresenceHandlers = (io: Server, socket: Socket) => {
 
       // If exactly 1 socket exists, the user just came online globally
       if (sockets.size === 1) {
-        socket.broadcast.emit("presence:online", { userId });
+        // Query current user's blocked list and who blocked them
+        const currentUser = await User.findById(userId).select("blockedUsers");
+        const blockedUsers = (currentUser?.blockedUsers || []).map((id) => id.toString());
+
+        // Users who blocked this user
+        const usersWhoBlockedMe = await User.find({ blockedUsers: userId }).select("_id");
+        const blockedByUsers = usersWhoBlockedMe.map((u) => u._id.toString());
+        const excludeSet = new Set([...blockedUsers, ...blockedByUsers]);
+
+        // Broadcast selectively or broadcast to all sockets excluding blocked ones
+        const allConnectedSockets = await io.fetchSockets();
+        for (const s of allConnectedSockets) {
+          const remoteUserId = s.data?.userId;
+          if (remoteUserId && remoteUserId !== userId && !excludeSet.has(remoteUserId)) {
+            s.emit("presence:online", { userId });
+          }
+        }
       }
     } catch (error) {
       console.error("[Socket Presence Connect Error]:", error);
@@ -31,9 +47,6 @@ export const registerPresenceHandlers = (io: Server, socket: Socket) => {
       if (sockets.size === 0) {
         const lastSeen = new Date();
 
-        // Broadcast offline status globally
-        io.emit("presence:offline", { userId, lastSeen: lastSeen.toISOString() });
-
         // Persist offline state and lastSeen to DB safely in the background
         await User.findByIdAndUpdate(userId, {
           isOnline: false,
@@ -41,6 +54,20 @@ export const registerPresenceHandlers = (io: Server, socket: Socket) => {
         }).catch((err) => {
           console.error("[Socket Presence DB Update Error]:", err);
         });
+
+        const currentUser = await User.findById(userId).select("blockedUsers");
+        const blockedUsers = (currentUser?.blockedUsers || []).map((id) => id.toString());
+        const usersWhoBlockedMe = await User.find({ blockedUsers: userId }).select("_id");
+        const blockedByUsers = usersWhoBlockedMe.map((u) => u._id.toString());
+        const excludeSet = new Set([...blockedUsers, ...blockedByUsers]);
+
+        const allConnectedSockets = await io.fetchSockets();
+        for (const s of allConnectedSockets) {
+          const remoteUserId = s.data?.userId;
+          if (remoteUserId && remoteUserId !== userId && !excludeSet.has(remoteUserId)) {
+            s.emit("presence:offline", { userId, lastSeen: lastSeen.toISOString() });
+          }
+        }
       }
     } catch (error) {
       console.error("[Socket Presence Disconnect Error]:", error);
@@ -53,9 +80,19 @@ export const registerPresenceHandlers = (io: Server, socket: Socket) => {
     if (!parsed.success || parsed.data.length === 0) return;
 
     try {
+      const currentUser = await User.findById(userId).select("blockedUsers");
+      const blockedUsers = (currentUser?.blockedUsers || []).map((id) => id.toString());
+      const usersWhoBlockedMe = await User.find({
+        _id: { $in: parsed.data },
+        blockedUsers: userId,
+      }).select("_id");
+      const blockedByUsers = usersWhoBlockedMe.map((u) => u._id.toString());
+      const excludedSet = new Set([...blockedUsers, ...blockedByUsers]);
+
       const onlineContacts: string[] = [];
 
       for (const contactId of parsed.data) {
+        if (excludedSet.has(contactId)) continue;
         const sockets = await io.in(`user:${contactId}`).allSockets();
         if (sockets.size > 0) {
           onlineContacts.push(contactId);

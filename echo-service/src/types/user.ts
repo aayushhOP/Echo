@@ -9,6 +9,7 @@ export interface UserProfileDTO {
   bio?: string;
   phone?: string;
   preferences?: IUserPreferences;
+  blockedUsers: string[];
   isOnline: boolean;
   lastSeen: Date;
   createdAt: Date;
@@ -42,6 +43,9 @@ export const formatUserProfile = (user: IUser & { createdAt: Date; updatedAt: Da
   bio: user.bio,
   phone: user.phone,
   preferences: user.preferences,
+  blockedUsers: Array.isArray(user.blockedUsers)
+    ? user.blockedUsers.map((b: any) => (b._id ? b._id.toString() : b.toString()))
+    : [],
   isOnline: user.isOnline,
   lastSeen: user.lastSeen,
   createdAt: user.createdAt,

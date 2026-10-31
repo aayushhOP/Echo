@@ -1,6 +1,7 @@
 import { Types } from "mongoose";
 import Message, { IMessage } from "../models/Message";
 import Conversation from "../models/Conversation";
+import User from "../models/User";
 import { AppError } from "../middlewares/errorHandler";
 
 export const messagePopulation = [
@@ -49,6 +50,28 @@ export const createMessage = async (
 
   if (!isParticipant) {
     throw new AppError("Access denied: You are not a participant in this conversation", 403);
+  }
+
+  // Block checks for direct 1-on-1 conversations
+  if (conversation.type === "direct") {
+    const counterpartId = conversation.participants.find(
+      (pid) => pid.toString() !== userId
+    );
+
+    if (counterpartId) {
+      const [sender, receiver] = await Promise.all([
+        User.findById(userId).select("blockedUsers"),
+        User.findById(counterpartId).select("blockedUsers"),
+      ]);
+
+      if (receiver && receiver.blockedUsers.some((id) => id.toString() === userId)) {
+        throw new AppError("Cannot send message to this user.", 403);
+      }
+
+      if (sender && sender.blockedUsers.some((id) => id.toString() === counterpartId.toString())) {
+        throw new AppError("You must unblock this user to send a message.", 403);
+      }
+    }
   }
 
   if (dto.replyTo) {

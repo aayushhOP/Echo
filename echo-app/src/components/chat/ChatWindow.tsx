@@ -9,6 +9,7 @@ import { MessageBubble } from "./MessageBubble";
 import { MessageInput } from "./MessageInput";
 import { TypingIndicator } from "./TypingIndicator";
 import { Message } from "../../types/message";
+import { userApi } from "../../api/userApi";
 import { MessageSquareOff, Loader2 } from "lucide-react";
 import { formatDateSeparator } from "../../utils/date";
 import chatBg from "../../assets/chat-bg.jpg";
@@ -25,6 +26,7 @@ export const ChatWindow: FC<ChatWindowProps> = ({
   onSearchClick,
 }) => {
   const currentUser = useAuthStore((state) => state.user);
+  const removeBlockedUser = useAuthStore((state) => state.removeBlockedUser);
   const {
     activeConversationId,
     conversations,
@@ -220,6 +222,31 @@ export const ChatWindow: FC<ChatWindowProps> = ({
     );
   }
 
+  const counterpart =
+    activeConv?.type === "direct"
+      ? activeConv.participants.find((p) => {
+          const pId = (p as any)._id || (p as any).id;
+          return pId && pId !== myId;
+        }) || activeConv.participants[0]
+      : null;
+
+  const counterpartId = counterpart ? (counterpart as any)._id || (counterpart as any).id : null;
+  const isDirectBlocked =
+    activeConv?.type === "direct" && counterpartId && currentUser?.blockedUsers
+      ? currentUser.blockedUsers.includes(counterpartId)
+      : false;
+
+  const handleUnblockCounterpart = async () => {
+    if (!counterpartId) return;
+    try {
+      await userApi.unblockUser(counterpartId);
+      removeBlockedUser(counterpartId);
+    } catch (err: any) {
+      console.error("Failed to unblock counterpart:", err);
+      alert(err.response?.data?.message || err.message || "Failed to unblock user");
+    }
+  };
+
   return (
     <div className="flex-1 h-full flex flex-col bg-[#171824] relative min-w-0 overflow-hidden">
       {/* Background Wallpaper Image */}
@@ -308,6 +335,8 @@ export const ChatWindow: FC<ChatWindowProps> = ({
       <MessageInput
         conversationId={activeConversationId}
         onSendMessage={handleSendMessage}
+        isBlocked={isDirectBlocked}
+        onUnblock={handleUnblockCounterpart}
       />
     </div>
   );

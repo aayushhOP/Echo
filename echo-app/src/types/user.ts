@@ -6,6 +6,7 @@ export interface User {
   avatarUrl?: string;
   status?: string;
   isOnline: boolean;
+  blockedUsers?: string[];
   lastSeen?: string;
   createdAt?: string;
   updatedAt?: string;

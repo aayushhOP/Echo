@@ -1,4 +1,4 @@
-import { Schema, model, Document } from "mongoose";
+import { Schema, model, Document, Types } from "mongoose";
 
 export interface IUserPreferences {
   soundEnabled: boolean;
@@ -17,6 +17,7 @@ export interface IUser extends Document {
   isOnline: boolean;
   lastSeen: Date;
   preferences?: IUserPreferences;
+  blockedUsers: Types.ObjectId[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -37,6 +38,7 @@ const userSchema = new Schema<IUser>(
       theme: { type: String, default: "synthwave-dark" },
       notifications: { type: Boolean, default: true },
     },
+    blockedUsers: [{ type: Schema.Types.ObjectId, ref: "User", default: [] }],
   },
   { timestamps: true }
 );
