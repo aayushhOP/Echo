@@ -7,6 +7,15 @@ import { registerPresenceHandlers } from "./handlers/presenceHandlers";
 import { getConversationsForUser } from "../services/conversationService";
 import { ENV } from "../config/env";
 
+let ioInstance: SocketIOServer | null = null;
+
+export const getIO = (): SocketIOServer => {
+  if (!ioInstance) {
+    throw new Error("Socket.IO has not been initialized yet");
+  }
+  return ioInstance;
+};
+
 export const initSocketServer = (httpServer: HttpServer): SocketIOServer => {
   const io = new SocketIOServer(httpServer, {
     cors: {
@@ -14,6 +23,8 @@ export const initSocketServer = (httpServer: HttpServer): SocketIOServer => {
       credentials: true,
     },
   });
+
+  ioInstance = io;
 
   // Apply authentication middleware
   io.use(socketAuthMiddleware);

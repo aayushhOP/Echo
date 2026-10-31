@@ -52,7 +52,10 @@ export const createMessage = async (
     throw new AppError("Access denied: You are not a participant in this conversation", 403);
   }
 
+  let isBlocked = false;
   // Block checks for direct 1-on-1 conversations
+  // WhatsApp dynamics: sender is allowed to send; message is stored as 'sent' with isDroppedDueToBlock=true,
+  // but silent rejection ensures it is never relayed to the blocker.
   if (conversation.type === "direct") {
     const counterpartId = conversation.participants.find(
       (pid) => pid.toString() !== userId
@@ -64,12 +67,15 @@ export const createMessage = async (
         User.findById(counterpartId).select("blockedUsers"),
       ]);
 
-      if (receiver && receiver.blockedUsers.some((id) => id.toString() === userId)) {
-        throw new AppError("Cannot send message to this user.", 403);
-      }
+      const receiverBlockedSender = receiver?.blockedUsers?.some(
+        (id) => id.toString() === userId
+      );
+      const senderBlockedReceiver = sender?.blockedUsers?.some(
+        (id) => id.toString() === counterpartId.toString()
+      );
 
-      if (sender && sender.blockedUsers.some((id) => id.toString() === counterpartId.toString())) {
-        throw new AppError("You must unblock this user to send a message.", 403);
+      if (receiverBlockedSender || senderBlockedReceiver) {
+        isBlocked = true;
       }
     }
   }
@@ -98,6 +104,8 @@ export const createMessage = async (
     replyTo: dto.replyTo ? new Types.ObjectId(dto.replyTo) : null,
     reactions: [],
     readBy: [userObjectId],
+    deliveredTo: [],
+    isDroppedDueToBlock: isBlocked,
     status: "sent",
   });
 

@@ -4,6 +4,7 @@ import { AuthenticatedRequest } from "../middlewares/authMiddleware";
 import { AppError } from "../middlewares/errorHandler";
 import * as userService from "../services/userService";
 import { getOnlineUserIds } from "../services/presenceService";
+import { getIO } from "../sockets";
 
 const updateProfileSchema = z
   .object({
@@ -147,6 +148,19 @@ export const blockUserHandler = async (
     }
     const { targetUserId } = blockUserSchema.parse(req.body);
     const blockedUserId = await userService.blockUser(req.userId, targetUserId);
+
+    // Immediately inform the blocked user that this contact is offline/hidden
+    try {
+      const io = getIO();
+      io.to(`user:${blockedUserId}`).emit("presence:masked", {
+        userId: req.userId,
+        isOnline: false,
+        lastSeen: null,
+      });
+    } catch (socketErr) {
+      console.error("[blockUserHandler] Failed to emit presence:masked:", socketErr);
+    }
+
     res.status(200).json({
       success: true,
       blockedUserId,
@@ -167,6 +181,18 @@ export const unblockUserHandler = async (
     }
     const { targetUserId } = blockUserSchema.parse(req.body);
     const unblockedUserId = await userService.unblockUser(req.userId, targetUserId);
+
+    try {
+      const io = getIO();
+      const currentSockets = await io.in(`user:${req.userId}`).allSockets();
+      io.to(`user:${unblockedUserId}`).emit("presence:unmasked", {
+        userId: req.userId,
+        isOnline: currentSockets.size > 0,
+      });
+    } catch (socketErr) {
+      console.error("[unblockUserHandler] Failed to emit presence:unmasked:", socketErr);
+    }
+
     res.status(200).json({
       success: true,
       unblockedUserId,

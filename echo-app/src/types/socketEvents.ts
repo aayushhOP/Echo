@@ -14,6 +14,26 @@ export interface ServerToClientEvents {
     messageIds: string[];
     readerId?: string;
   }) => void;
+  "message:status_update": (data: {
+    conversationId: string;
+    messageId: string;
+    status: "sent" | "delivered" | "read";
+  }) => void;
+  "message:status_batch_update": (data: {
+    conversationId: string;
+    messageIds: string[];
+    status: "sent" | "delivered" | "read";
+    readByUserId?: string;
+  }) => void;
+  "presence:masked": (data: {
+    userId: string;
+    isOnline: boolean;
+    lastSeen: null;
+  }) => void;
+  "presence:unmasked": (data: {
+    userId: string;
+    isOnline: boolean;
+  }) => void;
   "typing:update": (data: {
     conversationId: string;
     userId: string;
@@ -46,6 +66,10 @@ export interface ClientToServerEvents {
     callback?: (response: { success: boolean; reactions?: IReaction[]; error?: string }) => void
   ) => void;
   "message:read": (
+    payload: { conversationId: string; messageIds: string[] },
+    callback?: (response: { success: boolean; updatedCount?: number; error?: string }) => void
+  ) => void;
+  "message:mark_read": (
     payload: { conversationId: string; messageIds: string[] },
     callback?: (response: { success: boolean; updatedCount?: number; error?: string }) => void
   ) => void;

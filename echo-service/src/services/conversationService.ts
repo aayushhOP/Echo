@@ -38,10 +38,12 @@ export const getConversationsForUser = async (userId: string) => {
       const convObj: any = conv.toObject();
 
       // Count unread messages where user is not in readBy array
+      // Exclude messages dropped due to block unless sent by this user
       const unreadCount = await Message.countDocuments({
         conversationId: conv._id,
         senderId: { $ne: userObjectId },
         readBy: { $ne: userObjectId },
+        isDroppedDueToBlock: { $ne: true },
       });
 
       const isPinned = Array.isArray(conv.pinnedBy)
@@ -304,6 +306,10 @@ export const getConversationMessages = async (
 
   const filter: any = {
     conversationId: convObjectId,
+    $or: [
+      { isDroppedDueToBlock: { $ne: true } },
+      { senderId: userObjectId },
+    ],
   };
 
   if (query.before) {

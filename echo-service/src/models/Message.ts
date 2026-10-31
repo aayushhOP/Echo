@@ -5,6 +5,12 @@ export interface IReaction {
   users: Types.ObjectId[];
 }
 
+export interface IMessageRecipient {
+  userId: Types.ObjectId;
+  readAt?: Date;
+  deliveredAt?: Date;
+}
+
 export interface IMessage extends Document {
   conversationId: Types.ObjectId;
   senderId: Types.ObjectId;
@@ -16,6 +22,11 @@ export interface IMessage extends Document {
   reactions: IReaction[];
   replyTo?: Types.ObjectId | null;
   readBy: Types.ObjectId[];
+  deliveredTo?: {
+    userId: Types.ObjectId;
+    deliveredAt: Date;
+  }[];
+  isDroppedDueToBlock?: boolean;
   status: "sent" | "delivered" | "read";
   createdAt: Date;
   updatedAt: Date;
@@ -41,7 +52,14 @@ const messageSchema = new Schema<IMessage>(
     reactions: { type: [reactionSchema], default: [] },
     replyTo: { type: Schema.Types.ObjectId, ref: "Message", default: null },
     readBy: [{ type: Schema.Types.ObjectId, ref: "User" }],
-    status: { type: String, enum: ["sent", "delivered", "read"], default: "sent" },
+    deliveredTo: [
+      {
+        userId: { type: Schema.Types.ObjectId, ref: "User", required: true },
+        deliveredAt: { type: Date, default: Date.now },
+      },
+    ],
+    isDroppedDueToBlock: { type: Boolean, default: false },
+    status: { type: String, enum: ["sent", "delivered", "read"], default: "sent", index: true },
   },
   { timestamps: true }
 );

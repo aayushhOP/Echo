@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { Conversation, Message, IReaction } from "../types/message";
+import { useAuthStore } from "./authStore";
 
 interface ChatState {
   activeConversationId: string | null;
@@ -10,6 +11,7 @@ interface ChatState {
   userLastSeen: Record<string, string>; // userId -> ISO timestamp
 
   setActiveConversationId: (id: string | null) => void;
+  clearUnreadCount: (conversationId: string) => void;
   setConversations: (conversations: Conversation[]) => void;
   addOrUpdateConversation: (conversation: Conversation) => void;
   setMessages: (conversationId: string, messages: Message[]) => void;
@@ -18,6 +20,8 @@ interface ChatState {
   reconcileMessage: (tempId: string, confirmedMessage: Message) => void;
   handleNewMessage: (message: Message) => void;
   addMessage: (message: Message) => void;
+  updateMessageStatus: (conversationId: string, messageId: string, status: "sent" | "delivered" | "read") => void;
+  updateBatchMessageStatus: (conversationId: string, messageIds: string[], status: "sent" | "delivered" | "read") => void;
   updateMessageReadStatus: (conversationId: string, messageIds: string[], readerId?: string) => void;
   markMessagesAsRead: (messageIds: string[]) => void;
   updateReactions: (messageId: string, reactions: IReaction[]) => void;
@@ -42,7 +46,27 @@ export const useChatStore = create<ChatState>((set, get) => ({
   onlineUsers: new Set<string>(),
   userLastSeen: {},
 
-  setActiveConversationId: (id) => set({ activeConversationId: id }),
+  setActiveConversationId: (id) => {
+    set((state) => {
+      // If opening a conversation, immediately clear its unreadCount
+      const updatedConversations = id
+        ? state.conversations.map((c) => (c._id === id ? { ...c, unreadCount: 0 } : c))
+        : state.conversations;
+
+      return {
+        activeConversationId: id,
+        conversations: updatedConversations,
+      };
+    });
+  },
+
+  clearUnreadCount: (conversationId) => {
+    set((state) => ({
+      conversations: state.conversations.map((c) =>
+        c._id === conversationId ? { ...c, unreadCount: 0 } : c
+      ),
+    }));
+  },
 
   setConversations: (conversations) => set({ conversations }),
 
@@ -158,11 +182,22 @@ export const useChatStore = create<ChatState>((set, get) => ({
         nextMessages = [...current, message];
       }
 
+      // Determine current user ID to check if incoming message was sent by someone else
+      const authUser = useAuthStore.getState().user;
+      const currentUserId = authUser?.id || (authUser as any)?._id;
+      const isFromOtherUser = msgSenderId && currentUserId && msgSenderId !== currentUserId;
+      const isChatNotActive = state.activeConversationId !== conversationId;
+
       const convList = state.conversations.map((c) => {
         if (c._id === conversationId) {
+          // Increment unread count if message came from another user and this conversation is NOT currently open
+          const currentUnread = c.unreadCount || 0;
+          const newUnread = isFromOtherUser && isChatNotActive ? currentUnread + 1 : 0;
+
           return {
             ...c,
             lastMessage: message,
+            unreadCount: newUnread,
             updatedAt: message.createdAt,
           };
         }
@@ -183,6 +218,35 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   addMessage: (message) => {
     get().handleNewMessage(message);
+  },
+
+  updateMessageStatus: (conversationId, messageId, status) => {
+    set((state) => {
+      const convMessages = state.messages[conversationId] || [];
+      return {
+        messages: {
+          ...state.messages,
+          [conversationId]: convMessages.map((m) =>
+            m._id === messageId ? { ...m, status } : m
+          ),
+        },
+      };
+    });
+  },
+
+  updateBatchMessageStatus: (conversationId, messageIds, status) => {
+    set((state) => {
+      const idSet = new Set(messageIds);
+      const convMessages = state.messages[conversationId] || [];
+      return {
+        messages: {
+          ...state.messages,
+          [conversationId]: convMessages.map((m) =>
+            idSet.has(m._id) ? { ...m, status } : m
+          ),
+        },
+      };
+    });
   },
 
   updateMessageReadStatus: (conversationId, messageIds, readerId) => {
@@ -270,26 +334,22 @@ export const useChatStore = create<ChatState>((set, get) => ({
                 typeof u === "string" ? u === user.id : u._id === user.id
               );
 
-              let updatedUsers = [...r.users];
               if (userIndex > -1) {
-                updatedUsers.splice(userIndex, 1);
+                // Remove reaction
+                r.users.splice(userIndex, 1);
+                if (r.users.length === 0) {
+                  currentReactions.splice(reactionIndex, 1);
+                }
               } else {
-                updatedUsers.push({
+                // Add user to reaction
+                r.users.push({
                   _id: user.id,
                   username: user.username,
                   avatarUrl: user.avatarUrl,
                 });
               }
-
-              if (updatedUsers.length === 0) {
-                currentReactions.splice(reactionIndex, 1);
-              } else {
-                currentReactions[reactionIndex] = {
-                  ...r,
-                  users: updatedUsers,
-                };
-              }
             } else {
+              // New reaction emoji
               currentReactions.push({
                 emoji,
                 users: [
@@ -316,16 +376,16 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   setTyping: (conversationId, userId, isTyping) => {
     set((state) => {
-      const convTyping = { ...(state.typingUsers[conversationId] || {}) };
+      const currentConvTyping = { ...(state.typingUsers[conversationId] || {}) };
       if (isTyping) {
-        convTyping[userId] = true;
+        currentConvTyping[userId] = true;
       } else {
-        delete convTyping[userId];
+        delete currentConvTyping[userId];
       }
       return {
         typingUsers: {
           ...state.typingUsers,
-          [conversationId]: convTyping,
+          [conversationId]: currentConvTyping,
         },
       };
     });
@@ -341,6 +401,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
         updated.delete(userId);
         if (lastSeen) {
           updatedLastSeen[userId] = lastSeen;
+        } else if (lastSeen === null || lastSeen === undefined) {
+          // If masked or not provided when going offline, clear lastSeen
+          delete updatedLastSeen[userId];
         }
       }
       return { onlineUsers: updated, userLastSeen: updatedLastSeen };

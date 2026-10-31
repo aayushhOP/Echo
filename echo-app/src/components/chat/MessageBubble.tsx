@@ -1,8 +1,9 @@
 import { FC, memo, useState, useRef, useEffect } from "react";
-import { Check, CheckCheck, Clock, FileText, Download, Smile, Plus, X, ImageOff } from "lucide-react";
+import { Clock, FileText, Download, Smile, Plus, X, ImageOff } from "lucide-react";
 import { Message } from "../../types/message";
 import { useAuthStore } from "../../store/authStore";
 import { formatTime } from "../../utils/date";
+import { MessageStatusTick } from "./MessageStatusTick";
 
 interface MessageBubbleProps {
   message: Message;
@@ -130,12 +131,8 @@ const MessageBubbleComponent: FC<MessageBubbleProps> = ({
                   <span>
                     {isPending ? (
                       <Clock className="w-3 h-3 text-white/80 animate-pulse" />
-                    ) : message.status === "read" ? (
-                      <CheckCheck size={12} className="text-cyan-300" />
-                    ) : message.status === "delivered" ? (
-                      <CheckCheck size={12} className="text-white/80" />
                     ) : (
-                      <Check size={12} />
+                      <MessageStatusTick status={message.status as any} isOwnMessage={isOwn} />
                     )}
                   </span>
                 )}
@@ -189,12 +186,8 @@ const MessageBubbleComponent: FC<MessageBubbleProps> = ({
                   <span>
                     {isPending ? (
                       <Clock className="w-3 h-3 text-white/80 animate-pulse" />
-                    ) : message.status === "read" ? (
-                      <CheckCheck size={12} className="text-cyan-300" />
-                    ) : message.status === "delivered" ? (
-                      <CheckCheck size={12} className="text-white/80" />
                     ) : (
-                      <Check size={12} />
+                      <MessageStatusTick status={message.status as any} isOwnMessage={isOwn} />
                     )}
                   </span>
                 )}
@@ -222,12 +215,8 @@ const MessageBubbleComponent: FC<MessageBubbleProps> = ({
                   <span>
                     {isPending ? (
                       <Clock className="w-3 h-3 text-white/80 animate-pulse" />
-                    ) : message.status === "read" ? (
-                      <CheckCheck size={12} className="text-cyan-300" />
-                    ) : message.status === "delivered" ? (
-                      <CheckCheck size={12} className="text-white/80" />
                     ) : (
-                      <Check size={12} />
+                      <MessageStatusTick status={message.status as any} isOwnMessage={isOwn} />
                     )}
                   </span>
                 )}

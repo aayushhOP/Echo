@@ -9,6 +9,7 @@ import {
   FileText,
   Image as ImageIcon,
   Camera,
+  Ban,
 } from "lucide-react";
 import EmojiPicker, { Theme, EmojiClickData } from "emoji-picker-react";
 import { useTypingIndicator } from "../../hooks/useTypingIndicator";
@@ -313,15 +314,16 @@ export const MessageInput: FC<MessageInputProps> = ({
 
   if (isBlocked) {
     return (
-      <div className="p-4 bg-[#171824] flex items-center justify-center border-t border-white/[0.04] shrink-0">
-        <div className="bg-[#1b1c27] text-slate-400 text-xs px-6 py-3 rounded-2xl border border-white/[0.04]">
-          You blocked this contact.{" "}
+      <div className="px-4 py-3 bg-transparent shrink-0 relative z-10">
+        <div className="max-w-xl mx-auto flex items-center justify-center gap-2.5 px-5 py-3 rounded-2xl bg-[#1b1c27]/90 backdrop-blur-md border border-white/[0.08] shadow-xl text-center text-xs text-slate-300">
+          <Ban className="w-4 h-4 text-rose-400 shrink-0" />
+          <span>You blocked this contact.</span>
           <button
             type="button"
             onClick={onUnblock}
-            className="text-[#0066ff] hover:underline font-medium ml-1 cursor-pointer"
+            className="text-[#38bdf8] hover:text-[#0066ff] font-semibold hover:underline transition-colors cursor-pointer"
           >
-            Unblock to send a message.
+            Unblock
           </button>
         </div>
       </div>

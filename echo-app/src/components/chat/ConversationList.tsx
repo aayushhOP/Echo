@@ -130,28 +130,41 @@ export const ConversationList: FC = () => {
               : false;
 
           const lastMsg = conv.lastMessage;
+          const senderId =
+            typeof lastMsg?.senderId === "string"
+              ? lastMsg.senderId
+              : (lastMsg?.senderId as any)?._id || (lastMsg?.senderId as any)?.id;
+          const isSentByMe = Boolean(myId && senderId && myId === senderId);
+
           let lastMsgSnippet = "No messages yet";
           if (lastMsg) {
+            let bodyText = "";
             if (lastMsg.type === "image") {
-              lastMsgSnippet = "📷 Photo";
+              bodyText = "📷 Photo";
             } else if (lastMsg.type === "file") {
-              lastMsgSnippet = `📎 ${lastMsg.fileName || "Attachment"}`;
+              bodyText = `📎 ${lastMsg.fileName || "Attachment"}`;
             } else {
-              lastMsgSnippet = lastMsg.content;
+              bodyText = lastMsg.content;
             }
+
+            // WhatsApp Desktop convention: prefix with "You: " if message is from the logged in user
+            lastMsgSnippet = isSentByMe ? `You: ${bodyText}` : bodyText;
           }
 
           const lastMsgTime = lastMsg?.createdAt ? formatTime(lastMsg.createdAt) : "";
           const unreadCount = conv.unreadCount || 0;
+          const hasUnread = unreadCount > 0 && !isSelected;
 
           return (
             <div
               key={conv._id}
               onClick={() => setActiveConversationId(conv._id)}
               className={cn(
-                "flex items-center gap-3.5 p-3.5 rounded-2xl cursor-pointer transition-all",
+                "flex items-center gap-3.5 p-3.5 rounded-2xl cursor-pointer transition-all relative",
                 isSelected
                   ? "bg-[#0066ff] text-white shadow-md shadow-[#0066ff]/25"
+                  : hasUnread
+                  ? "bg-[#0066ff]/10 hover:bg-[#0066ff]/15 text-[#f0f2f8] border border-[#0066ff]/20"
                   : "hover:bg-white/[0.02] text-[#f0f2f8]"
               )}
             >
@@ -172,7 +185,11 @@ export const ConversationList: FC = () => {
                   <div
                     className={cn(
                       "rounded-full",
-                      isSelected ? "ring-2 ring-white/30" : "ring-1 ring-white/10"
+                      isSelected
+                        ? "ring-2 ring-white/30"
+                        : hasUnread
+                        ? "ring-2 ring-[#0066ff]/60"
+                        : "ring-1 ring-white/10"
                     )}
                   >
                     <Avatar
@@ -199,8 +216,12 @@ export const ConversationList: FC = () => {
                 <div className="flex justify-between items-baseline mb-0.5">
                   <span
                     className={cn(
-                      "text-sm font-semibold truncate",
-                      isSelected ? "text-white" : "text-[#f0f2f8]"
+                      "text-sm truncate",
+                      isSelected
+                        ? "font-semibold text-white"
+                        : hasUnread
+                        ? "font-bold text-white"
+                        : "font-semibold text-[#f0f2f8]"
                     )}
                   >
                     {title}
@@ -209,7 +230,11 @@ export const ConversationList: FC = () => {
                     <span
                       className={cn(
                         "text-[11px] shrink-0",
-                        isSelected ? "text-white/80" : "text-[#767b93]"
+                        isSelected
+                          ? "text-white/80"
+                          : hasUnread
+                          ? "text-[#38bdf8] font-semibold"
+                          : "text-[#767b93]"
                       )}
                     >
                       {lastMsgTime}
@@ -221,21 +246,20 @@ export const ConversationList: FC = () => {
                   <p
                     className={cn(
                       "text-xs truncate",
-                      isSelected ? "text-white/90" : "text-[#767b93]"
+                      isSelected
+                        ? "text-white/90"
+                        : hasUnread
+                        ? "text-slate-100 font-medium"
+                        : "text-[#767b93]"
                     )}
                   >
                     {lastMsgSnippet}
                   </p>
 
-                  {/* Unread count pill */}
-                  {unreadCount > 0 && (
+                  {/* Unread count badge (vanishes instantly when conversation is active) */}
+                  {hasUnread && (
                     <span
-                      className={cn(
-                        "rounded-full text-[11px] font-bold px-2 py-0.5 shrink-0",
-                        isSelected
-                          ? "bg-white text-[#0066ff] shadow-sm"
-                          : "bg-[#0066ff] text-white shadow-sm shadow-[#0066ff]/30"
-                      )}
+                      className="rounded-full text-[11px] font-bold px-2 py-0.5 shrink-0 bg-[#0066ff] text-white shadow-sm shadow-[#0066ff]/40 animate-in fade-in zoom-in-95 duration-150"
                     >
                       {unreadCount}
                     </span>

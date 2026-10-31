@@ -1,13 +1,15 @@
 import { useEffect, useRef, useCallback } from "react";
 import { io } from "socket.io-client";
+import { useAuth } from "@clerk/clerk-react";
 import { useAuthStore } from "../store/authStore";
 import { useSocketStore, AppSocket } from "../store/socketStore";
 import { useChatStore } from "../store/chatStore";
 import { Message, IReaction } from "../types/message";
 
 export const useSocket = () => {
-  const accessToken = useAuthStore((state) => state.accessToken);
+  const { getToken, isSignedIn } = useAuth();
   const user = useAuthStore((state) => state.user);
+  const setAccessToken = useAuthStore((state) => state.setAccessToken);
   const { socket, isConnected, setSocket, setIsConnected, reset } = useSocketStore();
   const socketRef = useRef<AppSocket | null>(null);
 
@@ -15,13 +17,15 @@ export const useSocket = () => {
     handleNewMessage,
     updateReactions,
     updateMessageReadStatus,
+    updateMessageStatus,
+    updateBatchMessageStatus,
     setTyping,
     setUserPresence,
   } = useChatStore();
 
   useEffect(() => {
-    // If no authenticated user or access token, disconnect and clean up
-    if (!accessToken || !user) {
+    // If not signed in or no user profile, disconnect and clean up
+    if (!isSignedIn || !user) {
       if (socketRef.current) {
         socketRef.current.disconnect();
         socketRef.current = null;
@@ -30,20 +34,35 @@ export const useSocket = () => {
       return;
     }
 
-    // If socket already exists and connected with current token, keep it
+    // Singleton socket: prevent re-instantiating if already running
     if (socketRef.current) {
       return;
     }
 
+    let isDisposed = false;
     const socketUrl =
       import.meta.env.VITE_SOCKET_URL || "https://echo-1aal.onrender.com";
 
+    // Setup Socket.IO client with dynamic auth token callback
+    // Every time Socket.IO reconnects or refreshes, this auth callback executes to fetch a fresh Clerk token!
     const newSocket: AppSocket = io(socketUrl, {
-      auth: { token: accessToken },
+      auth: async (cb: (data: { token: string | null }) => void) => {
+        try {
+          const freshToken = await getToken();
+          if (freshToken) {
+            setAccessToken(freshToken);
+          }
+          cb({ token: freshToken });
+        } catch (err) {
+          console.error("[useSocket] Error fetching fresh token for socket auth:", err);
+          cb({ token: null });
+        }
+      },
       autoConnect: false,
       reconnection: true,
-      reconnectionAttempts: 10,
+      reconnectionAttempts: Infinity,
       reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
     });
 
     socketRef.current = newSocket;
@@ -51,17 +70,32 @@ export const useSocket = () => {
 
     // Event listeners
     newSocket.on("connect", () => {
+      if (isDisposed) return;
       setIsConnected(true);
       console.log("[Socket connected]:", newSocket.id);
     });
 
     newSocket.on("disconnect", (reason) => {
+      if (isDisposed) return;
       setIsConnected(false);
       console.log("[Socket disconnected]:", reason);
     });
 
-    newSocket.on("connect_error", (error) => {
+    newSocket.on("connect_error", async (error) => {
       console.error("[Socket connection error]:", error.message);
+      // If server rejected with Invalid Token or Auth error, force fetch a fresh Clerk token
+      if (error.message && error.message.includes("Authentication error")) {
+        try {
+          const freshToken = await getToken({ skipCache: true });
+          if (freshToken) {
+            setAccessToken(freshToken);
+            // Reconnect with fresh token
+            newSocket.connect();
+          }
+        } catch (refreshErr) {
+          console.error("[useSocket] Failed refreshing token on connect_error:", refreshErr);
+        }
+      }
     });
 
     // Real-time chat events
@@ -82,8 +116,27 @@ export const useSocket = () => {
       updateMessageReadStatus(conversationId, messageIds, readerId);
     });
 
+    newSocket.on("message:status_update", ({ conversationId, messageId, status }: { conversationId: string; messageId: string; status: "sent" | "delivered" | "read" }) => {
+      if (conversationId && messageId && status) {
+        updateMessageStatus(conversationId, messageId, status);
+      }
+    });
+
+    newSocket.on("message:status_batch_update", ({ conversationId, messageIds, status }: { conversationId: string; messageIds: string[]; status: "sent" | "delivered" | "read" }) => {
+      if (conversationId && Array.isArray(messageIds) && status) {
+        updateBatchMessageStatus(conversationId, messageIds, status);
+      }
+    });
+
+    newSocket.on("presence:masked", ({ userId }: { userId: string; isOnline: boolean; lastSeen: null }) => {
+      setUserPresence(userId, false, undefined);
+    });
+
+    newSocket.on("presence:unmasked", ({ userId, isOnline }: { userId: string; isOnline: boolean }) => {
+      setUserPresence(userId, isOnline, undefined);
+    });
+
     newSocket.on("typing:update", ({ conversationId, userId, isTyping }) => {
-      // Ignore typing events originating from the current user
       const currentUserId = user?.id || user?._id;
       if (currentUserId && userId === currentUserId) {
         return;
@@ -109,13 +162,14 @@ export const useSocket = () => {
     newSocket.connect();
 
     return () => {
+      isDisposed = true;
       newSocket.removeAllListeners();
       newSocket.disconnect();
       socketRef.current = null;
       setSocket(null);
       setIsConnected(false);
     };
-  }, [accessToken, user?.id]);
+  }, [isSignedIn, user?.id, getToken, setAccessToken, setSocket, setIsConnected, reset, handleNewMessage, updateReactions, updateMessageReadStatus, updateMessageStatus, updateBatchMessageStatus, setTyping, setUserPresence]);
 
   const sendMessage = useCallback(
     (
