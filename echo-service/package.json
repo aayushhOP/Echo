@@ -15,8 +15,9 @@
     "lint": "eslint . --ext .ts"
   },
   "dependencies": {
+    "@clerk/backend": "^3.26.5",
+    "@clerk/express": "^2.1.86",
     "@socket.io/redis-adapter": "^8.3.0",
-    "bcrypt": "^6.0.0",
     "cloudinary": "^2.11.0",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
@@ -31,11 +32,11 @@
     "multer": "^2.3.0",
     "redis": "^6.2.1",
     "socket.io": "^4.8.3",
+    "svix": "^2.9.1",
     "winston": "^3.19.0",
     "zod": "^4.5.4"
   },
   "devDependencies": {
-    "@types/bcrypt": "^6.0.0",
     "@types/cookie-parser": "^1.4.10",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",

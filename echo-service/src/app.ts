@@ -4,8 +4,9 @@ import cors from "cors";
 import helmet from "helmet";
 import cookieParser from "cookie-parser";
 import morgan from "morgan";
+import { clerkMiddleware } from "@clerk/express";
 import { ENV } from "./config/env";
-import { authRoutes } from "./routes/authRoutes";
+import { webhookRoutes } from "./routes/webhookRoutes";
 import { userRoutes } from "./routes/userRoutes";
 import { conversationRoutes } from "./routes/conversationRoutes";
 import { messageRoutes } from "./routes/messageRoutes";
@@ -17,7 +18,7 @@ export const createApp = (): Application => {
   // Trust reverse proxy (Render, Heroku, etc.) for secure cookie handling
   app.set("trust proxy", 1);
 
-  // Security & Utility Middlewares
+  // Security & CORS
   app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
   app.use(
     cors({
@@ -25,9 +26,17 @@ export const createApp = (): Application => {
       credentials: true,
     })
   );
+
+  // 1. Webhooks MUST be registered BEFORE standard body parsers
+  app.use("/api/webhooks", webhookRoutes);
+
+  // 2. Standard parsers
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
   app.use(cookieParser());
+
+  // 3. Mount Clerk Middleware globally (hydrates req.auth)
+  app.use(clerkMiddleware());
 
   // Serve static uploads
   app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
@@ -42,7 +51,6 @@ export const createApp = (): Application => {
   });
 
   // API Routes
-  app.use("/api/auth", authRoutes);
   app.use("/api/users", userRoutes);
   app.use("/api/conversations", conversationRoutes);
   app.use("/api/messages", messageRoutes);

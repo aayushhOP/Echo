@@ -1,16 +1,16 @@
 import { FC } from "react";
 import { Navigate, Outlet } from "react-router-dom";
-import { useAuthStore } from "../store/authStore";
+import { useAuth } from "@clerk/clerk-react";
 import { AppLoader } from "../components/common/AppLoader";
 
 export const ProtectedRoute: FC = () => {
-  const { user, accessToken, isInitialized, isLoading } = useAuthStore();
+  const { isLoaded, isSignedIn } = useAuth();
 
-  if (!isInitialized || isLoading) {
+  if (!isLoaded) {
     return <AppLoader statusText="Authenticating session..." />;
   }
 
-  if (!user || !accessToken) {
+  if (!isSignedIn) {
     return <Navigate to="/login" replace />;
   }
 
@@ -18,13 +18,13 @@ export const ProtectedRoute: FC = () => {
 };
 
 export const PublicRoute: FC = () => {
-  const { user, accessToken, isInitialized, isLoading } = useAuthStore();
+  const { isLoaded, isSignedIn } = useAuth();
 
-  if (!isInitialized || isLoading) {
+  if (!isLoaded) {
     return <AppLoader statusText="Loading..." />;
   }
 
-  if (user && accessToken) {
+  if (isSignedIn) {
     return <Navigate to="/chat" replace />;
   }
 

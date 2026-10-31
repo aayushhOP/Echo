@@ -1,5 +1,6 @@
 import { FC } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
+import { useClerk } from "@clerk/clerk-react";
 import { useAuthStore } from "../../store/authStore";
 import { MessageSquare, User, LogOut, Radio } from "lucide-react";
 import { Avatar } from "../common/Avatar";
@@ -8,13 +9,18 @@ import { useSocketStore } from "../../store/socketStore";
 export const NavigationSidebar: FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { signOut } = useClerk();
   const currentUser = useAuthStore((state) => state.user);
-  const logout = useAuthStore((state) => state.logout);
+  const clearAuth = useAuthStore((state) => state.clearAuth);
   const isConnected = useSocketStore((state) => state.isConnected);
 
   const handleLogout = async () => {
-    await logout();
-    navigate("/login");
+    try {
+      await signOut();
+    } finally {
+      clearAuth();
+      navigate("/login");
+    }
   };
 
   const navItems = [

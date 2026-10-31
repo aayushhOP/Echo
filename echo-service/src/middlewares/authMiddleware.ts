@@ -1,33 +1,41 @@
 import { Request, Response, NextFunction } from "express";
-import jwt from "jsonwebtoken";
-import { ENV } from "../config/env";
+import { getAuth } from "@clerk/express";
+import User from "../models/User";
 import { AppError } from "./errorHandler";
 
 export interface AuthenticatedRequest extends Request {
   userId?: string;
+  auth?: any;
 }
 
-export const authMiddleware = (
+export const authMiddleware = async (
   req: AuthenticatedRequest,
   _res: Response,
   next: NextFunction
-): void => {
-  const authHeader = req.headers.authorization;
-
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    return next(new AppError("Authentication required: missing or malformed token", 401));
-  }
-
-  const token = authHeader.split(" ")[1];
-
+): Promise<void> => {
   try {
-    const decoded = jwt.verify(token, ENV.JWT_SECRET) as { userId: string };
-    req.userId = decoded.userId;
+    const auth = getAuth(req);
+    const clerkUserId = auth?.userId;
+
+    if (!clerkUserId) {
+      return next(new AppError("Authentication required: missing or invalid session", 401));
+    }
+
+    // Resolve or sync user in MongoDB
+    let user = await User.findOne({ clerkId: clerkUserId });
+    if (!user) {
+      // In case webhook hasn't fired yet, create minimal user record
+      user = await User.create({
+        clerkId: clerkUserId,
+        email: `${clerkUserId}@placeholder.echo`,
+        username: `user_${clerkUserId.slice(-6)}`,
+      });
+    }
+
+    // req.userId is set to the MongoDB _id string for backward compatibility with existing services
+    req.userId = user._id.toString();
     next();
   } catch (error: any) {
-    if (error.name === "TokenExpiredError") {
-      return next(new AppError("Token expired", 401));
-    }
-    return next(new AppError("Invalid token", 401));
+    next(new AppError(error.message || "Authentication error", 401));
   }
 };

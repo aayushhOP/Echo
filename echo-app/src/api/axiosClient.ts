@@ -1,113 +1,43 @@
-import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
+import axios, { InternalAxiosRequestConfig } from "axios";
 
 const baseURL =
   import.meta.env.VITE_API_URL || "https://echo-1aal.onrender.com/api";
 
 export const axiosClient = axios.create({
   baseURL,
-  timeout: 10000, // 10s timeout prevents indefinitely hanging on cold starts or network drops
+  timeout: 10000,
   headers: {
     "Content-Type": "application/json",
   },
-  withCredentials: true, // Sends refresh cookie
 });
 
-// In-memory token storage getter/setter callback
-let getAccessToken: (() => string | null) = () => null;
-let setAccessToken: ((token: string | null) => void) = () => {};
+// Dynamic token provider (e.g. from Clerk or AuthStore)
+let tokenProvider: (() => Promise<string | null> | string | null) = () => null;
 
 export const configureAxiosAuth = (
-  getToken: () => string | null,
-  setToken: (token: string | null) => void
+  getToken: () => Promise<string | null> | string | null
 ) => {
-  getAccessToken = getToken;
-  setAccessToken = setToken;
+  tokenProvider = getToken;
 };
 
 // Request interceptor: attach Authorization header
 axiosClient.interceptors.request.use(
-  (config: InternalAxiosRequestConfig) => {
-    const token = getAccessToken();
-    if (token && config.headers) {
-      config.headers.Authorization = `Bearer ${token}`;
+  async (config: InternalAxiosRequestConfig) => {
+    try {
+      const token = await tokenProvider();
+      if (token && config.headers) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+    } catch (err) {
+      console.error("[AxiosClient] Failed to retrieve token for request:", err);
     }
     return config;
   },
   (error) => Promise.reject(error)
 );
 
-// Response interceptor: handle 401 with automatic token refresh
-let isRefreshing = false;
-let failedQueue: Array<{
-  resolve: (value?: unknown) => void;
-  reject: (reason?: unknown) => void;
-}> = [];
-
-const processQueue = (error: unknown, token: string | null = null) => {
-  failedQueue.forEach((promise) => {
-    if (error) {
-      promise.reject(error);
-    } else {
-      promise.resolve(token);
-    }
-  });
-  failedQueue = [];
-};
-
+// Response interceptor: bubble error
 axiosClient.interceptors.response.use(
   (response) => response,
-  async (error: AxiosError) => {
-    const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
-
-    // If 401 and not already retried and not the refresh/login endpoint itself
-    if (
-      error.response?.status === 401 &&
-      originalRequest &&
-      !originalRequest._retry &&
-      !originalRequest.url?.includes("/auth/login") &&
-      !originalRequest.url?.includes("/auth/refresh") &&
-      !originalRequest.url?.includes("/auth/register")
-    ) {
-      if (isRefreshing) {
-        return new Promise((resolve, reject) => {
-          failedQueue.push({ resolve, reject });
-        })
-          .then((token) => {
-            if (originalRequest.headers && token) {
-              originalRequest.headers.Authorization = `Bearer ${token}`;
-            }
-            return axiosClient(originalRequest);
-          })
-          .catch((err) => Promise.reject(err));
-      }
-
-      originalRequest._retry = true;
-      isRefreshing = true;
-
-      try {
-        const { data } = await axios.post<{ success: boolean; data: { accessToken: string } }>(
-          `${baseURL}/auth/refresh`,
-          {},
-          { withCredentials: true }
-        );
-
-        const newAccessToken = data.data.accessToken;
-        setAccessToken(newAccessToken);
-        processQueue(null, newAccessToken);
-
-        if (originalRequest.headers) {
-          originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
-        }
-        return axiosClient(originalRequest);
-      } catch (refreshError) {
-        processQueue(refreshError, null);
-        setAccessToken(null);
-        return Promise.reject(refreshError);
-      } finally {
-        isRefreshing = false;
-      }
-    }
-
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );

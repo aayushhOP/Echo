@@ -1,6 +1,6 @@
 import { axiosClient } from "./axiosClient";
 import { Conversation, Message } from "../types/message";
-import { ApiResponse } from "./authApi";
+import { ApiResponse } from "./userApi";
 
 export interface CreateConversationDTO {
   type: "direct" | "group";

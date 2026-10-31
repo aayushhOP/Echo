@@ -7,9 +7,9 @@ export interface IUserPreferences {
 }
 
 export interface IUser extends Document {
-  username: string;
+  clerkId: string;
   email: string;
-  passwordHash: string;
+  username: string;
   avatarUrl?: string;
   status?: string;
   bio?: string;
@@ -23,9 +23,9 @@ export interface IUser extends Document {
 
 const userSchema = new Schema<IUser>(
   {
-    username: { type: String, required: true, unique: true, trim: true },
+    clerkId: { type: String, required: true, unique: true },
     email: { type: String, required: true, unique: true, lowercase: true },
-    passwordHash: { type: String, required: true },
+    username: { type: String, required: true, trim: true },
     avatarUrl: { type: String, default: "" },
     status: { type: String, default: "Hey there! I'm using Echo" },
     bio: { type: String, default: "" },

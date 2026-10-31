@@ -1,6 +1,12 @@
 import { axiosClient } from "./axiosClient";
 import { User, UserSearchItem } from "../types/user";
-import { ApiResponse } from "./authApi";
+
+export interface ApiResponse<T> {
+  success: boolean;
+  data: T;
+  message?: string;
+  error?: string;
+}
 
 export interface UpdateProfileDTO {
   status?: string;

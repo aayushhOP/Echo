@@ -1,16 +1,45 @@
-import jwt from "jsonwebtoken";
 import type { Socket } from "socket.io";
+import { verifyToken } from "@clerk/backend";
 import { ENV } from "../config/env";
+import User from "../models/User";
 
-export const socketAuthMiddleware = (socket: Socket, next: (err?: Error) => void) => {
+export const socketAuthMiddleware = async (
+  socket: Socket,
+  next: (err?: Error) => void
+) => {
   const token = socket.handshake.auth?.token;
-  if (!token) return next(new Error("No token provided"));
+  if (!token) {
+    return next(new Error("Authentication error: No token provided"));
+  }
 
   try {
-    const payload = jwt.verify(token, ENV.JWT_SECRET) as { userId: string };
-    socket.data.userId = payload.userId;
+    const verified = await verifyToken(token, {
+      secretKey: ENV.CLERK_SECRET_KEY || process.env.CLERK_SECRET_KEY,
+    });
+
+    const clerkId = verified.sub;
+    if (!clerkId) {
+      return next(new Error("Authentication error: Invalid token payload"));
+    }
+
+    // Attach clerkId to socket.data
+    socket.data.clerkId = clerkId;
+
+    // Resolve or auto-provision corresponding MongoDB user
+    let user = await User.findOne({ clerkId });
+    if (!user) {
+      user = await User.create({
+        clerkId,
+        email: `${clerkId}@placeholder.echo`,
+        username: `user_${clerkId.slice(-6)}`,
+      });
+    }
+
+    // Attach MongoDB user ObjectId string as socket.data.userId for compatibility with all handlers
+    socket.data.userId = user._id.toString();
     next();
-  } catch {
-    next(new Error("Invalid token"));
+  } catch (err: any) {
+    console.error("[SocketAuthMiddleware] Verification failed:", err.message || err);
+    return next(new Error("Authentication error: Invalid token"));
   }
 };
