@@ -19,7 +19,13 @@ export const getIO = (): SocketIOServer => {
 export const initSocketServer = (httpServer: HttpServer): SocketIOServer => {
   const io = new SocketIOServer(httpServer, {
     cors: {
-      origin: ENV.CLIENT_ORIGIN,
+      origin: (origin, callback) => {
+        if (!origin) return callback(null, true);
+        if (ENV.ALLOWED_ORIGINS.includes(origin)) {
+          return callback(null, true);
+        }
+        return callback(new Error(`Socket CORS blocked origin: ${origin}`));
+      },
       credentials: true,
     },
   });
