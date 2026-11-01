@@ -25,6 +25,7 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 
   const isGroup = conversation.type === "group";
   const myId = currentUser?.id || (currentUser as any)?._id;
+  const blockedUsers = currentUser?.blockedUsers || [];
 
   const otherParticipant = !isGroup
     ? conversation.participants.find((p) => {
@@ -34,13 +35,21 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
     : null;
 
   const otherId = otherParticipant ? otherParticipant.id || (otherParticipant as any)._id : null;
-  const isOnline = !isGroup && otherId ? onlineUsers.has(otherId) || !!otherParticipant?.isOnline : false;
+  const isBlockedByMe = otherId ? blockedUsers.includes(otherId) : false;
+
+  const isOnline =
+    !isGroup && otherId && !isBlockedByMe
+      ? onlineUsers.has(otherId) || !!otherParticipant?.isOnline
+      : false;
 
   const title = isGroup
     ? conversation.groupName || "Group Chat"
     : otherParticipant?.username || "Chat";
 
-  const lastSeenIso = otherId ? userLastSeen[otherId] || otherParticipant?.lastSeen : undefined;
+  const lastSeenIso =
+    otherId && !isBlockedByMe
+      ? userLastSeen[otherId] || otherParticipant?.lastSeen
+      : undefined;
 
   let subtitle = "";
   if (isGroup) {

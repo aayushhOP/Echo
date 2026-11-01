@@ -331,8 +331,8 @@ export const MessageInput: FC<MessageInputProps> = ({
   }
 
   return (
-    <div className="px-4 pt-1.5 pb-3 bg-transparent shrink-0 relative z-10">
-      <div className="max-w-4xl mx-auto flex flex-col gap-2 relative">
+    <div className="px-4 md:px-8 lg:px-12 pt-1.5 pb-3 bg-transparent shrink-0 relative z-10">
+      <div className="w-full flex flex-col gap-2 relative">
         {/* Floating Emoji Picker Portal with Smooth Enter/Exit Transitions */}
         <div
           ref={pickerRef}

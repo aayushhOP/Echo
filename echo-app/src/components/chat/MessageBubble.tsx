@@ -94,13 +94,13 @@ const MessageBubbleComponent: FC<MessageBubbleProps> = ({
       )}
 
       {/* Outer row holding Trigger + Bubble */}
-      <div className={`relative flex items-center gap-1.5 max-w-md ${isOwn ? "flex-row-reverse" : "flex-row"}`}>
+      <div className={`relative flex items-center gap-1.5 max-w-[85%] md:max-w-[75%] lg:max-w-[65%] ${isOwn ? "flex-row-reverse" : "flex-row"}`}>
         {/* --- Message Bubble Container --- */}
-        <div className="relative w-fit">
+        <div className="relative w-fit max-w-full">
           {/* Image Type */}
           {message.type === "image" && message.mediaUrl && (
             <div
-              className={`relative rounded-2xl overflow-hidden border border-white/[0.06] bg-[#13141d] shadow-sm max-w-sm ${
+              className={`relative rounded-2xl overflow-hidden border border-white/[0.06] bg-[#13141d] shadow-sm max-w-md ${
                 isPending ? "opacity-75 ring-1 ring-[#0066ff]/40" : ""
               }`}
             >

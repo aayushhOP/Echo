@@ -281,10 +281,10 @@ export const ChatWindow: FC<ChatWindowProps> = ({
       <div
         ref={messageListRef}
         onScroll={handleScroll}
-        className="flex-1 overflow-y-auto px-4 md:px-6 py-4 flex flex-col justify-start relative z-10"
+        className="flex-1 overflow-y-auto px-4 md:px-8 lg:px-12 py-4 flex flex-col justify-start relative z-10"
       >
-        {/* Centered Desktop Column */}
-        <div className="w-full max-w-4xl mx-auto flex flex-col gap-2.5 flex-1 justify-end">
+        {/* Full-width responsive Message Column matching WhatsApp Web */}
+        <div className="w-full flex flex-col gap-2 flex-1 justify-end">
           {isLoadingMore && (
             <div className="flex items-center justify-center py-2 text-xs text-[#767b93]">
               <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5 text-[#0066ff]" />

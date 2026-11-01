@@ -149,11 +149,18 @@ export const blockUserHandler = async (
     const { targetUserId } = blockUserSchema.parse(req.body);
     const blockedUserId = await userService.blockUser(req.userId, targetUserId);
 
-    // Immediately inform the blocked user that this contact is offline/hidden
+    // Inform BOTH users: the blocked user can't see blocker, and the blocker can't see the blocked user
     try {
       const io = getIO();
+      // Mask blocker for blocked user
       io.to(`user:${blockedUserId}`).emit("presence:masked", {
         userId: req.userId,
+        isOnline: false,
+        lastSeen: null,
+      });
+      // Mask blocked user for blocker
+      io.to(`user:${req.userId}`).emit("presence:masked", {
+        userId: blockedUserId,
         isOnline: false,
         lastSeen: null,
       });
@@ -188,6 +195,13 @@ export const unblockUserHandler = async (
       io.to(`user:${unblockedUserId}`).emit("presence:unmasked", {
         userId: req.userId,
         isOnline: currentSockets.size > 0,
+      });
+
+      // Also unmask the unblocked user for the current user
+      const targetSockets = await io.in(`user:${unblockedUserId}`).allSockets();
+      io.to(`user:${req.userId}`).emit("presence:unmasked", {
+        userId: unblockedUserId,
+        isOnline: targetSockets.size > 0,
       });
     } catch (socketErr) {
       console.error("[unblockUserHandler] Failed to emit presence:unmasked:", socketErr);

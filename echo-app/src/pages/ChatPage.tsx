@@ -96,16 +96,16 @@ export const ChatPage: FC = () => {
       )}
 
       <div className="flex-1 h-full flex overflow-hidden relative">
-        {/* Middle Conversation Panel: matched to WhatsApp layout (~30-32% of viewport or 380px-440px) */}
+        {/* Left Conversation Panel: proportional width matching WhatsApp Web (~30% of screen, min 340px, max 550px) */}
         <div
-          className={`w-full md:w-[360px] lg:w-[30%] lg:min-w-[380px] lg:max-w-[460px] h-full shrink-0 ${
+          className={`w-full md:w-[35%] md:min-w-[340px] md:max-w-[550px] shrink-0 h-full ${
             activeConversationId ? "hidden md:flex" : "flex"
           }`}
         >
           <ConversationList />
         </div>
 
-        {/* Main Chat Canvas: Fluid flex-1 */}
+        {/* Main Chat Canvas: Fluid flex-1 filling remaining width */}
         <div
           className={`flex-1 h-full min-w-0 flex relative ${
             !activeConversationId ? "hidden md:flex" : "flex"

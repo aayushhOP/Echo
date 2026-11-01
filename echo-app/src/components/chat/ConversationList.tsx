@@ -111,6 +111,7 @@ export const ConversationList: FC = () => {
           const isSelected = conv._id === activeConversationId;
           const isGroup = conv.type === "group";
           const myId = currentUser?.id || (currentUser as any)?._id;
+          const blockedUsers = currentUser?.blockedUsers || [];
 
           const otherParticipant = !isGroup
             ? conv.participants.find((p) => {
@@ -124,8 +125,9 @@ export const ConversationList: FC = () => {
             : otherParticipant?.username || "Direct Chat";
 
           const otherId = otherParticipant ? otherParticipant.id || (otherParticipant as any)._id : null;
+          const isBlockedByMe = otherId ? blockedUsers.includes(otherId) : false;
           const isParticipantOnline =
-            !isGroup && otherId
+            !isGroup && otherId && !isBlockedByMe
               ? onlineUsers.has(otherId) || !!otherParticipant?.isOnline
               : false;
 

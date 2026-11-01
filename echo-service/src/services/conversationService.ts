@@ -21,6 +21,9 @@ export const messagePopulation = [
 
 export const getConversationsForUser = async (userId: string) => {
   const userObjectId = new Types.ObjectId(userId);
+  const currentUser = await User.findById(userId).select("blockedUsers");
+  const myBlockedSet = new Set((currentUser?.blockedUsers || []).map((id) => id.toString()));
+
   const conversations = await Conversation.find({
     participants: userObjectId,
   })
@@ -36,6 +39,20 @@ export const getConversationsForUser = async (userId: string) => {
   const results = await Promise.all(
     conversations.map(async (conv) => {
       const convObj: any = conv.toObject();
+
+      // Mask isOnline / lastSeen of blocked participants for the blocker
+      if (Array.isArray(convObj.participants)) {
+        convObj.participants = convObj.participants.map((p: any) => {
+          if (p && p._id && myBlockedSet.has(p._id.toString())) {
+            return {
+              ...p,
+              isOnline: false,
+              lastSeen: null,
+            };
+          }
+          return p;
+        });
+      }
 
       // Count unread messages where user is not in readBy array
       // Exclude messages dropped due to block unless sent by this user
@@ -88,7 +105,24 @@ export const getConversationById = async (conversationId: string, userId: string
     throw new AppError("Access denied: You are not a participant in this conversation", 403);
   }
 
-  return conversation;
+  const currentUser = await User.findById(userId).select("blockedUsers");
+  const myBlockedSet = new Set((currentUser?.blockedUsers || []).map((id) => id.toString()));
+
+  const convObj: any = conversation.toObject();
+  if (Array.isArray(convObj.participants)) {
+    convObj.participants = convObj.participants.map((p: any) => {
+      if (p && p._id && myBlockedSet.has(p._id.toString())) {
+        return {
+          ...p,
+          isOnline: false,
+          lastSeen: null,
+        };
+      }
+      return p;
+    });
+  }
+
+  return convObj;
 };
 
 export const createConversation = async (

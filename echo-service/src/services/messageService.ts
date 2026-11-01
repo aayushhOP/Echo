@@ -217,10 +217,12 @@ export const markMessagesAsRead = async (
   const conversationObjectId = new Types.ObjectId(conversationId);
 
   // If specific messageIds provided, filter and use them; otherwise find all unread messages
+  // Exclude messages that were dropped due to block - they must stay permanently 'sent' (single tick)
   let query: any = {
     conversationId: conversationObjectId,
     senderId: { $ne: userObjectId },
     readBy: { $ne: userObjectId },
+    isDroppedDueToBlock: { $ne: true },
   };
 
   if (Array.isArray(messageIds) && messageIds.length > 0) {
