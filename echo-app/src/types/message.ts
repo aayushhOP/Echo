@@ -23,6 +23,12 @@ export interface MessageSender {
   isOnline?: boolean;
 }
 
+export interface IDeletedBy {
+  userId: string;
+  username: string;
+  role: "sender" | "admin";
+}
+
 export interface Message {
   _id: string;
   conversationId: string;
@@ -36,6 +42,10 @@ export interface Message {
   replyTo?: string | null;
   readBy: string[];
   status: MessageStatus;
+  isDeletedForEveryone?: boolean;
+  deletedAt?: string;
+  deletedBy?: IDeletedBy;
+  deletedForUsers?: string[];
   createdAt: string;
   updatedAt?: string;
 }

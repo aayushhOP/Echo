@@ -8,6 +8,7 @@ import { ChatHeader } from "./ChatHeader";
 import { ChatSearchBar } from "./ChatSearchBar";
 import { ChatSelectionBar } from "./ChatSelectionBar";
 import { MessageBubble } from "./MessageBubble";
+import { UndoSnackbar } from "./UndoSnackbar";
 import { MessageInput } from "./MessageInput";
 import { TypingIndicator } from "./TypingIndicator";
 import { Message } from "../../types/message";
@@ -45,6 +46,9 @@ export const ChatWindow: FC<ChatWindowProps> = ({
     toggleSelectMessage,
     removeMessagesFromConversation,
     removeConversationFromList,
+    removeMessageForMe,
+    restoreMessageForMe,
+    markMessageAsRevoked,
     searchQuery,
   } = useChatStore();
 
@@ -54,6 +58,8 @@ export const ChatWindow: FC<ChatWindowProps> = ({
   const [hasMore, setHasMore] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [isDeletingSelected, setIsDeletingSelected] = useState(false);
+  const [undoMessageId, setUndoMessageId] = useState<string | null>(null);
+  const recentlyDeletedMessagesRef = useRef<Map<string, Message>>(new Map());
 
   const activeConv = conversations.find((c) => c._id === activeConversationId);
   const currentMessages = activeConversationId ? messages[activeConversationId] || [] : [];
@@ -129,6 +135,68 @@ export const ChatWindow: FC<ChatWindowProps> = ({
       markAsRead(activeConversationId, unreadMessageIds);
     }
   }, [activeConversationId, currentMessages.length, myId, markAsRead]);
+
+  const handleDeleteForMe = async (messageId: string) => {
+    if (!activeConversationId) return;
+    const targetMsg = currentMessages.find((m) => m._id === messageId);
+    if (targetMsg) {
+      recentlyDeletedMessagesRef.current.set(messageId, targetMsg);
+    }
+
+    // Optimistically remove from view
+    removeMessageForMe(activeConversationId, messageId);
+    setUndoMessageId(messageId);
+
+    try {
+      await messageApi.deleteForMe(messageId);
+    } catch (err: any) {
+      console.error("Failed to delete message for me:", err);
+      // Revert if API failed
+      if (targetMsg) {
+        restoreMessageForMe(activeConversationId, targetMsg);
+      }
+      setUndoMessageId(null);
+      alert(err.response?.data?.message || err.message || "Failed to delete message");
+    }
+  };
+
+  const handleUndoDeleteForMe = async (messageId: string) => {
+    if (!activeConversationId) return;
+    const savedMsg = recentlyDeletedMessagesRef.current.get(messageId);
+    if (savedMsg) {
+      restoreMessageForMe(activeConversationId, savedMsg);
+    }
+    setUndoMessageId(null);
+
+    try {
+      const res = await messageApi.undoDeleteForMe(messageId);
+      if (res.success && res.message) {
+        restoreMessageForMe(activeConversationId, res.message);
+      }
+    } catch (err: any) {
+      console.error("Failed to undo delete for me:", err);
+    } finally {
+      recentlyDeletedMessagesRef.current.delete(messageId);
+    }
+  };
+
+  const handleDeleteForEveryone = async (messageId: string) => {
+    if (!activeConversationId) return;
+    try {
+      const res = await messageApi.deleteForEveryone(messageId);
+      if (res.success && res.message) {
+        markMessageAsRevoked(
+          activeConversationId,
+          messageId,
+          res.message.deletedBy,
+          res.message.deletedAt
+        );
+      }
+    } catch (err: any) {
+      console.error("Failed to delete for everyone:", err);
+      alert(err.response?.data?.message || err.message || "Failed to delete message for everyone");
+    }
+  };
 
   // Infinite scroll upward to load older messages
   const handleScroll = async (e: UIEvent<HTMLDivElement>) => {
@@ -334,6 +402,14 @@ export const ChatWindow: FC<ChatWindowProps> = ({
     }
   };
 
+  const isGroupAdmin = useMemo(() => {
+    if (activeConv?.type !== "group" || !activeConv.admins || !myId) return false;
+    return activeConv.admins.some((a: any) => {
+      const adminId = typeof a === "string" ? a : a._id || a.id;
+      return adminId === myId;
+    });
+  }, [activeConv, myId]);
+
   return (
     <div className="flex-1 h-full flex flex-col bg-[#171824] relative min-w-0 overflow-hidden">
       {/* Background Wallpaper Image */}
@@ -416,7 +492,10 @@ export const ChatWindow: FC<ChatWindowProps> = ({
                   <MessageBubble
                     message={msg}
                     isGroup={activeConv?.type === "group"}
+                    isGroupAdmin={isGroupAdmin}
                     onReact={handleReact}
+                    onDeleteForMe={handleDeleteForMe}
+                    onDeleteForEveryone={handleDeleteForEveryone}
                     isSelectionMode={isSelectionMode}
                     isSelected={selectedMessageIds.includes(msg._id)}
                     onToggleSelect={toggleSelectMessage}
@@ -441,6 +520,18 @@ export const ChatWindow: FC<ChatWindowProps> = ({
         onSendMessage={handleSendMessage}
         isBlocked={isDirectBlocked}
         onUnblock={handleUnblockCounterpart}
+      />
+
+      {/* Floating 5-Second Undo Snackbar for Delete For Me */}
+      <UndoSnackbar
+        messageId={undoMessageId}
+        onUndo={handleUndoDeleteForMe}
+        onDismiss={() => {
+          if (undoMessageId) {
+            recentlyDeletedMessagesRef.current.delete(undoMessageId);
+          }
+          setUndoMessageId(null);
+        }}
       />
     </div>
   );

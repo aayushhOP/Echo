@@ -44,6 +44,12 @@ export interface ServerToClientEvents {
   "presence:sync": (data: { onlineUsers: string[] }) => void;
   "messages:batch_removed": (data: { conversationId: string; messageIds: string[] }) => void;
   "conversation:deleted": (data: { conversationId: string }) => void;
+  "message:revoked": (data: {
+    messageId: string;
+    conversationId: string;
+    deletedBy?: any;
+    deletedAt?: string;
+  }) => void;
 }
 
 export interface ClientToServerEvents {

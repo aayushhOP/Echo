@@ -338,8 +338,18 @@ export const getConversationMessages = async (
 
   const limit = Math.min(Math.max(query.limit ?? 30, 1), 100);
 
+  const currentUserDoc = await User.findById(userObjectId).select("clerkId");
+  const clerkId = currentUserDoc?.clerkId;
+
+  // Filter out messages deleted for me (either by Mongo _id string or clerkId)
+  const userDeleteIdentifiers = [userId];
+  if (clerkId) {
+    userDeleteIdentifiers.push(clerkId);
+  }
+
   const filter: any = {
     conversationId: convObjectId,
+    deletedForUsers: { $nin: userDeleteIdentifiers },
     $or: [
       { isDroppedDueToBlock: { $ne: true } },
       { senderId: userObjectId },

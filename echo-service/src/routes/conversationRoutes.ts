@@ -13,6 +13,7 @@ import {
   deleteConversationHandler,
   deleteSelectedMessagesHandler,
 } from "../controllers/conversationController";
+import { clearChatMessages } from "../controllers/messageController";
 
 const router = Router();
 
@@ -24,6 +25,7 @@ router.post("/", createConversationHandler);
 router.get("/:id", getConversationByIdHandler);
 router.patch("/:id", updateConversationHandler);
 router.delete("/:id", deleteConversationHandler);
+router.post("/:id/clear", clearChatMessages);
 router.delete("/:id/messages", deleteSelectedMessagesHandler);
 router.post("/:id/read", markConversationAsReadHandler);
 router.get("/:id/messages", getMessagesHandler);

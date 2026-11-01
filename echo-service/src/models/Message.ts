@@ -11,6 +11,12 @@ export interface IMessageRecipient {
   deliveredAt?: Date;
 }
 
+export interface IMessageDeletedBy {
+  userId: string;
+  username: string;
+  role: "sender" | "admin";
+}
+
 export interface IMessage extends Document {
   conversationId: Types.ObjectId;
   senderId: Types.ObjectId;
@@ -28,6 +34,11 @@ export interface IMessage extends Document {
   }[];
   isDroppedDueToBlock?: boolean;
   status: "sent" | "delivered" | "read";
+  // WhatsApp Deletion Extensions
+  isDeletedForEveryone: boolean;
+  deletedAt?: Date;
+  deletedBy?: IMessageDeletedBy;
+  deletedForUsers: string[]; // clerkId or userId list for "Delete for Me"
   createdAt: Date;
   updatedAt: Date;
 }
@@ -60,11 +71,21 @@ const messageSchema = new Schema<IMessage>(
     ],
     isDroppedDueToBlock: { type: Boolean, default: false },
     status: { type: String, enum: ["sent", "delivered", "read"], default: "sent", index: true },
+    // WhatsApp Deletion attributes
+    isDeletedForEveryone: { type: Boolean, default: false, index: true },
+    deletedAt: { type: Date },
+    deletedBy: {
+      userId: { type: String },
+      username: { type: String },
+      role: { type: String, enum: ["sender", "admin"] },
+    },
+    deletedForUsers: [{ type: String, index: true }],
   },
   { timestamps: true }
 );
 
 // Required index — do not omit
 messageSchema.index({ conversationId: 1, createdAt: -1 });
+messageSchema.index({ conversationId: 1, createdAt: 1 });
 
 export default model<IMessage>("Message", messageSchema);

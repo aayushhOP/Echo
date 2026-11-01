@@ -147,4 +147,32 @@ export const messageApi = {
     );
     return res.data;
   },
+
+  deleteForEveryone: async (messageId: string): Promise<{ success: boolean; message: Message }> => {
+    const res = await axiosClient.patch<{ success: boolean; message: Message }>(
+      `/messages/${messageId}/delete-for-everyone`
+    );
+    return res.data;
+  },
+
+  deleteForMe: async (messageId: string): Promise<{ success: boolean; messageId: string }> => {
+    const res = await axiosClient.patch<{ success: boolean; messageId: string }>(
+      `/messages/${messageId}/delete-for-me`
+    );
+    return res.data;
+  },
+
+  undoDeleteForMe: async (messageId: string): Promise<{ success: boolean; message: Message }> => {
+    const res = await axiosClient.post<{ success: boolean; message: Message }>(
+      `/messages/${messageId}/undo-delete-for-me`
+    );
+    return res.data;
+  },
+
+  clearChat: async (conversationId: string): Promise<{ success: boolean; message: string }> => {
+    const res = await axiosClient.post<{ success: boolean; message: string }>(
+      `/messages/conversations/${conversationId}/clear`
+    );
+    return res.data;
+  },
 };

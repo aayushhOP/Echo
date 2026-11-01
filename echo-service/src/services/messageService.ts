@@ -255,3 +255,190 @@ export const markMessagesAsRead = async (
 
   return targetIds.map((id) => id.toString());
 };
+
+const DELETE_FOR_EVERYONE_LIMIT_MS = 60 * 60 * 1000 * 60; // 60 Hours
+
+export const deleteMessageForEveryone = async (
+  messageId: string,
+  userId: string,
+  clerkId?: string
+): Promise<{ message: IMessage; conversationId: string }> => {
+  if (!Types.ObjectId.isValid(messageId)) {
+    throw new AppError("Invalid message ID", 400);
+  }
+
+  const message = await Message.findById(messageId);
+  if (!message) {
+    throw new AppError("Message not found", 404);
+  }
+
+  if (message.isDeletedForEveryone) {
+    throw new AppError("Message already revoked", 400);
+  }
+
+  // 1. Validate Time Limit (60 Hours)
+  const elapsedMs = Date.now() - new Date(message.createdAt).getTime();
+  if (elapsedMs > DELETE_FOR_EVERYONE_LIMIT_MS) {
+    throw new AppError(
+      "Messages can only be deleted for everyone within 60 hours of sending.",
+      403
+    );
+  }
+
+  // 2. Validate Ownership or Group Admin Rights
+  const conversation = await Conversation.findById(message.conversationId);
+  if (!conversation) {
+    throw new AppError("Conversation not found", 404);
+  }
+
+  const senderIdStr = message.senderId.toString();
+  const isSender = senderIdStr === userId;
+
+  const isGroupAdmin =
+    conversation.type === "group" &&
+    (conversation.admins?.some((adminId) => adminId.toString() === userId) ?? false);
+
+  if (!isSender && !isGroupAdmin) {
+    throw new AppError(
+      "You do not have permission to delete this message for everyone.",
+      403
+    );
+  }
+
+  // Fetch requester's username
+  const user = await User.findById(userId).select("username clerkId");
+  const requesterName = user?.username || "Admin";
+
+  // 3. Apply Tombstone Mutation
+  message.isDeletedForEveryone = true;
+  message.content = "";
+  message.mediaUrl = null;
+  message.fileName = null;
+  message.fileSize = null;
+  message.deletedAt = new Date();
+  message.deletedBy = {
+    userId: clerkId || user?.clerkId || userId,
+    username: requesterName,
+    role: isSender ? "sender" : "admin",
+  };
+
+  await message.save();
+
+  const populated = await Message.findById(message._id).populate(messagePopulation);
+
+  return {
+    message: populated || message,
+    conversationId: message.conversationId.toString(),
+  };
+};
+
+export const deleteMessageForMe = async (
+  messageId: string,
+  userId: string,
+  clerkId?: string
+): Promise<{ messageId: string; conversationId: string }> => {
+  if (!Types.ObjectId.isValid(messageId)) {
+    throw new AppError("Invalid message ID", 400);
+  }
+
+  const message = await Message.findById(messageId);
+  if (!message) {
+    throw new AppError("Message not found", 404);
+  }
+
+  const identifiersToPush: string[] = [userId];
+  if (clerkId && !identifiersToPush.includes(clerkId)) {
+    identifiersToPush.push(clerkId);
+  } else {
+    const userDoc = await User.findById(userId).select("clerkId");
+    if (userDoc?.clerkId && !identifiersToPush.includes(userDoc.clerkId)) {
+      identifiersToPush.push(userDoc.clerkId);
+    }
+  }
+
+  await Message.findByIdAndUpdate(messageId, {
+    $addToSet: { deletedForUsers: { $each: identifiersToPush } },
+  });
+
+  return {
+    messageId,
+    conversationId: message.conversationId.toString(),
+  };
+};
+
+export const undoDeleteMessageForMe = async (
+  messageId: string,
+  userId: string,
+  clerkId?: string
+): Promise<{ message: IMessage; conversationId: string }> => {
+  if (!Types.ObjectId.isValid(messageId)) {
+    throw new AppError("Invalid message ID", 400);
+  }
+
+  const identifiersToRemove: string[] = [userId];
+  if (clerkId) {
+    identifiersToRemove.push(clerkId);
+  }
+  const userDoc = await User.findById(userId).select("clerkId");
+  if (userDoc?.clerkId) {
+    identifiersToRemove.push(userDoc.clerkId);
+  }
+
+  const updatedMessage = await Message.findByIdAndUpdate(
+    messageId,
+    { $pull: { deletedForUsers: { $in: identifiersToRemove } } },
+    { new: true }
+  ).populate(messagePopulation);
+
+  if (!updatedMessage) {
+    throw new AppError("Message not found", 404);
+  }
+
+  return {
+    message: updatedMessage,
+    conversationId: updatedMessage.conversationId.toString(),
+  };
+};
+
+export const clearConversationChat = async (
+  conversationId: string,
+  userId: string,
+  clerkId?: string
+): Promise<{ conversationId: string; modifiedCount: number }> => {
+  if (!Types.ObjectId.isValid(conversationId)) {
+    throw new AppError("Invalid conversation ID", 400);
+  }
+
+  const conversation = await Conversation.findById(conversationId);
+  if (!conversation) {
+    throw new AppError("Conversation not found", 404);
+  }
+
+  const isParticipant = conversation.participants.some(
+    (pid) => pid.toString() === userId
+  );
+
+  if (!isParticipant) {
+    throw new AppError("Access denied: You are not a participant in this conversation", 403);
+  }
+
+  const identifiersToPush: string[] = [userId];
+  if (clerkId) {
+    identifiersToPush.push(clerkId);
+  } else {
+    const userDoc = await User.findById(userId).select("clerkId");
+    if (userDoc?.clerkId) {
+      identifiersToPush.push(userDoc.clerkId);
+    }
+  }
+
+  const res = await Message.updateMany(
+    { conversationId: new Types.ObjectId(conversationId) },
+    { $addToSet: { deletedForUsers: { $each: identifiersToPush } } }
+  );
+
+  return {
+    conversationId,
+    modifiedCount: res.modifiedCount,
+  };
+};

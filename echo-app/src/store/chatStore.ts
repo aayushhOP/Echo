@@ -41,6 +41,10 @@ interface ChatState {
   updateBatchMessageStatus: (conversationId: string, messageIds: string[], status: "sent" | "delivered" | "read") => void;
   updateMessageReadStatus: (conversationId: string, messageIds: string[], readerId?: string) => void;
   markMessagesAsRead: (messageIds: string[]) => void;
+  markMessageAsRevoked: (conversationId: string, messageId: string, deletedBy?: any, deletedAt?: string) => void;
+  removeMessageForMe: (conversationId: string, messageId: string) => void;
+  restoreMessageForMe: (conversationId: string, message: Message) => void;
+  clearConversationMessages: (conversationId: string) => void;
   updateReactions: (messageId: string, reactions: IReaction[]) => void;
   toggleOptimisticReaction: (
     messageId: string,
@@ -406,6 +410,120 @@ export const useChatStore = create<ChatState>((set, get) => ({
       }
       return { messages: nextMessages };
     });
+  },
+
+  markMessageAsRevoked: (conversationId, messageId, deletedBy, deletedAt) => {
+    set((state) => {
+      const current = state.messages[conversationId] || [];
+      const updatedMessages = current.map((msg) => {
+        if (msg._id === messageId) {
+          return {
+            ...msg,
+            content: "",
+            mediaUrl: null,
+            fileName: null,
+            fileSize: null,
+            isDeletedForEveryone: true,
+            deletedAt: deletedAt || new Date().toISOString(),
+            deletedBy: deletedBy || msg.deletedBy,
+          };
+        }
+        return msg;
+      });
+
+      // Also update lastMessage in conversations list if revoked
+      const updatedConversations = state.conversations.map((c) => {
+        if (c._id === conversationId) {
+          const lastMsgId =
+            typeof c.lastMessage === "string"
+              ? c.lastMessage
+              : c.lastMessage?._id;
+          if (lastMsgId === messageId) {
+            return {
+              ...c,
+              lastMessage: {
+                ...(typeof c.lastMessage === "object" ? c.lastMessage : {}),
+                _id: messageId,
+                content: "",
+                isDeletedForEveryone: true,
+                deletedBy: deletedBy || (c.lastMessage as any)?.deletedBy,
+              } as Message,
+            };
+          }
+        }
+        return c;
+      });
+
+      return {
+        messages: {
+          ...state.messages,
+          [conversationId]: updatedMessages,
+        },
+        conversations: updatedConversations,
+      };
+    });
+  },
+
+  removeMessageForMe: (conversationId, messageId) => {
+    set((state) => {
+      const current = state.messages[conversationId] || [];
+      const updated = current.filter((m) => m._id !== messageId);
+
+      const updatedConversations = state.conversations.map((c) => {
+        if (c._id === conversationId) {
+          const lastMsgId =
+            typeof c.lastMessage === "string"
+              ? c.lastMessage
+              : c.lastMessage?._id;
+          if (lastMsgId === messageId) {
+            return {
+              ...c,
+              lastMessage: updated[updated.length - 1] || undefined,
+            };
+          }
+        }
+        return c;
+      });
+
+      return {
+        messages: {
+          ...state.messages,
+          [conversationId]: updated,
+        },
+        conversations: updatedConversations,
+      };
+    });
+  },
+
+  restoreMessageForMe: (conversationId, message) => {
+    set((state) => {
+      const current = state.messages[conversationId] || [];
+      if (current.some((m) => m._id === message._id)) {
+        return state;
+      }
+      const updated = [...current, message].sort(
+        (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+      );
+
+      return {
+        messages: {
+          ...state.messages,
+          [conversationId]: updated,
+        },
+      };
+    });
+  },
+
+  clearConversationMessages: (conversationId) => {
+    set((state) => ({
+      messages: {
+        ...state.messages,
+        [conversationId]: [],
+      },
+      conversations: state.conversations.map((c) =>
+        c._id === conversationId ? { ...c, lastMessage: undefined } : c
+      ),
+    }));
   },
 
   updateReactions: (messageId, reactions) => {

@@ -23,6 +23,7 @@ export const useSocket = () => {
     setUserPresence,
     removeMessagesFromConversation,
     removeConversationFromList,
+    markMessageAsRevoked,
   } = useChatStore();
 
   useEffect(() => {
@@ -172,6 +173,17 @@ export const useSocket = () => {
       }
     });
 
+    newSocket.on("message:revoked", (data: {
+      messageId: string;
+      conversationId: string;
+      deletedBy?: any;
+      deletedAt?: string;
+    }) => {
+      if (data?.conversationId && data?.messageId) {
+        markMessageAsRevoked(data.conversationId, data.messageId, data.deletedBy, data.deletedAt);
+      }
+    });
+
     // Explicitly connect
     newSocket.connect();
 
@@ -183,7 +195,7 @@ export const useSocket = () => {
       setSocket(null);
       setIsConnected(false);
     };
-  }, [isSignedIn, user?.id, getToken, setAccessToken, setSocket, setIsConnected, reset, handleNewMessage, updateReactions, updateMessageReadStatus, updateMessageStatus, updateBatchMessageStatus, setTyping, setUserPresence]);
+  }, [isSignedIn, user?.id, getToken, setAccessToken, setSocket, setIsConnected, reset, handleNewMessage, updateReactions, updateMessageReadStatus, updateMessageStatus, updateBatchMessageStatus, setTyping, setUserPresence, removeMessagesFromConversation, removeConversationFromList, markMessageAsRevoked]);
 
   const sendMessage = useCallback(
     (
