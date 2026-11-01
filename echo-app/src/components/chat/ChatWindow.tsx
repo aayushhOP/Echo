@@ -76,9 +76,12 @@ export const ChatWindow: FC<ChatWindowProps> = ({
 
   const myId = currentUser?.id || (currentUser as any)?._id;
 
-  // Mark unread messages as read
+  // Mark unread messages as read (both via REST API for persistence and Socket.IO for real-time delivery)
   useEffect(() => {
-    if (!activeConversationId || !myId || currentMessages.length === 0) return;
+    if (!activeConversationId || !myId) return;
+
+    // Immediately clear unread badge in store for responsive UI
+    useChatStore.getState().clearUnreadCount(activeConversationId);
 
     const unreadMessageIds = currentMessages
       .filter((m) => {
@@ -86,14 +89,23 @@ export const ChatWindow: FC<ChatWindowProps> = ({
           typeof m.senderId === "string"
             ? m.senderId
             : m.senderId?._id || m.senderId?.id;
-        return senderId !== myId && !m.readBy?.includes(myId);
+        const readByArray = Array.isArray(m.readBy)
+          ? m.readBy.map((id: any) => (id?._id ? id._id.toString() : id.toString()))
+          : [];
+        return senderId !== myId && !readByArray.includes(myId);
       })
       .map((m) => m._id);
 
+    // Call REST endpoint for guaranteed DB persistence
+    messageApi
+      .markAsRead(activeConversationId, unreadMessageIds.length > 0 ? unreadMessageIds : undefined)
+      .catch((err) => console.error("Error marking messages as read via REST:", err));
+
+    // Also emit socket event for real-time read receipts
     if (unreadMessageIds.length > 0) {
       markAsRead(activeConversationId, unreadMessageIds);
     }
-  }, [activeConversationId, currentMessages.length, myId]);
+  }, [activeConversationId, currentMessages.length, myId, markAsRead]);
 
   // Infinite scroll upward to load older messages
   const handleScroll = async (e: UIEvent<HTMLDivElement>) => {

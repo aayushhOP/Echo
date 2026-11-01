@@ -3,6 +3,7 @@ import { z } from "zod";
 import { AuthenticatedRequest } from "../middlewares/authMiddleware";
 import { AppError } from "../middlewares/errorHandler";
 import * as conversationService from "../services/conversationService";
+import Conversation from "../models/Conversation";
 
 const createConversationSchema = z.discriminatedUnion("type", [
   z.object({
@@ -207,6 +208,85 @@ export const muteConversationHandler = async (
     res.status(200).json({
       conversationId: id,
       isMuted,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const markConversationReadSchema = z.object({
+  messageIds: z.array(z.string()).optional(),
+});
+
+export const markConversationAsReadHandler = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    if (!req.userId) {
+      throw new AppError("Authentication required", 401);
+    }
+    const { id: conversationId } = req.params;
+    const parsed = markConversationReadSchema.safeParse(req.body);
+    const messageIds = parsed.success ? parsed.data.messageIds : undefined;
+
+    const messageService = await import("../services/messageService.js");
+    const updatedIds = await messageService.markMessagesAsRead(
+      req.userId,
+      conversationId as string,
+      messageIds
+    );
+
+    // If socket server is available, broadcast update to conversation room and participants
+    try {
+      const { getIO } = await import("../sockets/index.js");
+      const io = getIO();
+      if (io && updatedIds.length > 0) {
+        io.to(`conversation:${conversationId}`).emit("message:read:update", {
+          conversationId,
+          messageIds: updatedIds,
+          readerId: req.userId,
+        });
+        io.to(`conversation:${conversationId}`).emit("message:status_batch_update", {
+          conversationId,
+          messageIds: updatedIds,
+          status: "read",
+          readByUserId: req.userId,
+        });
+
+        // Also broadcast to user rooms
+        const conv = await Conversation.findById(conversationId);
+        if (conv) {
+          for (const pid of conv.participants) {
+            const pidStr = pid.toString();
+            if (pidStr !== req.userId) {
+              io.to(`user:${pidStr}`).emit("message:status_batch_update", {
+                conversationId,
+                messageIds: updatedIds,
+                status: "read",
+                readByUserId: req.userId,
+              });
+              io.to(`user:${pidStr}`).emit("message:read:update", {
+                conversationId,
+                messageIds: updatedIds,
+                readerId: req.userId,
+              });
+            }
+          }
+        }
+      }
+    } catch (sockErr) {
+      // Sockets may not be initialized in some test environments; ignore safely
+    }
+
+    res.status(200).json({
+      success: true,
+      data: {
+        conversationId,
+        updatedCount: updatedIds.length,
+        messageIds: updatedIds,
+      },
     });
   } catch (error) {
     next(error);

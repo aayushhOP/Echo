@@ -23,7 +23,7 @@ const reactMessageSchema = z.object({
 
 const readMessageSchema = z.object({
   conversationId: z.string().min(1, "conversationId is required"),
-  messageIds: z.array(z.string()).min(1, "messageIds array cannot be empty"),
+  messageIds: z.array(z.string()).optional(),
 });
 
 export const registerMessageHandlers = (io: Server, socket: Socket) => {
@@ -192,20 +192,39 @@ export const registerMessageHandlers = (io: Server, socket: Socket) => {
       );
 
       if (updatedIds.length > 0) {
-        // Emit legacy event for backward compatibility
+        // Emit legacy event for backward compatibility to conversation room
         io.to(`conversation:${conversationId}`).emit("message:read:update", {
           conversationId,
           messageIds: updatedIds,
           readerId: userId,
         });
 
-        // Also emit message:status_batch_update matching specification
+        // Also emit message:status_batch_update to conversation room
         io.to(`conversation:${conversationId}`).emit("message:status_batch_update", {
           conversationId,
           messageIds: updatedIds,
           status: "read",
           readByUserId: userId,
         });
+
+        // Crucial fix: Also broadcast status updates directly to participants' individual user rooms!
+        // This ensures the sender gets the Double Blue Tick even if they are in another tab/chat list.
+        for (const pid of conversation.participants) {
+          const pidStr = pid.toString();
+          if (pidStr !== userId) {
+            io.to(`user:${pidStr}`).emit("message:status_batch_update", {
+              conversationId,
+              messageIds: updatedIds,
+              status: "read",
+              readByUserId: userId,
+            });
+            io.to(`user:${pidStr}`).emit("message:read:update", {
+              conversationId,
+              messageIds: updatedIds,
+              readerId: userId,
+            });
+          }
+        }
       }
 
       if (ack) {

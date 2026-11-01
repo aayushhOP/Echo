@@ -194,22 +194,10 @@ export const toggleReaction = async (
 export const markMessagesAsRead = async (
   userId: string,
   conversationId: string,
-  messageIds: string[]
+  messageIds?: string[]
 ): Promise<string[]> => {
   if (!Types.ObjectId.isValid(conversationId)) {
     throw new AppError("Invalid conversation ID", 400);
-  }
-
-  if (!Array.isArray(messageIds) || messageIds.length === 0) {
-    return [];
-  }
-
-  const validMessageObjectIds = messageIds
-    .filter((id) => Types.ObjectId.isValid(id))
-    .map((id) => new Types.ObjectId(id));
-
-  if (validMessageObjectIds.length === 0) {
-    return [];
   }
 
   const conversation = await Conversation.findById(conversationId);
@@ -226,18 +214,42 @@ export const markMessagesAsRead = async (
   }
 
   const userObjectId = new Types.ObjectId(userId);
+  const conversationObjectId = new Types.ObjectId(conversationId);
+
+  // If specific messageIds provided, filter and use them; otherwise find all unread messages
+  let query: any = {
+    conversationId: conversationObjectId,
+    senderId: { $ne: userObjectId },
+    readBy: { $ne: userObjectId },
+  };
+
+  if (Array.isArray(messageIds) && messageIds.length > 0) {
+    const validMessageObjectIds = messageIds
+      .filter((id) => Types.ObjectId.isValid(id))
+      .map((id) => new Types.ObjectId(id));
+
+    if (validMessageObjectIds.length === 0) {
+      return [];
+    }
+    query._id = { $in: validMessageObjectIds };
+  }
+
+  // Find messages that match before updating so we know their IDs
+  const messagesToUpdate = await Message.find(query, { _id: 1 });
+  if (messagesToUpdate.length === 0) {
+    return [];
+  }
+
+  const targetIds = messagesToUpdate.map((m) => m._id);
 
   // Update messages where user is not in readBy array
   await Message.updateMany(
-    {
-      _id: { $in: validMessageObjectIds },
-      conversationId: new Types.ObjectId(conversationId),
-    },
+    { _id: { $in: targetIds } },
     {
       $addToSet: { readBy: userObjectId },
       $set: { status: "read" },
     }
   );
 
-  return validMessageObjectIds.map((id) => id.toString());
+  return targetIds.map((id) => id.toString());
 };

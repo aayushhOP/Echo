@@ -9,6 +9,7 @@ import {
   getConversationMediaHandler,
   pinConversationHandler,
   muteConversationHandler,
+  markConversationAsReadHandler,
 } from "../controllers/conversationController";
 
 const router = Router();
@@ -20,6 +21,7 @@ router.get("/", getConversationsHandler);
 router.post("/", createConversationHandler);
 router.get("/:id", getConversationByIdHandler);
 router.patch("/:id", updateConversationHandler);
+router.post("/:id/read", markConversationAsReadHandler);
 router.get("/:id/messages", getMessagesHandler);
 router.get("/:id/media", getConversationMediaHandler);
 router.patch("/:id/pin", pinConversationHandler);

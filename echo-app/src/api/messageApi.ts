@@ -108,6 +108,17 @@ export const messageApi = {
     return res.data;
   },
 
+  markAsRead: async (
+    conversationId: string,
+    messageIds?: string[]
+  ): Promise<{ conversationId: string; updatedCount: number; messageIds: string[] }> => {
+    const res = await axiosClient.post<ApiResponse<{ conversationId: string; updatedCount: number; messageIds: string[] }>>(
+      `/conversations/${conversationId}/read`,
+      { messageIds }
+    );
+    return res.data.data;
+  },
+
   uploadFile: async (file: File): Promise<UploadFileResponse> => {
     const formData = new FormData();
     formData.append("file", file);
