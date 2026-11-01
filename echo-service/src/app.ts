@@ -6,6 +6,7 @@ import cookieParser from "cookie-parser";
 import morgan from "morgan";
 import { clerkMiddleware } from "@clerk/express";
 import { ENV } from "./config/env";
+import { healthRoutes } from "./routes/healthRoutes";
 import { webhookRoutes } from "./routes/webhookRoutes";
 import { userRoutes } from "./routes/userRoutes";
 import { conversationRoutes } from "./routes/conversationRoutes";
@@ -17,6 +18,12 @@ export const createApp = (): Application => {
 
   // Trust reverse proxy (Render, Heroku, etc.) for secure cookie handling
   app.set("trust proxy", 1);
+
+  // Health check endpoints (ultra-fast, mounted BEFORE parsers, auth middlewares & rate limiters)
+  app.use("/api/health", healthRoutes);
+  app.get("/health", (_req, res) => {
+    res.status(200).json({ status: "healthy", uptime: process.uptime(), timestamp: new Date().toISOString() });
+  });
 
   // Security & CORS
   app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
@@ -44,11 +51,6 @@ export const createApp = (): Application => {
   if (ENV.NODE_ENV !== "test") {
     app.use(morgan("dev"));
   }
-
-  // Health check route
-  app.get("/health", (_req, res) => {
-    res.status(200).json({ status: "ok", timestamp: new Date().toISOString() });
-  });
 
   // API Routes
   app.use("/api/users", userRoutes);

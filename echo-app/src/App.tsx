@@ -5,6 +5,8 @@ import { useAuth, useUser } from "@clerk/clerk-react";
 import { appRouter } from "./routes/AppRouter";
 import { useAuthStore } from "./store/authStore";
 import { configureAxiosAuth } from "./api/axiosClient";
+import { useServerWarmup } from "./hooks/useServerWarmup";
+import { ServerWarmupModal } from "./components/common/ServerWarmupModal";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -16,6 +18,7 @@ const queryClient = new QueryClient({
 });
 
 export const App: FC = () => {
+  const { isWarmingUp, elapsedSeconds, estimatedProgress } = useServerWarmup();
   const { isSignedIn, isLoaded, getToken } = useAuth();
   const { user: clerkUser } = useUser();
   const { setAuth, setAccessToken, clearAuth, syncUserWithBackend } = useAuthStore();
@@ -78,6 +81,11 @@ export const App: FC = () => {
 
   return (
     <QueryClientProvider client={queryClient}>
+      <ServerWarmupModal
+        isVisible={isWarmingUp}
+        elapsedSeconds={elapsedSeconds}
+        progressPercent={estimatedProgress}
+      />
       <RouterProvider router={appRouter} />
     </QueryClientProvider>
   );
