@@ -129,4 +129,22 @@ export const messageApi = {
     });
     return res.data;
   },
+
+  deleteConversation: async (conversationId: string): Promise<{ success: boolean; message: string }> => {
+    const res = await axiosClient.delete<{ success: boolean; message: string }>(`/conversations/${conversationId}`);
+    return res.data;
+  },
+
+  deleteSelectedMessages: async (
+    conversationId: string,
+    messageIds: string[]
+  ): Promise<{ success: boolean; message: string; data?: { conversationId: string; messageIds: string[] } }> => {
+    const res = await axiosClient.delete<{ success: boolean; message: string; data?: { conversationId: string; messageIds: string[] } }>(
+      `/conversations/${conversationId}/messages`,
+      {
+        data: { messageIds },
+      }
+    );
+    return res.data;
+  },
 };

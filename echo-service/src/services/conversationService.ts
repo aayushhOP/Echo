@@ -535,3 +535,79 @@ export const getConversationMedia = async (
     nextCursor,
   };
 };
+
+export const deleteConversation = async (
+  conversationId: string,
+  userId: string
+): Promise<void> => {
+  if (!Types.ObjectId.isValid(conversationId)) {
+    throw new AppError("Invalid conversation ID", 400);
+  }
+
+  const convObjectId = new Types.ObjectId(conversationId);
+  const userObjectId = new Types.ObjectId(userId);
+
+  const conversation = await Conversation.findOne({
+    _id: convObjectId,
+    participants: userObjectId,
+  });
+
+  if (!conversation) {
+    throw new AppError("Conversation not found", 404);
+  }
+
+  // 1. Delete all messages associated with conversation
+  await Message.deleteMany({ conversationId: convObjectId });
+
+  // 2. Delete conversation document
+  await Conversation.findByIdAndDelete(convObjectId);
+};
+
+export const deleteSelectedMessages = async (
+  conversationId: string,
+  userId: string,
+  messageIds: string[]
+): Promise<string[]> => {
+  if (!Types.ObjectId.isValid(conversationId)) {
+    throw new AppError("Invalid conversation ID", 400);
+  }
+
+  const convObjectId = new Types.ObjectId(conversationId);
+  const userObjectId = new Types.ObjectId(userId);
+
+  const isParticipant = await Conversation.exists({
+    _id: convObjectId,
+    participants: userObjectId,
+  });
+
+  if (!isParticipant) {
+    throw new AppError("Access denied: You are not a participant in this conversation", 403);
+  }
+
+  const validMessageObjectIds = messageIds
+    .filter((id) => Types.ObjectId.isValid(id))
+    .map((id) => new Types.ObjectId(id));
+
+  if (validMessageObjectIds.length === 0) {
+    return [];
+  }
+
+  await Message.deleteMany({
+    _id: { $in: validMessageObjectIds },
+    conversationId: convObjectId,
+  });
+
+  // Check if lastMessage of conversation was deleted, and update it if necessary
+  const latestRemainingMessage = await Message.findOne({
+    conversationId: convObjectId,
+  })
+    .sort({ createdAt: -1 })
+    .select("_id");
+
+  await Conversation.findByIdAndUpdate(convObjectId, {
+    lastMessage: latestRemainingMessage ? latestRemainingMessage._id : null,
+  });
+
+  return validMessageObjectIds.map((id) => id.toString());
+};
+

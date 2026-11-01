@@ -238,6 +238,15 @@ export const registerMessageHandlers = (io: Server, socket: Socket) => {
     }
   };
 
+  socket.on("messages:deleted", ({ conversationId, messageIds }: { conversationId: string; messageIds: string[] }) => {
+    if (conversationId && Array.isArray(messageIds)) {
+      io.to(`conversation:${conversationId}`).emit("messages:batch_removed", {
+        conversationId,
+        messageIds,
+      });
+    }
+  });
+
   socket.on("message:read", handleMarkRead);
   socket.on("message:mark_read", handleMarkRead);
 };

@@ -292,3 +292,87 @@ export const markConversationAsReadHandler = async (
     next(error);
   }
 };
+
+export const deleteConversationHandler = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    if (!req.userId) {
+      throw new AppError("Authentication required", 401);
+    }
+    const { id } = req.params;
+    await conversationService.deleteConversation(id as string, req.userId);
+
+    // Broadcast conversation deletion to participants if socket server is initialized
+    try {
+      const { getIO } = await import("../sockets/index.js");
+      const io = getIO();
+      if (io) {
+        io.to(`conversation:${id}`).emit("conversation:deleted", {
+          conversationId: id,
+        });
+      }
+    } catch {
+      // ignore socket broadcast error
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Chat deleted successfully",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const deleteSelectedMessagesSchema = z.object({
+  messageIds: z.array(z.string()).min(1, "At least one message ID is required"),
+});
+
+export const deleteSelectedMessagesHandler = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    if (!req.userId) {
+      throw new AppError("Authentication required", 401);
+    }
+    const { id } = req.params;
+    const validatedData = deleteSelectedMessagesSchema.parse(req.body);
+
+    const deletedIds = await conversationService.deleteSelectedMessages(
+      id as string,
+      req.userId,
+      validatedData.messageIds
+    );
+
+    // Broadcast messages deletion via socket
+    try {
+      const { getIO } = await import("../sockets/index.js");
+      const io = getIO();
+      if (io && deletedIds.length > 0) {
+        io.to(`conversation:${id}`).emit("messages:batch_removed", {
+          conversationId: id,
+          messageIds: deletedIds,
+        });
+      }
+    } catch {
+      // ignore socket broadcast error
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Messages deleted",
+      data: {
+        conversationId: id,
+        messageIds: deletedIds,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+

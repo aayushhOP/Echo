@@ -1,10 +1,12 @@
-import { FC, useEffect, useRef, useState, useCallback, UIEvent } from "react";
+import { FC, useEffect, useRef, useState, useCallback, useMemo, UIEvent } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { messageApi } from "../../api/messageApi";
 import { useChatStore } from "../../store/chatStore";
 import { useAuthStore } from "../../store/authStore";
 import { useSocket } from "../../hooks/useSocket";
 import { ChatHeader } from "./ChatHeader";
+import { ChatSearchBar } from "./ChatSearchBar";
+import { ChatSelectionBar } from "./ChatSelectionBar";
 import { MessageBubble } from "./MessageBubble";
 import { MessageInput } from "./MessageInput";
 import { TypingIndicator } from "./TypingIndicator";
@@ -26,6 +28,7 @@ export const ChatWindow: FC<ChatWindowProps> = ({
   onSearchClick,
 }) => {
   const currentUser = useAuthStore((state) => state.user);
+  const addBlockedUser = useAuthStore((state) => state.addBlockedUser);
   const removeBlockedUser = useAuthStore((state) => state.removeBlockedUser);
   const {
     activeConversationId,
@@ -37,17 +40,37 @@ export const ChatWindow: FC<ChatWindowProps> = ({
     reconcileMessage,
     toggleOptimisticReaction,
     typingUsers,
+    isSelectionMode,
+    selectedMessageIds,
+    toggleSelectMessage,
+    removeMessagesFromConversation,
+    removeConversationFromList,
+    searchQuery,
   } = useChatStore();
 
-  const { sendMessage, reactMessage, markAsRead } = useSocket();
+  const { sendMessage, reactMessage, markAsRead, emitMessagesDeleted } = useSocket();
 
   const messageListRef = useRef<HTMLDivElement>(null);
   const [hasMore, setHasMore] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [isDeletingSelected, setIsDeletingSelected] = useState(false);
 
   const activeConv = conversations.find((c) => c._id === activeConversationId);
   const currentMessages = activeConversationId ? messages[activeConversationId] || [] : [];
   const hasCachedMessages = currentMessages.length > 0;
+
+  // Filter messages live when search is active
+  const filteredMessages = useMemo(() => {
+    if (!searchQuery.trim()) return currentMessages;
+    const lower = searchQuery.toLowerCase();
+    return currentMessages.filter((m) => {
+      const matchContent = m.content && m.content.toLowerCase().includes(lower);
+      const matchFileName = m.fileName && m.fileName.toLowerCase().includes(lower);
+      return matchContent || matchFileName;
+    });
+  }, [currentMessages, searchQuery]);
+
+  const allMessageIds = useMemo(() => currentMessages.map((m) => m._id), [currentMessages]);
 
   // Initial fetch for the conversation messages with cached data as initialData
   const { isFetching: isQueryFetching } = useQuery({
@@ -259,6 +282,58 @@ export const ChatWindow: FC<ChatWindowProps> = ({
     }
   };
 
+  const handleToggleBlockCounterpart = async () => {
+    if (!counterpartId) return;
+    try {
+      if (isDirectBlocked) {
+        await userApi.unblockUser(counterpartId);
+        removeBlockedUser(counterpartId);
+      } else {
+        await userApi.blockUser(counterpartId);
+        addBlockedUser(counterpartId);
+      }
+    } catch (err: any) {
+      console.error("Failed to update block status:", err);
+      alert(err.response?.data?.message || err.message || "Failed to update block status");
+    }
+  };
+
+  const handleDeleteChat = async () => {
+    if (!activeConversationId) return;
+    const confirmed = window.confirm(
+      "Are you sure you want to delete this chat? All messages will be permanently removed."
+    );
+    if (!confirmed) return;
+
+    try {
+      await messageApi.deleteConversation(activeConversationId);
+      removeConversationFromList(activeConversationId);
+    } catch (err: any) {
+      console.error("Failed to delete chat:", err);
+      alert(err.response?.data?.message || err.message || "Failed to delete chat");
+    }
+  };
+
+  const handleDeleteSelectedMessages = async (ids: string[]) => {
+    if (!activeConversationId || ids.length === 0 || isDeletingSelected) return;
+    const confirmed = window.confirm(
+      `Are you sure you want to delete ${ids.length} selected message${ids.length > 1 ? "s" : ""}?`
+    );
+    if (!confirmed) return;
+
+    try {
+      setIsDeletingSelected(true);
+      await messageApi.deleteSelectedMessages(activeConversationId, ids);
+      removeMessagesFromConversation(activeConversationId, ids);
+      emitMessagesDeleted(activeConversationId, ids);
+    } catch (err: any) {
+      console.error("Failed to delete selected messages:", err);
+      alert(err.response?.data?.message || err.message || "Failed to delete selected messages");
+    } finally {
+      setIsDeletingSelected(false);
+    }
+  };
+
   return (
     <div className="flex-1 h-full flex flex-col bg-[#171824] relative min-w-0 overflow-hidden">
       {/* Background Wallpaper Image */}
@@ -269,13 +344,27 @@ export const ChatWindow: FC<ChatWindowProps> = ({
       {/* Subtle Dark Overlay to preserve high message contrast & readability */}
       <div className="absolute inset-0 bg-[#0b0e17]/85 backdrop-blur-[1px] pointer-events-none select-none z-0" />
 
-      {/* Desktop Header */}
-      <ChatHeader
-        conversation={activeConv}
-        onHeaderClick={onHeaderClick}
-        onOpenMenu={onOpenMenu}
-        onSearchClick={onSearchClick}
-      />
+      {/* Desktop Header or Selection Bar */}
+      {isSelectionMode ? (
+        <ChatSelectionBar
+          totalMessageCount={currentMessages.length}
+          allMessageIds={allMessageIds}
+          onDeleteSelected={handleDeleteSelectedMessages}
+          isDeleting={isDeletingSelected}
+        />
+      ) : (
+        <ChatHeader
+          conversation={activeConv}
+          onHeaderClick={onHeaderClick}
+          onOpenMenu={onOpenMenu}
+          onSearchClick={onSearchClick}
+          onBlockUser={handleToggleBlockCounterpart}
+          onDeleteChat={handleDeleteChat}
+        />
+      )}
+
+      {/* In-chat Search Bar */}
+      <ChatSearchBar />
 
       {/* Message Stream */}
       <div
@@ -311,8 +400,8 @@ export const ChatWindow: FC<ChatWindowProps> = ({
           )}
 
           <div className="flex flex-col space-y-1">
-            {currentMessages.map((msg, index) => {
-              const prevMsg = currentMessages[index - 1];
+            {filteredMessages.map((msg, index) => {
+              const prevMsg = filteredMessages[index - 1];
               const currentDate = msg.createdAt ? new Date(msg.createdAt).toDateString() : "";
               const prevDate = prevMsg?.createdAt ? new Date(prevMsg.createdAt).toDateString() : "";
               const showDateSeparator = currentDate && currentDate !== prevDate;
@@ -328,6 +417,9 @@ export const ChatWindow: FC<ChatWindowProps> = ({
                     message={msg}
                     isGroup={activeConv?.type === "group"}
                     onReact={handleReact}
+                    isSelectionMode={isSelectionMode}
+                    isSelected={selectedMessageIds.includes(msg._id)}
+                    onToggleSelect={toggleSelectMessage}
                   />
                 </div>
               );

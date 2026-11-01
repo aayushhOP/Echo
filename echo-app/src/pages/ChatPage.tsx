@@ -14,10 +14,12 @@ export const ChatPage: FC = () => {
   const activeConversationId = useChatStore((state) => state.activeConversationId);
   const conversations = useChatStore((state) => state.conversations);
   const addOrUpdateConversation = useChatStore((state) => state.addOrUpdateConversation);
+  const isContactDrawerOpen = useChatStore((state) => state.isContactDrawerOpen);
+  const setContactDrawerOpen = useChatStore((state) => state.setContactDrawerOpen);
+  const toggleSearch = useChatStore((state) => state.toggleSearch);
   const currentUser = useAuthStore((state) => state.user);
 
   const [isIntroLoading, setIsIntroLoading] = useState(!hasLoadedInitially);
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const { requestPresenceSync, isConnected } = useSocket();
 
   useEffect(() => {
@@ -51,8 +53,8 @@ export const ChatPage: FC = () => {
 
   // Close drawer if active conversation changes or becomes null
   useEffect(() => {
-    setIsDrawerOpen(false);
-  }, [activeConversationId]);
+    setContactDrawerOpen(false);
+  }, [activeConversationId, setContactDrawerOpen]);
 
   const activeConversation = conversations.find((c) => c._id === activeConversationId);
   const currentUserId = currentUser?.id || (currentUser as any)?._id || "";
@@ -112,18 +114,19 @@ export const ChatPage: FC = () => {
           }`}
         >
           <ChatWindow
-            onHeaderClick={() => setIsDrawerOpen((prev) => !prev)}
-            onOpenMenu={() => setIsDrawerOpen((prev) => !prev)}
+            onHeaderClick={() => setContactDrawerOpen(!isContactDrawerOpen)}
+            onSearchClick={toggleSearch}
           />
 
           {activeConversation && (
             <ContactDetailDrawer
-              isOpen={isDrawerOpen}
-              onClose={() => setIsDrawerOpen(false)}
+              isOpen={isContactDrawerOpen}
+              onClose={() => setContactDrawerOpen(false)}
               conversation={activeConversation}
               currentUserId={currentUserId}
               onTogglePin={handleTogglePin}
               onToggleMute={handleToggleMute}
+              onSearchClick={toggleSearch}
             />
           )}
         </div>

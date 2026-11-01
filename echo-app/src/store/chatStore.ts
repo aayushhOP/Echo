@@ -10,7 +10,24 @@ interface ChatState {
   onlineUsers: Set<string>; // set of online userIds
   userLastSeen: Record<string, string>; // userId -> ISO timestamp
 
+  // Advanced Header Actions state
+  isContactDrawerOpen: boolean;
+  isSearchOpen: boolean;
+  searchQuery: string;
+  isSelectionMode: boolean;
+  selectedMessageIds: string[];
+
   setActiveConversationId: (id: string | null) => void;
+  setContactDrawerOpen: (open: boolean) => void;
+  toggleSearch: () => void;
+  setSearchQuery: (query: string) => void;
+  enterSelectionMode: (initialMessageId?: string) => void;
+  exitSelectionMode: () => void;
+  toggleSelectMessage: (messageId: string) => void;
+  selectAllMessages: (messageIds: string[]) => void;
+  removeConversationFromList: (conversationId: string) => void;
+  removeMessagesFromConversation: (conversationId: string, messageIds: string[]) => void;
+
   clearUnreadCount: (conversationId: string) => void;
   setConversations: (conversations: Conversation[]) => void;
   addOrUpdateConversation: (conversation: Conversation) => void;
@@ -46,6 +63,12 @@ export const useChatStore = create<ChatState>((set, get) => ({
   onlineUsers: new Set<string>(),
   userLastSeen: {},
 
+  isContactDrawerOpen: false,
+  isSearchOpen: false,
+  searchQuery: "",
+  isSelectionMode: false,
+  selectedMessageIds: [],
+
   setActiveConversationId: (id) => {
     set((state) => {
       // If opening a conversation, immediately clear its unreadCount
@@ -56,9 +79,97 @@ export const useChatStore = create<ChatState>((set, get) => ({
       return {
         activeConversationId: id,
         conversations: updatedConversations,
+        isSearchOpen: false,
+        searchQuery: "",
+        isSelectionMode: false,
+        selectedMessageIds: [],
+        isContactDrawerOpen: false,
       };
     });
   },
+
+  setContactDrawerOpen: (open) => set({ isContactDrawerOpen: open }),
+
+  toggleSearch: () =>
+    set((state) => ({
+      isSearchOpen: !state.isSearchOpen,
+      searchQuery: "",
+    })),
+
+  setSearchQuery: (query) => set({ searchQuery: query }),
+
+  enterSelectionMode: (initialMessageId) =>
+    set({
+      isSelectionMode: true,
+      selectedMessageIds: initialMessageId ? [initialMessageId] : [],
+    }),
+
+  exitSelectionMode: () =>
+    set({
+      isSelectionMode: false,
+      selectedMessageIds: [],
+    }),
+
+  toggleSelectMessage: (messageId) =>
+    set((state) => {
+      const exists = state.selectedMessageIds.includes(messageId);
+      return {
+        selectedMessageIds: exists
+          ? state.selectedMessageIds.filter((id) => id !== messageId)
+          : [...state.selectedMessageIds, messageId],
+      };
+    }),
+
+  selectAllMessages: (messageIds) => set({ selectedMessageIds: messageIds }),
+
+  removeConversationFromList: (conversationId) =>
+    set((state) => ({
+      conversations: state.conversations.filter((c) => c._id !== conversationId),
+      activeConversationId:
+        state.activeConversationId === conversationId ? null : state.activeConversationId,
+      isContactDrawerOpen: false,
+      isSelectionMode: false,
+      selectedMessageIds: [],
+      isSearchOpen: false,
+      searchQuery: "",
+    })),
+
+  removeMessagesFromConversation: (conversationId, messageIds) =>
+    set((state) => {
+      const idSet = new Set(messageIds);
+      const currentList = state.messages[conversationId] || [];
+      const updatedList = currentList.filter((m) => !idSet.has(m._id));
+
+      // Also update lastMessage in conversations list if it was deleted
+      const updatedConversations = state.conversations.map((c) => {
+        if (c._id === conversationId) {
+          const lastMsgId =
+            typeof c.lastMessage === "string"
+              ? c.lastMessage
+              : c.lastMessage?._id;
+          if (lastMsgId && idSet.has(lastMsgId)) {
+            const newLastMsg = updatedList[updatedList.length - 1] || undefined;
+            return {
+              ...c,
+              lastMessage: newLastMsg,
+            };
+          }
+        }
+        return c;
+      });
+
+      return {
+        messages: {
+          ...state.messages,
+          [conversationId]: updatedList,
+        },
+        conversations: updatedConversations,
+        selectedMessageIds: state.selectedMessageIds.filter((id) => !idSet.has(id)),
+        isSelectionMode:
+          state.selectedMessageIds.filter((id) => !idSet.has(id)).length > 0 &&
+          state.isSelectionMode,
+      };
+    }),
 
   clearUnreadCount: (conversationId) => {
     set((state) => ({
@@ -436,6 +547,11 @@ export const useChatStore = create<ChatState>((set, get) => ({
       typingUsers: {},
       onlineUsers: new Set<string>(),
       userLastSeen: {},
+      isContactDrawerOpen: false,
+      isSearchOpen: false,
+      searchQuery: "",
+      isSelectionMode: false,
+      selectedMessageIds: [],
     });
   },
 }));

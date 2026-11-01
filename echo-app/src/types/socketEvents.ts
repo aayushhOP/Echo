@@ -42,6 +42,8 @@ export interface ServerToClientEvents {
   "presence:online": (data: { userId: string }) => void;
   "presence:offline": (data: { userId: string; lastSeen?: string }) => void;
   "presence:sync": (data: { onlineUsers: string[] }) => void;
+  "messages:batch_removed": (data: { conversationId: string; messageIds: string[] }) => void;
+  "conversation:deleted": (data: { conversationId: string }) => void;
 }
 
 export interface ClientToServerEvents {
@@ -76,4 +78,5 @@ export interface ClientToServerEvents {
   "typing:start": (payload: { conversationId: string }) => void;
   "typing:stop": (payload: { conversationId: string }) => void;
   "presence:request_sync": (contactIds: string[]) => void;
+  "messages:deleted": (payload: { conversationId: string; messageIds: string[] }) => void;
 }

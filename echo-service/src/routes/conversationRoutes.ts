@@ -10,6 +10,8 @@ import {
   pinConversationHandler,
   muteConversationHandler,
   markConversationAsReadHandler,
+  deleteConversationHandler,
+  deleteSelectedMessagesHandler,
 } from "../controllers/conversationController";
 
 const router = Router();
@@ -21,6 +23,8 @@ router.get("/", getConversationsHandler);
 router.post("/", createConversationHandler);
 router.get("/:id", getConversationByIdHandler);
 router.patch("/:id", updateConversationHandler);
+router.delete("/:id", deleteConversationHandler);
+router.delete("/:id/messages", deleteSelectedMessagesHandler);
 router.post("/:id/read", markConversationAsReadHandler);
 router.get("/:id/messages", getMessagesHandler);
 router.get("/:id/media", getConversationMediaHandler);

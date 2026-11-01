@@ -21,6 +21,8 @@ export const useSocket = () => {
     updateBatchMessageStatus,
     setTyping,
     setUserPresence,
+    removeMessagesFromConversation,
+    removeConversationFromList,
   } = useChatStore();
 
   useEffect(() => {
@@ -158,6 +160,18 @@ export const useSocket = () => {
       }
     });
 
+    newSocket.on("messages:batch_removed", ({ conversationId, messageIds }: { conversationId: string; messageIds: string[] }) => {
+      if (conversationId && Array.isArray(messageIds)) {
+        removeMessagesFromConversation(conversationId, messageIds);
+      }
+    });
+
+    newSocket.on("conversation:deleted", ({ conversationId }: { conversationId: string }) => {
+      if (conversationId) {
+        removeConversationFromList(conversationId);
+      }
+    });
+
     // Explicitly connect
     newSocket.connect();
 
@@ -239,6 +253,12 @@ export const useSocket = () => {
     activeSock.emit("presence:request_sync", contactIds);
   }, []);
 
+  const emitMessagesDeleted = useCallback((conversationId: string, messageIds: string[]) => {
+    const activeSock = socketRef.current || useSocketStore.getState().socket;
+    if (!activeSock || !activeSock.connected || !conversationId || messageIds.length === 0) return;
+    activeSock.emit("messages:deleted", { conversationId, messageIds });
+  }, []);
+
   return {
     socket,
     isConnected,
@@ -248,5 +268,6 @@ export const useSocket = () => {
     startTyping,
     stopTyping,
     requestPresenceSync,
+    emitMessagesDeleted,
   };
 };

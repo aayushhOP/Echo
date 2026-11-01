@@ -559,15 +559,15 @@ const handleDeleteChat = async () => {
 
 ## 8. Agent Implementation Checklist
 
-- [ ] **Unlink Contact Info:** Ensure clicking the three dots button no longer opens the contact drawer.
-- [ ] **Link Avatar to Drawer:** Clicking the avatar or name in `ChatHeader.tsx` toggles `isContactDrawerOpen`.
-- [ ] **Three-Dots Dropdown:** Implement dropdown with: Search Messages, Select Messages, Close Chat, Block Contact, and Delete Chat.
-- [ ] **Close Chat:** Clicking "Close chat" sets `activeConversationId = null` (clearing the active chat viewport).
-- [ ] **In-Chat Search:** Shows search bar, filters messages live as the user types, and dismisses on "Done".
-- [ ] **Message Selection Mode:** 
+- [x] **Unlink Contact Info:** Ensure clicking the three dots button no longer opens the contact drawer.
+- [x] **Link Avatar to Drawer:** Clicking the avatar or name in `ChatHeader.tsx` toggles `isContactDrawerOpen`.
+- [x] **Three-Dots Dropdown:** Implement dropdown with: Search Messages, Select Messages, Close Chat, Block Contact, and Delete Chat.
+- [x] **Close Chat:** Clicking "Close chat" sets `activeConversationId = null` (clearing the active chat viewport).
+- [x] **In-Chat Search:** Shows search bar, filters messages live as the user types, and dismisses on "Done".
+- [x] **Message Selection Mode:** 
   - Shows `ChatSelectionBar` with counter, Select All, and Delete buttons.
   - Adds selectable checkboxes beside each message.
-- [ ] **Backend Endpoints:**
+- [x] **Backend Endpoints:**
   - `DELETE /api/conversations/:id` (delete whole chat).
   - `DELETE /api/conversations/:id/messages` (batch delete selected messages).
-- [ ] **Real-Time Sockets:** Emit `messages:batch_removed` to update connected clients.
+- [x] **Real-Time Sockets:** Emit `messages:batch_removed` to update connected clients.

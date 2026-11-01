@@ -9,6 +9,9 @@ interface MessageBubbleProps {
   message: Message;
   isGroup?: boolean;
   onReact: (messageId: string, emoji: string) => void;
+  isSelectionMode?: boolean;
+  isSelected?: boolean;
+  onToggleSelect?: (messageId: string) => void;
 }
 
 // 5 default quick reactions (WhatsApp Desktop style)
@@ -39,6 +42,9 @@ const MessageBubbleComponent: FC<MessageBubbleProps> = ({
   message,
   isGroup = false,
   onReact,
+  isSelectionMode = false,
+  isSelected = false,
+  onToggleSelect,
 }) => {
   const currentUser = useAuthStore((state) => state.user);
   const [showQuickTray, setShowQuickTray] = useState(false);
@@ -85,7 +91,16 @@ const MessageBubbleComponent: FC<MessageBubbleProps> = ({
   };
 
   return (
-    <div className={`flex flex-col group relative select-text mb-1.5 ${isOwn ? "items-end" : "items-start"}`}>
+    <div
+      onClick={() => {
+        if (isSelectionMode && onToggleSelect) {
+          onToggleSelect(message._id);
+        }
+      }}
+      className={`flex flex-col group relative select-text mb-1.5 ${
+        isOwn ? "items-end" : "items-start"
+      } ${isSelectionMode ? "cursor-pointer" : ""}`}
+    >
       {/* Sender name for received messages in group chats */}
       {!isOwn && isGroup && (
         <span className="text-[11px] font-medium text-[#767b93] mb-1 px-1">
@@ -93,8 +108,28 @@ const MessageBubbleComponent: FC<MessageBubbleProps> = ({
         </span>
       )}
 
-      {/* Outer row holding Trigger + Bubble */}
-      <div className={`relative flex items-center gap-1.5 max-w-[85%] md:max-w-[75%] lg:max-w-[65%] ${isOwn ? "flex-row-reverse" : "flex-row"}`}>
+      {/* Outer row holding Checkbox + Trigger + Bubble */}
+      <div
+        className={`relative flex items-center gap-2 max-w-[95%] md:max-w-[85%] lg:max-w-[75%] ${
+          isOwn ? "flex-row-reverse" : "flex-row"
+        }`}
+      >
+        {/* Selection Checkbox */}
+        {isSelectionMode && (
+          <div className="shrink-0 flex items-center justify-center p-1">
+            <input
+              type="checkbox"
+              checked={isSelected}
+              onChange={() => {
+                if (onToggleSelect) {
+                  onToggleSelect(message._id);
+                }
+              }}
+              className="w-4 h-4 rounded border-white/20 bg-slate-900 text-[#0066ff] focus:ring-0 focus:ring-offset-0 cursor-pointer accent-[#0066ff]"
+            />
+          </div>
+        )}
+
         {/* --- Message Bubble Container --- */}
         <div className="relative w-fit max-w-full">
           {/* Image Type */}
@@ -367,6 +402,8 @@ export const MessageBubble = memo(MessageBubbleComponent, (prevProps, nextProps)
     prevProps.message.content === nextProps.message.content &&
     prevProps.message.reactions === nextProps.message.reactions &&
     prevProps.message.readBy?.length === nextProps.message.readBy?.length &&
-    prevProps.isGroup === nextProps.isGroup
+    prevProps.isGroup === nextProps.isGroup &&
+    prevProps.isSelectionMode === nextProps.isSelectionMode &&
+    prevProps.isSelected === nextProps.isSelected
   );
 });

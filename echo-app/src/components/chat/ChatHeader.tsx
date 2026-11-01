@@ -1,6 +1,6 @@
-import { FC } from "react";
+import { FC, useState, useRef, useEffect } from "react";
 import { Avatar } from "../common/Avatar";
-import { Phone, Video, Search, MoreVertical, Users } from "lucide-react";
+import { Phone, Video, Search, MoreVertical, Users, CheckSquare, X, Ban, Trash2 } from "lucide-react";
 import { IConversation } from "../../types/chat";
 import { useAuthStore } from "../../store/authStore";
 import { useChatStore } from "../../store/chatStore";
@@ -11,17 +11,43 @@ interface ChatHeaderProps {
   onSearchClick?: () => void;
   onHeaderClick?: () => void;
   onOpenMenu?: () => void;
+  onBlockUser?: () => void;
+  onDeleteChat?: () => void;
 }
 
 export const ChatHeader: FC<ChatHeaderProps> = ({
   conversation,
   onSearchClick,
   onHeaderClick,
-  onOpenMenu,
+  onBlockUser,
+  onDeleteChat,
 }) => {
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
   const currentUser = useAuthStore((state) => state.user);
   const onlineUsers = useChatStore((state) => state.onlineUsers);
   const userLastSeen = useChatStore((state) => state.userLastSeen);
+  const {
+    setActiveConversationId,
+    setContactDrawerOpen,
+    isContactDrawerOpen,
+    toggleSearch,
+    enterSelectionMode,
+  } = useChatStore();
+
+  // Close menu on outside click
+  useEffect(() => {
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setIsMenuOpen(false);
+      }
+    };
+    if (isMenuOpen) {
+      document.addEventListener("mousedown", handleOutsideClick);
+    }
+    return () => document.removeEventListener("mousedown", handleOutsideClick);
+  }, [isMenuOpen]);
 
   const isGroup = conversation.type === "group";
   const myId = currentUser?.id || (currentUser as any)?._id;
@@ -62,12 +88,20 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
     subtitle = "Offline";
   }
 
+  const handleProfileClick = () => {
+    if (onHeaderClick) {
+      onHeaderClick();
+    } else {
+      setContactDrawerOpen(!isContactDrawerOpen);
+    }
+  };
+
   return (
-    <header className="h-16 shrink-0 bg-[#171824]/90 backdrop-blur-md border-b border-white/[0.04] px-6 flex items-center justify-between z-10">
-      {/* Left: Avatar + Title + Real-time presence indicator */}
+    <header className="h-16 shrink-0 bg-[#171824]/90 backdrop-blur-md border-b border-white/[0.04] px-6 flex items-center justify-between z-20 relative">
+      {/* 1. Clickable Header Profile -> Opens Contact Info Drawer */}
       <div
-        onClick={onHeaderClick}
-        className="flex items-center gap-3.5 min-w-0 cursor-pointer group hover:opacity-90 transition-opacity"
+        onClick={handleProfileClick}
+        className="flex items-center gap-3.5 min-w-0 cursor-pointer group p-1 rounded-xl hover:bg-white/[0.03] transition-colors"
         title="View details"
       >
         <div className="relative">
@@ -108,9 +142,10 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
         </div>
       </div>
 
-      {/* Right Action controls: Audio Call, Video Call, and Conversation Search */}
+      {/* Right Action controls: Call, Search, and Three-Dots Menu */}
       <div className="flex items-center gap-1 sm:gap-2 text-[#767b93]">
         <button
+          type="button"
           className="p-2 rounded-xl hover:text-[#0066ff] hover:bg-white/[0.04] transition-colors cursor-pointer"
           title="Start voice call"
           onClick={() => alert("Voice call feature coming soon!")}
@@ -118,6 +153,7 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
           <Phone className="w-4 h-4" />
         </button>
         <button
+          type="button"
           className="p-2 rounded-xl hover:text-[#0066ff] hover:bg-white/[0.04] transition-colors cursor-pointer"
           title="Start video call"
           onClick={() => alert("Video call feature coming soon!")}
@@ -125,19 +161,104 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
           <Video className="w-4 h-4" />
         </button>
         <button
+          type="button"
           className="p-2 rounded-xl hover:text-[#0066ff] hover:bg-white/[0.04] transition-colors cursor-pointer"
           title="Search conversation"
-          onClick={onSearchClick}
+          onClick={onSearchClick || toggleSearch}
         >
           <Search className="w-4 h-4" />
         </button>
-        <button
-          onClick={onOpenMenu || onHeaderClick}
-          className="p-2 rounded-xl hover:text-[#0066ff] hover:bg-white/[0.04] transition-colors cursor-pointer flex"
-          title="More options / Details"
-        >
-          <MoreVertical className="w-4 h-4" />
-        </button>
+
+        {/* 2. Three-Dots Menu Trigger */}
+        <div className="relative" ref={menuRef}>
+          <button
+            type="button"
+            onClick={() => setIsMenuOpen((prev) => !prev)}
+            className={`p-2 rounded-xl hover:text-[#0066ff] hover:bg-white/[0.04] transition-all cursor-pointer flex ${
+              isMenuOpen ? "bg-white/[0.08] text-white" : ""
+            }`}
+            title="Chat options"
+            aria-label="Chat options"
+          >
+            <MoreVertical className="w-4 h-4" />
+          </button>
+
+          {/* 3. Action Dropdown Menu */}
+          {isMenuOpen && (
+            <div className="absolute right-0 mt-2 w-52 rounded-xl bg-[#171824] border border-white/[0.08] shadow-2xl py-1.5 z-50 animate-in fade-in zoom-in-95 duration-150">
+              {/* Search messages */}
+              <button
+                type="button"
+                onClick={() => {
+                  setIsMenuOpen(false);
+                  toggleSearch();
+                }}
+                className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs text-slate-300 hover:text-white hover:bg-white/[0.05] transition-colors cursor-pointer text-left"
+              >
+                <Search size={15} className="text-slate-400" />
+                <span>Search messages</span>
+              </button>
+
+              {/* Select messages */}
+              <button
+                type="button"
+                onClick={() => {
+                  setIsMenuOpen(false);
+                  enterSelectionMode();
+                }}
+                className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs text-slate-300 hover:text-white hover:bg-white/[0.05] transition-colors cursor-pointer text-left"
+              >
+                <CheckSquare size={15} className="text-slate-400" />
+                <span>Select messages</span>
+              </button>
+
+              {/* Close chat panel */}
+              <button
+                type="button"
+                onClick={() => {
+                  setIsMenuOpen(false);
+                  setActiveConversationId(null);
+                }}
+                className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs text-slate-300 hover:text-white hover:bg-white/[0.05] transition-colors cursor-pointer text-left"
+              >
+                <X size={15} className="text-slate-400" />
+                <span>Close chat</span>
+              </button>
+
+              <div className="h-px bg-white/[0.06] my-1" />
+
+              {/* Block / Unblock Contact (Direct chats only) */}
+              {!isGroup && onBlockUser && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsMenuOpen(false);
+                    onBlockUser();
+                  }}
+                  className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer text-left"
+                >
+                  <Ban size={15} />
+                  <span>{isBlockedByMe ? "Unblock Contact" : "Block Contact"}</span>
+                </button>
+              )}
+
+              {/* Delete Chat */}
+              <button
+                type="button"
+                onClick={() => {
+                  setIsMenuOpen(false);
+                  if (onDeleteChat) {
+                    onDeleteChat();
+                  }
+                }}
+                className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer text-left"
+              >
+                <Trash2 size={15} />
+                <span>Delete Chat</span>
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </header>
   );
