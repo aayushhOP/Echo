@@ -309,6 +309,14 @@ export const ChatWindow: FC<ChatWindowProps> = ({
     })
     .map((p) => p.username) || [];
 
+  const isGroupAdmin = useMemo(() => {
+    if (activeConv?.type !== "group" || !activeConv.admins || !myId) return false;
+    return activeConv.admins.some((a: any) => {
+      const adminId = typeof a === "string" ? a : a._id || a.id;
+      return adminId === myId;
+    });
+  }, [activeConv, myId]);
+
   if (!activeConversationId || !activeConv) {
     return (
       <div className="flex-1 h-full flex flex-col items-center justify-center bg-[#171824] text-[#767b93] select-none p-6 text-center">
@@ -401,14 +409,6 @@ export const ChatWindow: FC<ChatWindowProps> = ({
       setIsDeletingSelected(false);
     }
   };
-
-  const isGroupAdmin = useMemo(() => {
-    if (activeConv?.type !== "group" || !activeConv.admins || !myId) return false;
-    return activeConv.admins.some((a: any) => {
-      const adminId = typeof a === "string" ? a : a._id || a.id;
-      return adminId === myId;
-    });
-  }, [activeConv, myId]);
 
   return (
     <div className="flex-1 h-full flex flex-col bg-[#171824] relative min-w-0 overflow-hidden">
