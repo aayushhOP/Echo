@@ -39,6 +39,34 @@ export const registerMessageHandlers = (io: Server, socket: Socket) => {
 
       const { conversationId, content, type, mediaUrl, fileName, fileSize, replyTo } = parsed.data;
 
+      // WhatsApp Rule: Restricted Messaging Mode check
+      const conversation = await Conversation.findById(conversationId);
+      if (!conversation) {
+        if (ack) ack({ success: false, error: "Conversation not found" });
+        return;
+      }
+
+      if (conversation.type === "group" && conversation.settings?.onlyAdminsMessage) {
+        const isParticipantAdmin = conversation.groupParticipants?.some(
+          (p) => p.userId.toString() === userId && p.role === "admin"
+        );
+        const isLegacyAdmin = conversation.admins?.some(
+          (adminId) => adminId.toString() === userId
+        );
+        const isCreator = conversation.creatorId?.toString() === userId;
+
+        if (!isParticipantAdmin && !isLegacyAdmin && !isCreator) {
+          if (ack) {
+            ack({
+              success: false,
+              error: "Only admins can send messages in this group.",
+              code: "ONLY_ADMINS_ALLOWED",
+            });
+          }
+          return;
+        }
+      }
+
       const savedMessage = await messageService.createMessage(userId, {
         conversationId,
         content,
@@ -53,9 +81,6 @@ export const registerMessageHandlers = (io: Server, socket: Socket) => {
       if (ack) {
         ack({ success: true, message: savedMessage });
       }
-
-      const conversation = await Conversation.findById(conversationId);
-      if (!conversation) return;
 
       // If blocked in 1-on-1 direct conversation, STOP HERE. Do not broadcast or deliver to recipient.
       if (savedMessage.isDroppedDueToBlock && conversation.type === "direct") {

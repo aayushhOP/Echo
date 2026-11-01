@@ -24,6 +24,9 @@ export const useSocket = () => {
     removeMessagesFromConversation,
     removeConversationFromList,
     markMessageAsRevoked,
+    updateGroupSettingsInConversation,
+    updateMemberRoleInConversation,
+    removeMemberFromConversationState,
   } = useChatStore();
 
   useEffect(() => {
@@ -182,6 +185,45 @@ export const useSocket = () => {
       if (data?.conversationId && data?.messageId) {
         markMessageAsRevoked(data.conversationId, data.messageId, data.deletedBy, data.deletedAt);
       }
+    });
+
+    // Advanced Group Governance Socket Events
+    newSocket.on("group:settings-updated", (data: { conversationId: string; settings: any }) => {
+      if (data?.conversationId && data?.settings) {
+        updateGroupSettingsInConversation(data.conversationId, data.settings);
+      }
+    });
+
+    newSocket.on("group:member-promoted", (data: { conversationId: string; promotedUserId: string }) => {
+      if (data?.conversationId && data?.promotedUserId) {
+        updateMemberRoleInConversation(data.conversationId, data.promotedUserId, "admin");
+      }
+    });
+
+    newSocket.on("group:member-demoted", (data: { conversationId: string; demotedUserId: string }) => {
+      if (data?.conversationId && data?.demotedUserId) {
+        updateMemberRoleInConversation(data.conversationId, data.demotedUserId, "member");
+      }
+    });
+
+    newSocket.on("group:member-removed", (data: { conversationId: string; removedUserId: string }) => {
+      if (data?.conversationId && data?.removedUserId) {
+        removeMemberFromConversationState(data.conversationId, data.removedUserId);
+        const currentUserId = user?.id || (user as any)?._id;
+        if (data.removedUserId === currentUserId) {
+          removeConversationFromList(data.conversationId);
+        }
+      }
+    });
+
+    newSocket.on("group:member-left", (data: { conversationId: string; leftUserId: string }) => {
+      if (data?.conversationId && data?.leftUserId) {
+        removeMemberFromConversationState(data.conversationId, data.leftUserId);
+      }
+    });
+
+    newSocket.on("group:user-left-admin-alert", (data: { conversationId: string; leftUserId: string; timestamp: string | Date }) => {
+      console.log("[Admin Alert] Member left group silently:", data);
     });
 
     // Explicitly connect

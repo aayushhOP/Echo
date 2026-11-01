@@ -12,10 +12,18 @@ import {
   Users,
   ExternalLink,
   Ban,
+  MoreVertical,
+  LogOut,
+  Link,
+  Settings,
+  Copy,
+  Check,
 } from "lucide-react";
 import { messageApi, MediaItem } from "../../api/messageApi";
 import { userApi } from "../../api/userApi";
-import { Conversation } from "../../types/message";
+import { groupApi } from "../../api/groupApi";
+import { GroupSettingsModal } from "./GroupSettingsModal";
+import { Conversation, IGroupSettings } from "../../types/message";
 import { useChatStore } from "../../store/chatStore";
 import { useAuthStore } from "../../store/authStore";
 
@@ -46,11 +54,121 @@ export const ContactDetailDrawer: React.FC<ContactDetailDrawerProps> = ({
   const [isTogglingPin, setIsTogglingPin] = useState(false);
   const [isTogglingMute, setIsTogglingMute] = useState(false);
   const [isTogglingBlock, setIsTogglingBlock] = useState(false);
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+  const [isUpdatingSettings, setIsUpdatingSettings] = useState(false);
+  const [inviteUrl, setInviteUrl] = useState<string>("");
+  const [isGeneratingInvite, setIsGeneratingInvite] = useState(false);
+  const [hasCopiedInvite, setHasCopiedInvite] = useState(false);
+  const [isLeavingGroup, setIsLeavingGroup] = useState(false);
+  const [activeMenuMemberId, setActiveMenuMemberId] = useState<string | null>(null);
 
   const onlineUsers = useChatStore((state) => state.onlineUsers);
   const currentUser = useAuthStore((state) => state.user);
   const addBlockedUser = useAuthStore((state) => state.addBlockedUser);
   const removeBlockedUser = useAuthStore((state) => state.removeBlockedUser);
+  const updateGroupSettingsInConversation = useChatStore(
+    (state) => state.updateGroupSettingsInConversation
+  );
+  const updateMemberRoleInConversation = useChatStore(
+    (state) => state.updateMemberRoleInConversation
+  );
+  const removeMemberFromConversationState = useChatStore(
+    (state) => state.removeMemberFromConversationState
+  );
+  const removeConversationFromList = useChatStore(
+    (state) => state.removeConversationFromList
+  );
+
+  const isCurrentUserAdmin =
+    conversation.type === "group" &&
+    (conversation.admins?.includes(currentUserId) ||
+      conversation.creatorId === currentUserId ||
+      conversation.groupParticipants?.some(
+        (gp: any) => {
+          const uId = typeof gp.userId === "string" ? gp.userId : gp.userId?._id || gp.userId?.id;
+          return uId === currentUserId && gp.role === "admin";
+        }
+      ));
+
+  const handleUpdateSetting = async (key: keyof IGroupSettings, value: boolean) => {
+    try {
+      setIsUpdatingSettings(true);
+      const res = await groupApi.updateSettings(conversation._id, { [key]: value });
+      if (res.success && res.settings) {
+        updateGroupSettingsInConversation(conversation._id, res.settings);
+      }
+    } catch (err: any) {
+      alert(err.response?.data?.message || err.message || "Failed to update group setting");
+    } finally {
+      setIsUpdatingSettings(false);
+    }
+  };
+
+  const handlePromote = async (targetUserId: string) => {
+    try {
+      setActiveMenuMemberId(null);
+      await groupApi.promoteMember(conversation._id, targetUserId);
+      updateMemberRoleInConversation(conversation._id, targetUserId, "admin");
+    } catch (err: any) {
+      alert(err.response?.data?.message || err.message || "Failed to promote member");
+    }
+  };
+
+  const handleDemote = async (targetUserId: string) => {
+    try {
+      setActiveMenuMemberId(null);
+      await groupApi.demoteMember(conversation._id, targetUserId);
+      updateMemberRoleInConversation(conversation._id, targetUserId, "member");
+    } catch (err: any) {
+      alert(err.response?.data?.message || err.message || "Failed to demote member");
+    }
+  };
+
+  const handleRemove = async (targetUserId: string) => {
+    if (!window.confirm("Are you sure you want to remove this member?")) return;
+    try {
+      setActiveMenuMemberId(null);
+      await groupApi.removeMember(conversation._id, targetUserId);
+      removeMemberFromConversationState(conversation._id, targetUserId);
+    } catch (err: any) {
+      alert(err.response?.data?.message || err.message || "Failed to remove member");
+    }
+  };
+
+  const handleLeaveGroup = async () => {
+    if (!window.confirm("Are you sure you want to leave this group?")) return;
+    try {
+      setIsLeavingGroup(true);
+      await groupApi.leaveGroup(conversation._id);
+      removeConversationFromList(conversation._id);
+      onClose();
+    } catch (err: any) {
+      alert(err.response?.data?.message || err.message || "Failed to leave group");
+    } finally {
+      setIsLeavingGroup(false);
+    }
+  };
+
+  const handleGenerateInvite = async () => {
+    try {
+      setIsGeneratingInvite(true);
+      const res = await groupApi.generateInviteLink(conversation._id);
+      if (res.success) {
+        setInviteUrl(res.inviteUrl);
+      }
+    } catch (err: any) {
+      alert(err.response?.data?.message || err.message || "Failed to generate invite link");
+    } finally {
+      setIsGeneratingInvite(false);
+    }
+  };
+
+  const handleCopyInvite = () => {
+    if (!inviteUrl) return;
+    navigator.clipboard.writeText(inviteUrl);
+    setHasCopiedInvite(true);
+    setTimeout(() => setHasCopiedInvite(false), 2000);
+  };
 
   // Identify display counterpart for 1-on-1 chats
   const counterpart =
@@ -292,6 +410,62 @@ export const ContactDetailDrawer: React.FC<ContactDetailDrawerProps> = ({
           </button>
         </div>
 
+        {/* Group Administration & Settings Section */}
+        {conversation.type === "group" && (
+          <div className="py-3 px-4 border-b border-white/[0.04] space-y-2">
+            {isCurrentUserAdmin && (
+              <button
+                type="button"
+                onClick={() => setIsSettingsModalOpen(true)}
+                className="w-full flex items-center justify-between p-2.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.06] text-white text-xs font-medium transition cursor-pointer"
+              >
+                <div className="flex items-center gap-2.5">
+                  <Settings size={16} className="text-[#0066ff]" />
+                  <span>Group Settings</span>
+                </div>
+                <span className="text-[10px] text-[#767b93]">Configure</span>
+              </button>
+            )}
+
+            {isCurrentUserAdmin && (
+              <div className="p-2.5 rounded-xl bg-white/[0.03] space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-white text-xs font-medium">
+                    <Link size={15} className="text-[#0066ff]" />
+                    <span>Invite via Link</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleGenerateInvite}
+                    disabled={isGeneratingInvite}
+                    className="text-[11px] text-[#0066ff] hover:underline font-semibold cursor-pointer disabled:opacity-50"
+                  >
+                    {inviteUrl ? "Reset Link" : "Create Link"}
+                  </button>
+                </div>
+                {inviteUrl && (
+                  <div className="flex items-center gap-2 pt-1">
+                    <input
+                      type="text"
+                      readOnly
+                      value={inviteUrl}
+                      className="flex-1 bg-[#12131c] text-[11px] text-slate-300 px-2 py-1.5 rounded-lg border border-white/[0.06] focus:outline-none select-all"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleCopyInvite}
+                      className="p-1.5 rounded-lg bg-[#0066ff] text-white hover:bg-[#005ce6] transition cursor-pointer shrink-0"
+                      title="Copy link"
+                    >
+                      {hasCopiedInvite ? <Check size={14} /> : <Copy size={14} />}
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Group Participants (Rendered only for group chats) */}
         {conversation.type === "group" && (
           <div className="py-4 border-b border-white/[0.04]">
@@ -303,17 +477,23 @@ export const ContactDetailDrawer: React.FC<ContactDetailDrawerProps> = ({
             <div className="space-y-1 px-3">
               {conversation.participants.map((member) => {
                 const memberId = (member as any)._id || (member as any).id;
-                const isAdmin = conversation.admins?.some(
-                  (adminId) =>
-                    adminId === memberId ||
-                    (typeof adminId === "object" && (adminId as any)?._id === memberId)
-                );
+                const isAdmin =
+                  conversation.admins?.some(
+                    (adminId) =>
+                      adminId === memberId ||
+                      (typeof adminId === "object" && (adminId as any)?._id === memberId)
+                  ) ||
+                  conversation.groupParticipants?.some((gp: any) => {
+                    const uId = typeof gp.userId === "string" ? gp.userId : gp.userId?._id || gp.userId?.id;
+                    return uId === memberId && gp.role === "admin";
+                  });
                 const isMemberOnline = memberId ? onlineUsers.has(memberId) || !!member.isOnline : false;
+                const isCreator = conversation.creatorId === memberId;
 
                 return (
                   <div
                     key={memberId || member.username}
-                    className="flex items-center justify-between p-2 rounded-lg hover:bg-white/[0.02] transition-colors"
+                    className="flex items-center justify-between p-2 rounded-lg hover:bg-white/[0.02] transition-colors relative"
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
                       <div className="relative">
@@ -346,11 +526,62 @@ export const ContactDetailDrawer: React.FC<ContactDetailDrawerProps> = ({
                         )}
                       </div>
                     </div>
-                    {isAdmin && (
-                      <span className="text-[10px] bg-[#0066ff]/20 text-[#0066ff] border border-[#0066ff]/30 px-1.5 py-0.5 rounded font-medium flex items-center gap-1 shrink-0">
-                        <ShieldCheck size={11} /> Admin
-                      </span>
-                    )}
+
+                    <div className="flex items-center gap-2 shrink-0">
+                      {isAdmin && (
+                        <span className="text-[10px] bg-[#0066ff]/20 text-[#0066ff] border border-[#0066ff]/30 px-1.5 py-0.5 rounded font-medium flex items-center gap-1 shrink-0">
+                          <ShieldCheck size={11} /> Admin
+                        </span>
+                      )}
+
+                      {/* Participant Action Context Menu */}
+                      {isCurrentUserAdmin && memberId !== currentUserId && (
+                        <div className="relative">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setActiveMenuMemberId(activeMenuMemberId === memberId ? null : memberId)
+                            }
+                            className="p-1 text-slate-400 hover:text-white rounded hover:bg-white/[0.06] transition cursor-pointer"
+                            title="Member options"
+                          >
+                            <MoreVertical size={14} />
+                          </button>
+
+                          {activeMenuMemberId === memberId && (
+                            <div className="flex flex-col absolute right-0 top-6 w-36 bg-[#13141d] border border-white/[0.08] rounded-xl shadow-xl py-1 z-30 animate-in fade-in zoom-in-95 duration-150">
+                              {!isAdmin ? (
+                                <button
+                                  type="button"
+                                  onClick={() => handlePromote(memberId)}
+                                  className="px-3 py-1.5 text-left text-xs text-slate-200 hover:bg-white/[0.05] cursor-pointer"
+                                >
+                                  Make Admin
+                                </button>
+                              ) : !isCreator ? (
+                                <button
+                                  type="button"
+                                  onClick={() => handleDemote(memberId)}
+                                  className="px-3 py-1.5 text-left text-xs text-slate-200 hover:bg-white/[0.05] cursor-pointer"
+                                >
+                                  Dismiss as Admin
+                                </button>
+                              ) : null}
+
+                              {!isCreator && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemove(memberId)}
+                                  className="px-3 py-1.5 text-left text-xs text-rose-400 hover:bg-rose-500/10 cursor-pointer"
+                                >
+                                  Remove from Group
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 );
               })}
@@ -467,6 +698,20 @@ export const ContactDetailDrawer: React.FC<ContactDetailDrawerProps> = ({
           )}
         </div>
 
+        {/* Danger zone: Leave Group (for group conversations) */}
+        {conversation.type === "group" && (
+          <div className="mt-auto p-4 border-t border-slate-800/60 bg-[#12131c]">
+            <button
+              onClick={handleLeaveGroup}
+              disabled={isLeavingGroup}
+              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium transition-colors bg-rose-500/10 text-rose-500 hover:bg-rose-500/20 disabled:opacity-50 cursor-pointer"
+            >
+              <LogOut size={16} />
+              <span>{isLeavingGroup ? "Leaving Group..." : "Exit Group"}</span>
+            </button>
+          </div>
+        )}
+
         {/* Danger zone for 1-on-1 direct conversations */}
         {conversation.type === "direct" && counterpartId && (
           <div className="mt-auto p-4 border-t border-slate-800/60 bg-[#12131c]">
@@ -491,6 +736,24 @@ export const ContactDetailDrawer: React.FC<ContactDetailDrawerProps> = ({
           </div>
         )}
       </div>
+
+      {/* Group Settings Modal */}
+      {conversation.type === "group" && (
+        <GroupSettingsModal
+          isOpen={isSettingsModalOpen}
+          onClose={() => setIsSettingsModalOpen(false)}
+          settings={
+            conversation.settings || {
+              onlyAdminsMessage: false,
+              onlyAdminsEditInfo: false,
+              onlyAdminsAddMembers: false,
+              requireAdminApproval: false,
+            }
+          }
+          onUpdateSetting={handleUpdateSetting}
+          isUpdating={isUpdatingSettings}
+        />
+      )}
     </aside>
   );
 };

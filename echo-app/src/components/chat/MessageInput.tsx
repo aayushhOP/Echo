@@ -10,6 +10,7 @@ import {
   Image as ImageIcon,
   Camera,
   Ban,
+  Lock,
 } from "lucide-react";
 import EmojiPicker, { Theme, EmojiClickData } from "emoji-picker-react";
 import { useTypingIndicator } from "../../hooks/useTypingIndicator";
@@ -26,6 +27,9 @@ interface MessageInputProps {
   disabled?: boolean;
   isBlocked?: boolean;
   onUnblock?: () => void;
+  isGroup?: boolean;
+  onlyAdminsMessage?: boolean;
+  isCurrentUserAdmin?: boolean;
 }
 
 export const MessageInput: FC<MessageInputProps> = ({
@@ -34,6 +38,9 @@ export const MessageInput: FC<MessageInputProps> = ({
   disabled = false,
   isBlocked = false,
   onUnblock,
+  isGroup = false,
+  onlyAdminsMessage = false,
+  isCurrentUserAdmin = false,
 }) => {
   const [content, setContent] = useState("");
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
@@ -311,6 +318,18 @@ export const MessageInput: FC<MessageInputProps> = ({
   };
 
   const canSend = !disabled && !isUploading && (content.trim().length > 0 || !!pendingFile);
+
+  // WhatsApp Rule: Show read-only banner if user is not admin during restricted mode
+  if (isGroup && onlyAdminsMessage && !isCurrentUserAdmin) {
+    return (
+      <div className="px-4 md:px-8 lg:px-12 pt-1.5 pb-3 bg-transparent shrink-0 relative z-10">
+        <div className="h-14 bg-[#13141d]/90 backdrop-blur-md border border-white/[0.08] rounded-2xl flex items-center justify-center gap-2 px-4 text-xs text-slate-400 shadow-xl">
+          <Lock size={14} className="text-slate-500" />
+          <span>Only admins can send messages</span>
+        </div>
+      </div>
+    );
+  }
 
   if (isBlocked) {
     return (

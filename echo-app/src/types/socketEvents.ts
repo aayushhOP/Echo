@@ -50,6 +50,12 @@ export interface ServerToClientEvents {
     deletedBy?: any;
     deletedAt?: string;
   }) => void;
+  "group:settings-updated": (data: { conversationId: string; settings: any }) => void;
+  "group:member-promoted": (data: { conversationId: string; promotedUserId: string; reason?: string }) => void;
+  "group:member-demoted": (data: { conversationId: string; demotedUserId: string }) => void;
+  "group:member-removed": (data: { conversationId: string; removedUserId: string }) => void;
+  "group:member-left": (data: { conversationId: string; leftUserId: string }) => void;
+  "group:user-left-admin-alert": (data: { conversationId: string; leftUserId: string; timestamp: string | Date }) => void;
 }
 
 export interface ClientToServerEvents {

@@ -10,6 +10,7 @@ import { healthRoutes } from "./routes/healthRoutes";
 import { webhookRoutes } from "./routes/webhookRoutes";
 import { userRoutes } from "./routes/userRoutes";
 import { conversationRoutes } from "./routes/conversationRoutes";
+import { groupRoutes } from "./routes/groupRoutes";
 import { messageRoutes } from "./routes/messageRoutes";
 import { errorHandler } from "./middlewares/errorHandler";
 
@@ -62,6 +63,7 @@ export const createApp = (): Application => {
   // API Routes
   app.use("/api/users", userRoutes);
   app.use("/api/conversations", conversationRoutes);
+  app.use("/api/groups", groupRoutes);
   app.use("/api/messages", messageRoutes);
 
   // Global Error Handler

@@ -52,6 +52,21 @@ export const createMessage = async (
     throw new AppError("Access denied: You are not a participant in this conversation", 403);
   }
 
+  // Check Restricted Messaging Mode: if only admins can message, reject non-admins
+  if (conversation.type === "group" && conversation.settings?.onlyAdminsMessage) {
+    const isParticipantAdmin = conversation.groupParticipants?.some(
+      (p) => p.userId.toString() === userId && p.role === "admin"
+    );
+    const isLegacyAdmin = conversation.admins?.some(
+      (adminId) => adminId.toString() === userId
+    );
+    const isCreator = conversation.creatorId?.toString() === userId;
+
+    if (!isParticipantAdmin && !isLegacyAdmin && !isCreator) {
+      throw new AppError("Only admins can send messages in this group.", 403);
+    }
+  }
+
   let isBlocked = false;
   // Block checks for direct 1-on-1 conversations
   // WhatsApp dynamics: sender is allowed to send; message is stored as 'sent' with isDroppedDueToBlock=true,

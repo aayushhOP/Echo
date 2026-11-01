@@ -50,6 +50,25 @@ export interface Message {
   updatedAt?: string;
 }
 
+export interface IGroupParticipant {
+  userId: string | ConversationParticipant;
+  role: "admin" | "member";
+  joinedAt: string;
+}
+
+export interface IPastParticipant {
+  userId: string | ConversationParticipant;
+  leftAt: string;
+  reason: "left" | "removed";
+}
+
+export interface IGroupSettings {
+  onlyAdminsMessage: boolean;
+  onlyAdminsEditInfo: boolean;
+  onlyAdminsAddMembers: boolean;
+  requireAdminApproval: boolean;
+}
+
 export interface ConversationParticipant {
   _id: string;
   id?: string;
@@ -67,9 +86,18 @@ export interface Conversation {
   _id: string;
   type: "direct" | "group";
   groupName?: string;
+  name?: string;
+  description?: string;
   groupAvatar?: string;
+  avatarUrl?: string;
+  creatorId?: string;
   participants: (User | ConversationParticipant)[];
   admins?: string[];
+  groupParticipants?: IGroupParticipant[];
+  pastParticipants?: IPastParticipant[];
+  pendingRequests?: string[];
+  inviteToken?: string;
+  settings?: IGroupSettings;
   lastMessage?: Message;
   isPinned?: boolean;
   isMuted?: boolean;

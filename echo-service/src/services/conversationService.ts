@@ -229,12 +229,29 @@ export const createConversation = async (
     }
 
     const participantObjectIds = uniqueIds.map((id) => new Types.ObjectId(id));
+    const now = new Date();
+    const groupParticipants = participantObjectIds.map((pId) => ({
+      userId: pId,
+      role: pId.toString() === userId ? ("admin" as const) : ("member" as const),
+      joinedAt: now,
+    }));
 
     const newGroup = await Conversation.create({
       type: "group",
       groupName: dto.groupName.trim(),
+      name: dto.groupName.trim(),
+      creatorId: currentUserId,
       participants: participantObjectIds,
       admins: [currentUserId],
+      groupParticipants,
+      pastParticipants: [],
+      pendingRequests: [],
+      settings: {
+        onlyAdminsMessage: false,
+        onlyAdminsEditInfo: false,
+        onlyAdminsAddMembers: false,
+        requireAdminApproval: false,
+      },
     });
 
     const populated = await Conversation.findById(newGroup._id)
@@ -266,27 +283,34 @@ export const updateConversation = async (
   }
 
   // Check if current user is an admin or participant
-  const isAdmin = conversation.admins?.some((adminId) => adminId.toString() === userId);
+  const isAdmin =
+    conversation.groupParticipants?.some((p) => p.userId.toString() === userId && p.role === "admin") ||
+    conversation.admins?.some((adminId) => adminId.toString() === userId) ||
+    conversation.creatorId?.toString() === userId;
   const isParticipant = conversation.participants.some((pid) => pid.toString() === userId);
 
   if (!isParticipant) {
     throw new AppError("Access denied: You are not a member of this conversation", 403);
   }
 
-  // Only admins can modify group details
-  if (!isAdmin) {
-    throw new AppError("Only group admins can update group settings", 403);
-  }
-
+  // Only admins can modify group details if onlyAdminsEditInfo or modifying restricted settings
   if (dto.groupName !== undefined) {
+    if (conversation.settings?.onlyAdminsEditInfo && !isAdmin) {
+      throw new AppError("Only group admins can edit group info", 403);
+    }
     if (dto.groupName.trim().length === 0) {
       throw new AppError("groupName cannot be empty", 400);
     }
     conversation.groupName = dto.groupName.trim();
+    conversation.name = dto.groupName.trim();
   }
 
   const toAdd = dto.addParticipants || dto.addParticipantIds;
   if (toAdd && toAdd.length > 0) {
+    if (conversation.settings?.onlyAdminsAddMembers && !isAdmin) {
+      throw new AppError("Only group admins can add members", 403);
+    }
+
     for (const pid of toAdd) {
       if (!Types.ObjectId.isValid(pid)) {
         throw new AppError(`Invalid participant ID: ${pid}`, 400);
@@ -302,9 +326,20 @@ export const updateConversation = async (
       conversation.participants.map((id) => id.toString())
     );
 
+    if (!conversation.groupParticipants) {
+      conversation.groupParticipants = [];
+    }
+
+    const now = new Date();
     for (const pid of toAdd) {
       if (!currentParticipantSet.has(pid)) {
-        conversation.participants.push(new Types.ObjectId(pid));
+        const objId = new Types.ObjectId(pid);
+        conversation.participants.push(objId);
+        conversation.groupParticipants.push({
+          userId: objId,
+          role: "member",
+          joinedAt: now,
+        });
         currentParticipantSet.add(pid);
       }
     }
@@ -312,16 +347,43 @@ export const updateConversation = async (
 
   const toRemove = dto.removeParticipants || dto.removeParticipantIds;
   if (toRemove && toRemove.length > 0) {
+    if (!isAdmin) {
+      throw new AppError("Only admins can remove members", 403);
+    }
+
+    // Shield creator from being removed
+    if (conversation.creatorId && toRemove.includes(conversation.creatorId.toString())) {
+      throw new AppError("The group creator cannot be removed", 403);
+    }
+
     const toRemoveSet = new Set(toRemove);
 
     conversation.participants = conversation.participants.filter(
       (pid) => !toRemoveSet.has(pid.toString())
     );
 
+    if (conversation.groupParticipants) {
+      conversation.groupParticipants = conversation.groupParticipants.filter(
+        (p) => !toRemoveSet.has(p.userId.toString())
+      );
+    }
+
     if (conversation.admins) {
       conversation.admins = conversation.admins.filter(
         (aid) => !toRemoveSet.has(aid.toString())
       );
+    }
+
+    if (!conversation.pastParticipants) {
+      conversation.pastParticipants = [];
+    }
+    const now = new Date();
+    for (const rid of toRemove) {
+      conversation.pastParticipants.push({
+        userId: new Types.ObjectId(rid),
+        leftAt: now,
+        reason: "removed",
+      });
     }
   }
 

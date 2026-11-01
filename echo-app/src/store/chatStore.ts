@@ -66,6 +66,9 @@ interface ChatState {
   setUserOnline: (userId: string, isOnline: boolean, lastSeen?: string) => void;
   setOnlineUsers: (userIds: string[]) => void;
   setMultipleUsersOnline: (userIds: string[]) => void;
+  updateGroupSettingsInConversation: (conversationId: string, settings: any) => void;
+  updateMemberRoleInConversation: (conversationId: string, userId: string, role: "admin" | "member") => void;
+  removeMemberFromConversationState: (conversationId: string, userId: string) => void;
   resetChat: () => void;
 }
 
@@ -690,6 +693,70 @@ export const useChatStore = create<ChatState>((set, get) => ({
       }
       return { onlineUsers: updated };
     });
+  },
+
+  updateGroupSettingsInConversation: (conversationId, settings) => {
+    set((state) => ({
+      conversations: state.conversations.map((c) =>
+        c._id === conversationId ? { ...c, settings: { ...c.settings, ...settings } } : c
+      ),
+    }));
+  },
+
+  updateMemberRoleInConversation: (conversationId, userId, role) => {
+    set((state) => ({
+      conversations: state.conversations.map((c) => {
+        if (c._id !== conversationId) return c;
+
+        const updatedGParticipants = (c.groupParticipants || []).map((gp) => {
+          const uId = typeof gp.userId === "string" ? gp.userId : (gp.userId as any)?._id || (gp.userId as any)?.id;
+          if (uId === userId) {
+            return { ...gp, role };
+          }
+          return gp;
+        });
+
+        let updatedAdmins = c.admins ? [...c.admins] : [];
+        if (role === "admin" && !updatedAdmins.includes(userId)) {
+          updatedAdmins.push(userId);
+        } else if (role === "member") {
+          updatedAdmins = updatedAdmins.filter((a) => a !== userId);
+        }
+
+        return {
+          ...c,
+          admins: updatedAdmins,
+          groupParticipants: updatedGParticipants,
+        };
+      }),
+    }));
+  },
+
+  removeMemberFromConversationState: (conversationId, userId) => {
+    set((state) => ({
+      conversations: state.conversations.map((c) => {
+        if (c._id !== conversationId) return c;
+
+        const updatedParticipants = c.participants.filter((p: any) => {
+          const pId = p._id || p.id;
+          return pId !== userId;
+        });
+
+        const updatedGParticipants = (c.groupParticipants || []).filter((gp) => {
+          const uId = typeof gp.userId === "string" ? gp.userId : (gp.userId as any)?._id || (gp.userId as any)?.id;
+          return uId !== userId;
+        });
+
+        const updatedAdmins = (c.admins || []).filter((a) => a !== userId);
+
+        return {
+          ...c,
+          participants: updatedParticipants,
+          groupParticipants: updatedGParticipants,
+          admins: updatedAdmins,
+        };
+      }),
+    }));
   },
 
   resetChat: () => {

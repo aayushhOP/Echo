@@ -319,11 +319,17 @@ export const ChatWindow: FC<ChatWindowProps> = ({
     .map((p) => p.username) || [];
 
   const isGroupAdmin = useMemo(() => {
-    if (activeConv?.type !== "group" || !activeConv.admins || !myId) return false;
-    return activeConv.admins.some((a: any) => {
+    if (activeConv?.type !== "group" || !myId) return false;
+    const isLegacyAdmin = activeConv.admins?.some((a: any) => {
       const adminId = typeof a === "string" ? a : a._id || a.id;
       return adminId === myId;
     });
+    const isGroupParticipantAdmin = activeConv.groupParticipants?.some((gp: any) => {
+      const pId = typeof gp.userId === "string" ? gp.userId : gp.userId?._id || gp.userId?.id;
+      return pId === myId && gp.role === "admin";
+    });
+    const isCreator = activeConv.creatorId === myId;
+    return !!(isLegacyAdmin || isGroupParticipantAdmin || isCreator);
   }, [activeConv, myId]);
 
   if (!activeConversationId || !activeConv) {
@@ -529,6 +535,9 @@ export const ChatWindow: FC<ChatWindowProps> = ({
         onSendMessage={handleSendMessage}
         isBlocked={isDirectBlocked}
         onUnblock={handleUnblockCounterpart}
+        isGroup={activeConv?.type === "group"}
+        onlyAdminsMessage={!!activeConv?.settings?.onlyAdminsMessage}
+        isCurrentUserAdmin={isGroupAdmin}
       />
 
       {/* Mobile-only Undo Snackbar when Chat List panel is hidden */}
