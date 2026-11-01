@@ -1,5 +1,5 @@
 import { FC, memo, useState, useRef, useEffect } from "react";
-import { Clock, FileText, Download, Smile, Plus, X, ImageOff, Ban, MoreHorizontal } from "lucide-react";
+import { Clock, FileText, Download, Smile, Plus, X, ImageOff, Ban, MoreHorizontal, Check } from "lucide-react";
 import { Message } from "../../types/message";
 import { useAuthStore } from "../../store/authStore";
 import { formatTime } from "../../utils/date";
@@ -78,36 +78,6 @@ const MessageBubbleComponent: FC<MessageBubbleProps> = ({
     ? formatTime(message.createdAt)
     : new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
-  // 1. Tombstone Rendering (Deleted for Everyone)
-  if (message.isDeletedForEveryone) {
-    let tombstoneText = "This message was deleted";
-    if (isOwn && message.deletedBy?.role === "sender") {
-      tombstoneText = "You deleted this message";
-    } else if (message.deletedBy?.role === "admin") {
-      tombstoneText = `This message was deleted by admin ${
-        message.deletedBy.userId === currentUserId ? "you" : message.deletedBy.username
-      }`;
-    }
-
-    return (
-      <div className={`flex ${isOwn ? "justify-end" : "justify-start"} my-1.5 select-text`}>
-        <div
-          className={`flex items-center gap-2 max-w-[85%] md:max-w-[70%] rounded-2xl px-3.5 py-2 text-xs italic ${
-            isOwn
-              ? "bg-[#171824]/60 text-slate-400 border border-white/[0.04] rounded-br-none"
-              : "bg-[#13141d]/70 text-slate-500 border border-white/[0.03] rounded-bl-none"
-          }`}
-        >
-          <Ban size={14} className="opacity-70 flex-shrink-0" />
-          <span>{tombstoneText}</span>
-          <span className="text-[10px] opacity-50 not-italic ml-2">
-            {formattedTime}
-          </span>
-        </div>
-      </div>
-    );
-  }
-
   // Close menus on outside click
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -127,6 +97,74 @@ const MessageBubbleComponent: FC<MessageBubbleProps> = ({
     setShowQuickTray(false);
     setShowFullPicker(false);
   };
+
+  // 1. Tombstone Rendering (Deleted for Everyone)
+  if (message.isDeletedForEveryone) {
+    let tombstoneText = "This message was deleted";
+    if (isOwn && message.deletedBy?.role === "sender") {
+      tombstoneText = "You deleted this message";
+    } else if (message.deletedBy?.role === "admin") {
+      tombstoneText = `This message was deleted by admin ${
+        message.deletedBy.userId === currentUserId ? "you" : message.deletedBy.username
+      }`;
+    }
+
+    return (
+      <div
+        onClick={() => {
+          if (isSelectionMode && onToggleSelect) {
+            onToggleSelect(message._id);
+          }
+        }}
+        className={`flex ${isOwn ? "justify-end" : "justify-start"} my-1.5 select-text ${
+          isSelectionMode ? "cursor-pointer" : ""
+        }`}
+      >
+        <div
+          className={`relative flex items-center gap-2 max-w-[95%] md:max-w-[85%] lg:max-w-[75%] ${
+            isOwn ? "flex-row-reverse" : "flex-row"
+          }`}
+        >
+          {/* Selection Checkbox */}
+          {isSelectionMode && (
+            <div
+              onClick={(e) => {
+                e.stopPropagation();
+                if (onToggleSelect) {
+                  onToggleSelect(message._id);
+                }
+              }}
+              className="shrink-0 flex items-center justify-center p-1 cursor-pointer"
+            >
+              <div
+                className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${
+                  isSelected
+                    ? "bg-[#0066ff] border-[#0066ff] text-white"
+                    : "bg-transparent border-[#767b93] hover:border-slate-300"
+                }`}
+              >
+                {isSelected && <Check size={11} strokeWidth={3} />}
+              </div>
+            </div>
+          )}
+
+          <div
+            className={`flex items-center gap-2 rounded-2xl px-3.5 py-2 text-xs italic ${
+              isOwn
+                ? "bg-[#171824]/60 text-slate-400 border border-white/[0.04] rounded-br-none"
+                : "bg-[#13141d]/70 text-slate-500 border border-white/[0.03] rounded-bl-none"
+            }`}
+          >
+            <Ban size={14} className="opacity-70 flex-shrink-0" />
+            <span>{tombstoneText}</span>
+            <span className="text-[10px] opacity-50 not-italic ml-2">
+              {formattedTime}
+            </span>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -154,17 +192,24 @@ const MessageBubbleComponent: FC<MessageBubbleProps> = ({
       >
         {/* Selection Checkbox */}
         {isSelectionMode && (
-          <div className="shrink-0 flex items-center justify-center p-1">
-            <input
-              type="checkbox"
-              checked={isSelected}
-              onChange={() => {
-                if (onToggleSelect) {
-                  onToggleSelect(message._id);
-                }
-              }}
-              className="w-4 h-4 rounded border-white/20 bg-slate-900 text-[#0066ff] focus:ring-0 focus:ring-offset-0 cursor-pointer accent-[#0066ff]"
-            />
+          <div
+            onClick={(e) => {
+              e.stopPropagation();
+              if (onToggleSelect) {
+                onToggleSelect(message._id);
+              }
+            }}
+            className="shrink-0 flex items-center justify-center p-1 cursor-pointer"
+          >
+            <div
+              className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${
+                isSelected
+                  ? "bg-[#0066ff] border-[#0066ff] text-white"
+                  : "bg-transparent border-[#767b93] hover:border-slate-300"
+              }`}
+            >
+              {isSelected && <Check size={11} strokeWidth={3} />}
+            </div>
           </div>
         )}
 

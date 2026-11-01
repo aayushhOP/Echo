@@ -21,8 +21,13 @@ export const messagePopulation = [
 
 export const getConversationsForUser = async (userId: string) => {
   const userObjectId = new Types.ObjectId(userId);
-  const currentUser = await User.findById(userId).select("blockedUsers");
+  const currentUser = await User.findById(userId).select("blockedUsers clerkId");
   const myBlockedSet = new Set((currentUser?.blockedUsers || []).map((id) => id.toString()));
+
+  const userDeleteIdentifiers = [userId];
+  if (currentUser?.clerkId) {
+    userDeleteIdentifiers.push(currentUser.clerkId);
+  }
 
   const conversations = await Conversation.find({
     participants: userObjectId,
@@ -39,6 +44,27 @@ export const getConversationsForUser = async (userId: string) => {
   const results = await Promise.all(
     conversations.map(async (conv) => {
       const convObj: any = conv.toObject();
+
+      // If the populated lastMessage is deleted for this user, dynamically compute the latest remaining message
+      if (
+        convObj.lastMessage &&
+        Array.isArray(convObj.lastMessage.deletedForUsers) &&
+        convObj.lastMessage.deletedForUsers.some((id: string) => userDeleteIdentifiers.includes(id))
+      ) {
+        const latestVisibleMessage = await Message.findOne({
+          conversationId: conv._id,
+          deletedForUsers: { $nin: userDeleteIdentifiers },
+          $or: [
+            { isDroppedDueToBlock: { $ne: true } },
+            { senderId: userObjectId },
+          ],
+        })
+          .sort({ createdAt: -1 })
+          .populate("senderId", "_id username avatarUrl")
+          .lean();
+
+        convObj.lastMessage = latestVisibleMessage || undefined;
+      }
 
       // Mask isOnline / lastSeen of blocked participants for the blocker
       if (Array.isArray(convObj.participants)) {

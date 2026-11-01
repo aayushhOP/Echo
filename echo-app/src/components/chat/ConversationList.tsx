@@ -5,6 +5,7 @@ import { useChatStore } from "../../store/chatStore";
 import { useAuthStore } from "../../store/authStore";
 import { Avatar } from "../common/Avatar";
 import { CreateChatModal } from "./CreateChatModal";
+import { UndoSnackbar } from "./UndoSnackbar";
 import { formatTime } from "../../utils/date";
 import { Plus, Users, MessageSquare, Loader2, Search } from "lucide-react";
 import { cn } from "../../utils/cn";
@@ -20,7 +21,29 @@ export const ConversationList: FC = () => {
     activeConversationId,
     setActiveConversationId,
     onlineUsers,
+    undoDeleteState,
+    setUndoDeleteState,
+    restoreMessageForMe,
   } = useChatStore();
+
+  const handleUndoDeleteForMe = async (messageId: string) => {
+    if (!undoDeleteState) return;
+    const { conversationId, message } = undoDeleteState;
+    setUndoDeleteState(null);
+
+    if (message) {
+      restoreMessageForMe(conversationId, message);
+    }
+
+    try {
+      const res = await messageApi.undoDeleteForMe(messageId);
+      if (res.success && res.message) {
+        restoreMessageForMe(conversationId, res.message);
+      }
+    } catch (err) {
+      console.error("Failed to undo delete for me:", err);
+    }
+  };
 
   const { isLoading } = useQuery({
     queryKey: ["conversations"],
@@ -55,7 +78,7 @@ export const ConversationList: FC = () => {
   }, [conversations, searchQuery, currentUser]);
 
   return (
-    <aside className="w-full h-full flex flex-col bg-[#161722] border-r border-white/[0.04] shrink-0 select-none">
+    <aside className="w-full h-full flex flex-col bg-[#161722] border-r border-white/[0.04] shrink-0 select-none relative">
       {/* Header with Title and + New Chat button */}
       <div className="p-4 border-b border-white/[0.04] flex items-center justify-between">
         <div>
@@ -141,16 +164,29 @@ export const ConversationList: FC = () => {
           let lastMsgSnippet = "No messages yet";
           if (lastMsg) {
             let bodyText = "";
-            if (lastMsg.type === "image") {
-              bodyText = "📷 Photo";
-            } else if (lastMsg.type === "file") {
-              bodyText = `📎 ${lastMsg.fileName || "Attachment"}`;
+            if (lastMsg.isDeletedForEveryone) {
+              if (isSentByMe && lastMsg.deletedBy?.role === "sender") {
+                bodyText = "You deleted this message";
+              } else if (lastMsg.deletedBy?.role === "admin") {
+                bodyText = `This message was deleted by admin ${
+                  lastMsg.deletedBy.userId === myId ? "you" : lastMsg.deletedBy.username
+                }`;
+              } else {
+                bodyText = "This message was deleted";
+              }
+              lastMsgSnippet = bodyText;
             } else {
-              bodyText = lastMsg.content;
-            }
+              if (lastMsg.type === "image") {
+                bodyText = "📷 Photo";
+              } else if (lastMsg.type === "file") {
+                bodyText = `📎 ${lastMsg.fileName || "Attachment"}`;
+              } else {
+                bodyText = lastMsg.content;
+              }
 
-            // WhatsApp Desktop convention: prefix with "You: " if message is from the logged in user
-            lastMsgSnippet = isSentByMe ? `You: ${bodyText}` : bodyText;
+              // WhatsApp Desktop convention: prefix with "You: " if message is from the logged in user
+              lastMsgSnippet = isSentByMe ? `You: ${bodyText}` : bodyText;
+            }
           }
 
           const lastMsgTime = lastMsg?.createdAt ? formatTime(lastMsg.createdAt) : "";
@@ -277,6 +313,13 @@ export const ConversationList: FC = () => {
       <CreateChatModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
+      />
+
+      {/* WhatsApp-style Undo Snackbar at bottom of Chat List panel */}
+      <UndoSnackbar
+        messageId={undoDeleteState?.messageId || null}
+        onUndo={handleUndoDeleteForMe}
+        onDismiss={() => setUndoDeleteState(null)}
       />
     </aside>
   );

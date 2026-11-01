@@ -2,6 +2,12 @@ import { create } from "zustand";
 import { Conversation, Message, IReaction } from "../types/message";
 import { useAuthStore } from "./authStore";
 
+export interface UndoDeleteState {
+  messageId: string;
+  conversationId: string;
+  message?: Message;
+}
+
 interface ChatState {
   activeConversationId: string | null;
   conversations: Conversation[];
@@ -9,6 +15,10 @@ interface ChatState {
   typingUsers: Record<string, Record<string, boolean>>; // conversationId -> { userId: isTyping }
   onlineUsers: Set<string>; // set of online userIds
   userLastSeen: Record<string, string>; // userId -> ISO timestamp
+
+  // Undo delete for me snackbar state
+  undoDeleteState: UndoDeleteState | null;
+  setUndoDeleteState: (state: UndoDeleteState | null) => void;
 
   // Advanced Header Actions state
   isContactDrawerOpen: boolean;
@@ -66,6 +76,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
   typingUsers: {},
   onlineUsers: new Set<string>(),
   userLastSeen: {},
+
+  undoDeleteState: null,
+  setUndoDeleteState: (undoDeleteState) => set({ undoDeleteState }),
 
   isContactDrawerOpen: false,
   isSearchOpen: false,
@@ -505,11 +518,33 @@ export const useChatStore = create<ChatState>((set, get) => ({
         (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
       );
 
+      const latestMsg = updated[updated.length - 1];
+
+      const updatedConversations = state.conversations.map((c) => {
+        if (c._id === conversationId) {
+          const currentLastCreatedAt = c.lastMessage?.createdAt
+            ? new Date(c.lastMessage.createdAt).getTime()
+            : 0;
+          const restoredCreatedAt = latestMsg?.createdAt
+            ? new Date(latestMsg.createdAt).getTime()
+            : 0;
+
+          if (restoredCreatedAt >= currentLastCreatedAt) {
+            return {
+              ...c,
+              lastMessage: latestMsg,
+            };
+          }
+        }
+        return c;
+      });
+
       return {
         messages: {
           ...state.messages,
           [conversationId]: updated,
         },
+        conversations: updatedConversations,
       };
     });
   },

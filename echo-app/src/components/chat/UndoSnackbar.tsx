@@ -6,6 +6,7 @@ interface UndoSnackbarProps {
   onUndo: (messageId: string) => void;
   onDismiss: () => void;
   durationMs?: number;
+  className?: string;
 }
 
 export const UndoSnackbar: FC<UndoSnackbarProps> = ({
@@ -13,11 +14,15 @@ export const UndoSnackbar: FC<UndoSnackbarProps> = ({
   onUndo,
   onDismiss,
   durationMs = 5000,
+  className,
 }) => {
   const [progress, setProgress] = useState(100);
 
   useEffect(() => {
-    if (!messageId) return;
+    if (!messageId) {
+      setProgress(100);
+      return;
+    }
 
     const startTime = Date.now();
     const interval = setInterval(() => {
@@ -37,18 +42,23 @@ export const UndoSnackbar: FC<UndoSnackbarProps> = ({
   if (!messageId) return null;
 
   return (
-    <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-40 flex flex-col overflow-hidden rounded-xl bg-[#171824] border border-white/[0.08] shadow-2xl animate-in slide-in-from-bottom duration-200">
-      <div className="flex items-center gap-4 px-4 py-2.5">
-        <span className="text-xs text-slate-300">Message deleted for you</span>
+    <div
+      className={
+        className ||
+        "absolute bottom-3 left-1/2 -translate-x-1/2 w-max max-w-[85%] z-40 flex flex-col overflow-hidden rounded-xl bg-[#1c1f2e] border border-white/[0.08] shadow-2xl shadow-black/80 animate-in fade-in slide-in-from-bottom-2 duration-200"
+      }
+    >
+      <div className="flex items-center justify-between gap-5 px-3.5 py-2">
+        <span className="text-xs text-slate-200 font-medium whitespace-nowrap">Message deleted for you</span>
         <button
           type="button"
           onClick={() => {
             onUndo(messageId);
             onDismiss();
           }}
-          className="flex items-center gap-1.5 text-xs font-semibold text-[#0066ff] hover:text-[#0052cc] transition-colors cursor-pointer"
+          className="flex items-center gap-1 text-xs font-semibold text-[#0066ff] hover:text-[#38bdf8] transition-colors cursor-pointer shrink-0 uppercase tracking-wide"
         >
-          <Undo2 size={14} />
+          <Undo2 size={13} />
           <span>Undo</span>
         </button>
       </div>

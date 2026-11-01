@@ -50,6 +50,8 @@ export const ChatWindow: FC<ChatWindowProps> = ({
     restoreMessageForMe,
     markMessageAsRevoked,
     searchQuery,
+    undoDeleteState,
+    setUndoDeleteState,
   } = useChatStore();
 
   const { sendMessage, reactMessage, markAsRead, emitMessagesDeleted } = useSocket();
@@ -58,7 +60,6 @@ export const ChatWindow: FC<ChatWindowProps> = ({
   const [hasMore, setHasMore] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [isDeletingSelected, setIsDeletingSelected] = useState(false);
-  const [undoMessageId, setUndoMessageId] = useState<string | null>(null);
   const recentlyDeletedMessagesRef = useRef<Map<string, Message>>(new Map());
 
   const activeConv = conversations.find((c) => c._id === activeConversationId);
@@ -145,7 +146,11 @@ export const ChatWindow: FC<ChatWindowProps> = ({
 
     // Optimistically remove from view
     removeMessageForMe(activeConversationId, messageId);
-    setUndoMessageId(messageId);
+    setUndoDeleteState({
+      messageId,
+      conversationId: activeConversationId,
+      message: targetMsg,
+    });
 
     try {
       await messageApi.deleteForMe(messageId);
@@ -155,23 +160,27 @@ export const ChatWindow: FC<ChatWindowProps> = ({
       if (targetMsg) {
         restoreMessageForMe(activeConversationId, targetMsg);
       }
-      setUndoMessageId(null);
+      setUndoDeleteState(null);
       alert(err.response?.data?.message || err.message || "Failed to delete message");
     }
   };
 
   const handleUndoDeleteForMe = async (messageId: string) => {
-    if (!activeConversationId) return;
-    const savedMsg = recentlyDeletedMessagesRef.current.get(messageId);
+    const stateToUndo = undoDeleteState;
+    setUndoDeleteState(null);
+
+    const convId = stateToUndo?.conversationId || activeConversationId;
+    if (!convId) return;
+
+    const savedMsg = stateToUndo?.message || recentlyDeletedMessagesRef.current.get(messageId);
     if (savedMsg) {
-      restoreMessageForMe(activeConversationId, savedMsg);
+      restoreMessageForMe(convId, savedMsg);
     }
-    setUndoMessageId(null);
 
     try {
       const res = await messageApi.undoDeleteForMe(messageId);
       if (res.success && res.message) {
-        restoreMessageForMe(activeConversationId, res.message);
+        restoreMessageForMe(convId, res.message);
       }
     } catch (err: any) {
       console.error("Failed to undo delete for me:", err);
@@ -522,17 +531,15 @@ export const ChatWindow: FC<ChatWindowProps> = ({
         onUnblock={handleUnblockCounterpart}
       />
 
-      {/* Floating 5-Second Undo Snackbar for Delete For Me */}
-      <UndoSnackbar
-        messageId={undoMessageId}
-        onUndo={handleUndoDeleteForMe}
-        onDismiss={() => {
-          if (undoMessageId) {
-            recentlyDeletedMessagesRef.current.delete(undoMessageId);
-          }
-          setUndoMessageId(null);
-        }}
-      />
+      {/* Mobile-only Undo Snackbar when Chat List panel is hidden */}
+      <div className="md:hidden">
+        <UndoSnackbar
+          messageId={undoDeleteState?.messageId || null}
+          onUndo={handleUndoDeleteForMe}
+          onDismiss={() => setUndoDeleteState(null)}
+          className="absolute bottom-20 left-1/2 -translate-x-1/2 w-max max-w-[85%] z-40 flex flex-col overflow-hidden rounded-xl bg-[#1c1f2e] border border-white/[0.08] shadow-2xl shadow-black/80 animate-in fade-in slide-in-from-bottom-2 duration-200"
+        />
+      </div>
     </div>
   );
 };
