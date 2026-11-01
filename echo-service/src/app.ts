@@ -19,13 +19,7 @@ export const createApp = (): Application => {
   // Trust reverse proxy (Render, Heroku, etc.) for secure cookie handling
   app.set("trust proxy", 1);
 
-  // Health check endpoints (ultra-fast, mounted BEFORE parsers, auth middlewares & rate limiters)
-  app.use("/api/health", healthRoutes);
-  app.get("/health", (_req, res) => {
-    res.status(200).json({ status: "healthy", uptime: process.uptime(), timestamp: new Date().toISOString() });
-  });
-
-  // Security & CORS
+  // Security & CORS (Must be before health routes so CORS headers are attached)
   app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
   app.use(
     cors({
@@ -33,6 +27,12 @@ export const createApp = (): Application => {
       credentials: true,
     })
   );
+
+  // Health check endpoints (ultra-fast, mounted BEFORE parsers, auth middlewares & rate limiters)
+  app.use("/api/health", healthRoutes);
+  app.get("/health", (_req, res) => {
+    res.status(200).json({ status: "healthy", uptime: process.uptime(), timestamp: new Date().toISOString() });
+  });
 
   // 1. Webhooks MUST be registered BEFORE standard body parsers
   app.use("/api/webhooks", webhookRoutes);
