@@ -63,6 +63,16 @@ export const MessageInput: FC<MessageInputProps> = ({
   const attachmentButtonRef = useRef<HTMLButtonElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
+  // Focus textarea when conversation opens or changes
+  useEffect(() => {
+    if (conversationId && !disabled && !isBlocked) {
+      const timer = setTimeout(() => {
+        textareaRef.current?.focus();
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [conversationId, disabled, isBlocked]);
+
   // Specific file input refs
   const docInputRef = useRef<HTMLInputElement>(null);
   const mediaInputRef = useRef<HTMLInputElement>(null);

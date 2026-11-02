@@ -382,8 +382,8 @@ const MessageBubbleComponent: FC<MessageBubbleProps> = ({
             {/* --- 5 Emojis + Plus Button Quick Tray --- */}
             {showQuickTray && !showFullPicker && (
               <div
-                className={`absolute -top-12 bg-[#1b1c27] border border-white/[0.08] rounded-full px-2 py-1 flex items-center gap-1 shadow-2xl z-30 animate-in fade-in zoom-in-95 duration-100 select-none ${
-                  isOwn ? "right-0" : "left-0"
+                className={`absolute -top-12 bg-[#1b1c27] border border-white/[0.08] rounded-full px-2 py-1 flex items-center gap-1 shadow-2xl z-30 select-none animate-in fade-in zoom-in-75 slide-in-from-bottom-2 duration-200 ease-out ${
+                  isOwn ? "right-0 origin-bottom-right" : "left-0 origin-bottom-left"
                 }`}
               >
                 {QUICK_EMOJIS.map((emoji) => (
@@ -391,7 +391,7 @@ const MessageBubbleComponent: FC<MessageBubbleProps> = ({
                     key={emoji}
                     type="button"
                     onClick={() => handleSelectEmoji(emoji)}
-                    className="hover:scale-125 transition-transform text-base p-1 rounded-full cursor-pointer"
+                    className="hover:scale-135 active:scale-95 transition-transform duration-150 text-base p-1 rounded-full cursor-pointer"
                   >
                     {emoji}
                   </button>
@@ -401,7 +401,7 @@ const MessageBubbleComponent: FC<MessageBubbleProps> = ({
                 <button
                   type="button"
                   onClick={() => setShowFullPicker(true)}
-                  className="w-7 h-7 rounded-full flex items-center justify-center text-[#767b93] hover:text-white hover:bg-white/[0.08] transition-colors ml-0.5 cursor-pointer"
+                  className="w-7 h-7 rounded-full flex items-center justify-center text-[#767b93] hover:text-white hover:bg-white/[0.08] hover:scale-110 active:scale-95 transition-all duration-150 ml-0.5 cursor-pointer"
                   title="More reactions"
                 >
                   <Plus size={15} />
@@ -412,8 +412,8 @@ const MessageBubbleComponent: FC<MessageBubbleProps> = ({
             {/* --- Full Emoji Picker Panel (Modal Style) --- */}
             {showFullPicker && (
               <div
-                className={`absolute -top-64 bg-[#1b1c27] border border-white/[0.08] rounded-2xl w-72 h-64 shadow-2xl z-40 flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150 ${
-                  isOwn ? "right-0" : "left-0"
+                className={`absolute -top-64 bg-[#1b1c27] border border-white/[0.08] rounded-2xl w-72 h-64 shadow-2xl z-40 flex flex-col overflow-hidden select-none animate-in fade-in zoom-in-90 slide-in-from-bottom-3 duration-200 ease-out ${
+                  isOwn ? "right-0 origin-bottom-right" : "left-0 origin-bottom-left"
                 }`}
               >
                 {/* Picker Header */}

@@ -57,11 +57,11 @@ export const ReactionsDetailModal: FC<ReactionsDetailModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-150"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200"
       onClick={onClose}
     >
       <div
-        className="w-full max-w-sm rounded-2xl bg-[#171824] border border-white/[0.08] shadow-2xl flex flex-col overflow-hidden text-left"
+        className="w-full max-w-sm rounded-2xl bg-[#171824] border border-white/[0.08] shadow-2xl flex flex-col overflow-hidden text-left animate-in fade-in zoom-in-95 slide-in-from-bottom-4 duration-250 ease-out"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header / Tabs */}
