@@ -6,6 +6,7 @@ import { formatTime } from "../../utils/date";
 import { MessageStatusTick } from "./MessageStatusTick";
 import { DeleteMessageModal } from "./DeleteMessageModal";
 import { ReactionsDetailModal } from "./ReactionsDetailModal";
+import { isSameUser } from "../../utils/chatUtils";
 
 interface MessageBubbleProps {
   message: Message;
@@ -76,9 +77,9 @@ const MessageBubbleComponent: FC<MessageBubbleProps> = ({
   const isOwn = Boolean(currentUserId && senderId && currentUserId === senderId);
   const isPending = message.status === "pending";
 
-  // Find user's active reaction emoji on this message if any
+  // Find user's active reaction emoji on this message if any using isSameUser helper
   const myReactionEmoji = message.reactions?.find((r) =>
-    r.users.some((u) => (typeof u === "string" ? u === currentUserId : u._id === currentUserId))
+    r.users.some((u) => isSameUser(u as any, currentUser))
   )?.emoji;
 
   const formattedTime = message.createdAt
@@ -400,14 +401,14 @@ const MessageBubbleComponent: FC<MessageBubbleProps> = ({
                       onClick={() => handleSelectEmoji(emoji)}
                       className={`relative hover:scale-135 active:scale-95 transition-all duration-150 text-base p-1.5 rounded-full cursor-pointer ${
                         isSelected
-                          ? "bg-white/[0.12] shadow-sm shadow-black/40 scale-110"
-                          : "hover:bg-white/[0.06]"
+                          ? "bg-[#0066ff]/25 border border-[#0066ff]/60 shadow-[0_0_12px_rgba(0,102,255,0.4)] scale-110"
+                          : "hover:bg-white/[0.08]"
                       }`}
                       title={isSelected ? "Remove reaction" : `React with ${emoji}`}
                     >
                       {emoji}
                       {isSelected && (
-                        <span className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-[#0066ff]" />
+                        <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-[#0066ff] shadow-[0_0_6px_#0066ff]" />
                       )}
                     </button>
                   );
@@ -482,11 +483,10 @@ const MessageBubbleComponent: FC<MessageBubbleProps> = ({
       {message.reactions && message.reactions.length > 0 && (
         <div className={`flex flex-wrap gap-1 mt-1 z-10 ${isOwn ? "justify-end" : "justify-start"}`}>
           {message.reactions.map((r) => {
-            const hasReacted = currentUserId
-              ? r.users.some(
-                  (u) => (typeof u === "string" ? u === currentUserId : u._id === currentUserId)
-                )
-              : false;
+            const hasReacted = isSameUser(
+              r.users.find((u) => isSameUser(u as any, currentUser)) as any,
+              currentUser
+            );
 
             return (
               <button
@@ -499,7 +499,7 @@ const MessageBubbleComponent: FC<MessageBubbleProps> = ({
                 title="View reactions"
                 className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-xs transition-colors border select-none cursor-pointer ${
                   hasReacted
-                    ? "bg-[#0066ff]/20 border-[#0066ff]/60 text-[#0066ff] font-semibold"
+                    ? "bg-[#0066ff]/20 border-[#0066ff]/60 text-[#0066ff] font-semibold shadow-sm shadow-[#0066ff]/20"
                     : "bg-[#1b1c27] hover:bg-[#232533] border-white/[0.04] text-[#f0f2f8]"
                 }`}
               >
