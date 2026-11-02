@@ -240,11 +240,26 @@ export const useChatStore = create<ChatState>((set, get) => ({
     const { conversationId } = message;
     set((state) => {
       const current = state.messages[conversationId] || [];
+      const updatedConversations = state.conversations.map((c) => {
+        if (c._id === conversationId) {
+          return {
+            ...c,
+            lastMessage: message,
+            updatedAt: message.createdAt,
+          };
+        }
+        return c;
+      });
+      updatedConversations.sort(
+        (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+      );
+
       return {
         messages: {
           ...state.messages,
           [conversationId]: [...current, message],
         },
+        conversations: updatedConversations,
       };
     });
   },
@@ -253,27 +268,40 @@ export const useChatStore = create<ChatState>((set, get) => ({
     const { conversationId } = confirmedMessage;
     set((state) => {
       const current = state.messages[conversationId] || [];
+      let next: Message[];
       const index = current.findIndex((m) => m._id === tempId);
       if (index >= 0) {
-        const next = [...current];
+        next = [...current];
         next[index] = confirmedMessage;
-        return {
-          messages: {
-            ...state.messages,
-            [conversationId]: next,
-          },
-        };
       } else {
         if (!current.some((m) => m._id === confirmedMessage._id)) {
-          return {
-            messages: {
-              ...state.messages,
-              [conversationId]: [...current, confirmedMessage],
-            },
-          };
+          next = [...current, confirmedMessage];
+        } else {
+          next = current;
         }
       }
-      return state;
+
+      const updatedConversations = state.conversations.map((c) => {
+        if (c._id === conversationId) {
+          return {
+            ...c,
+            lastMessage: confirmedMessage,
+            updatedAt: confirmedMessage.createdAt,
+          };
+        }
+        return c;
+      });
+      updatedConversations.sort(
+        (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+      );
+
+      return {
+        messages: {
+          ...state.messages,
+          [conversationId]: next,
+        },
+        conversations: updatedConversations,
+      };
     });
   },
 
