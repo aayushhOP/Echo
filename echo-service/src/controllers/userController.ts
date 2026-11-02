@@ -152,13 +152,14 @@ export const blockUserHandler = async (
     // Inform BOTH users: the blocked user can't see blocker, and the blocker can't see the blocked user
     try {
       const io = getIO();
-      // Mask blocker for blocked user
+      // Mask blocker for blocked user (User B is told User A blocked them)
       io.to(`user:${blockedUserId}`).emit("presence:masked", {
         userId: req.userId,
         isOnline: false,
         lastSeen: null,
+        blockedByUserId: req.userId,
       });
-      // Mask blocked user for blocker
+      // Mask blocked user for blocker (User A is told User B is masked)
       io.to(`user:${req.userId}`).emit("presence:masked", {
         userId: blockedUserId,
         isOnline: false,
@@ -195,6 +196,7 @@ export const unblockUserHandler = async (
       io.to(`user:${unblockedUserId}`).emit("presence:unmasked", {
         userId: req.userId,
         isOnline: currentSockets.size > 0,
+        unblockedByUserId: req.userId,
       });
 
       // Also unmask the unblocked user for the current user

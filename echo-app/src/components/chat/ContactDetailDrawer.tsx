@@ -80,6 +80,9 @@ export const ContactDetailDrawer: React.FC<ContactDetailDrawerProps> = ({
   const removeConversationFromList = useChatStore(
     (state) => state.removeConversationFromList
   );
+  const setParticipantBlockedStatus = useChatStore(
+    (state) => state.setParticipantBlockedStatus
+  );
   const confirm = useConfirm();
 
   const isCurrentUserAdmin =
@@ -301,6 +304,7 @@ export const ContactDetailDrawer: React.FC<ContactDetailDrawerProps> = ({
         setIsTogglingBlock(true);
         await userApi.unblockUser(counterpartId);
         removeBlockedUser(counterpartId);
+        setParticipantBlockedStatus(counterpartId, false);
       } else {
         const confirmed = await confirm({
           title: `Block ${displayName}?`,
@@ -314,6 +318,7 @@ export const ContactDetailDrawer: React.FC<ContactDetailDrawerProps> = ({
         setIsTogglingBlock(true);
         await userApi.blockUser(counterpartId);
         addBlockedUser(counterpartId);
+        setParticipantBlockedStatus(counterpartId, true);
       }
     } catch (err: any) {
       console.error("Failed to toggle block status:", err);

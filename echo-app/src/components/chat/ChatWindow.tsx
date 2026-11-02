@@ -63,6 +63,7 @@ export const ChatWindow: FC<ChatWindowProps> = ({
     togglePinMessage,
     setReplyingTo,
     addMessage,
+    setParticipantBlockedStatus,
   } = useChatStore();
 
   const { sendMessage, reactMessage, markAsRead, emitMessagesDeleted } = useSocket();
@@ -487,6 +488,7 @@ export const ChatWindow: FC<ChatWindowProps> = ({
     try {
       await userApi.unblockUser(counterpartId);
       removeBlockedUser(counterpartId);
+      setParticipantBlockedStatus(counterpartId, false);
     } catch (err: any) {
       console.error("Failed to unblock counterpart:", err);
       alert(err.response?.data?.message || err.message || "Failed to unblock user");
@@ -508,6 +510,7 @@ export const ChatWindow: FC<ChatWindowProps> = ({
 
         await userApi.unblockUser(counterpartId);
         removeBlockedUser(counterpartId);
+        setParticipantBlockedStatus(counterpartId, false);
       } else {
         const confirmed = await confirm({
           title: `Block ${counterpart?.username || "user"}?`,
@@ -520,6 +523,7 @@ export const ChatWindow: FC<ChatWindowProps> = ({
 
         await userApi.blockUser(counterpartId);
         addBlockedUser(counterpartId);
+        setParticipantBlockedStatus(counterpartId, true);
       }
     } catch (err: any) {
       console.error("Failed to update block status:", err);

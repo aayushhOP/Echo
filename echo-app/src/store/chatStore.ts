@@ -97,6 +97,7 @@ interface ChatState {
   updateGroupSettingsInConversation: (conversationId: string, settings: any) => void;
   updateMemberRoleInConversation: (conversationId: string, userId: string, role: "admin" | "member") => void;
   removeMemberFromConversationState: (conversationId: string, userId: string) => void;
+  setParticipantBlockedStatus: (userId: string, isBlocked: boolean) => void;
   resetChat: () => void;
 }
 
@@ -893,6 +894,33 @@ export const useChatStore = create<ChatState>((set, get) => ({
           participants: updatedParticipants,
           groupParticipants: updatedGParticipants,
           admins: updatedAdmins,
+        };
+      }),
+    }));
+  },
+
+  setParticipantBlockedStatus: (targetUserId, isBlocked) => {
+    set((state) => ({
+      conversations: state.conversations.map((c) => {
+        if (!Array.isArray(c.participants)) return c;
+        const hasUser = c.participants.some(
+          (p: any) => (p._id || p.id) === targetUserId
+        );
+        if (!hasUser) return c;
+
+        return {
+          ...c,
+          participants: c.participants.map((p: any) => {
+            const pId = p._id || p.id;
+            if (pId === targetUserId) {
+              return {
+                ...p,
+                isBlocked,
+                ...(isBlocked ? { isOnline: false, lastSeen: undefined } : {}),
+              };
+            }
+            return p;
+          }),
         };
       }),
     }));

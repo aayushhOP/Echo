@@ -11,6 +11,8 @@ export const useSocket = () => {
   const { getToken, isSignedIn } = useAuth();
   const user = useAuthStore((state) => state.user);
   const setAccessToken = useAuthStore((state) => state.setAccessToken);
+  const addBlockedByUser = useAuthStore((state) => state.addBlockedByUser);
+  const removeBlockedByUser = useAuthStore((state) => state.removeBlockedByUser);
   const { socket, isConnected, setSocket, setIsConnected, reset } = useSocketStore();
   const socketRef = useRef<AppSocket | null>(null);
 
@@ -28,6 +30,7 @@ export const useSocket = () => {
     updateGroupSettingsInConversation,
     updateMemberRoleInConversation,
     removeMemberFromConversationState,
+    setParticipantBlockedStatus,
     addOrUpdateConversation,
   } = useChatStore();
 
@@ -155,12 +158,20 @@ export const useSocket = () => {
       }
     });
 
-    newSocket.on("presence:masked", ({ userId }: { userId: string; isOnline: boolean; lastSeen: null }) => {
+    newSocket.on("presence:masked", ({ userId, blockedByUserId }: { userId: string; isOnline: boolean; lastSeen: null; blockedByUserId?: string }) => {
       setUserPresence(userId, false, undefined);
+      setParticipantBlockedStatus(userId, true);
+      if (blockedByUserId) {
+        addBlockedByUser(blockedByUserId);
+      }
     });
 
-    newSocket.on("presence:unmasked", ({ userId, isOnline }: { userId: string; isOnline: boolean }) => {
+    newSocket.on("presence:unmasked", ({ userId, isOnline, unblockedByUserId }: { userId: string; isOnline: boolean; unblockedByUserId?: string }) => {
       setUserPresence(userId, isOnline, undefined);
+      setParticipantBlockedStatus(userId, false);
+      if (unblockedByUserId) {
+        removeBlockedByUser(unblockedByUserId);
+      }
     });
 
     newSocket.on("typing:update", ({ conversationId, userId, isTyping }) => {

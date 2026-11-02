@@ -29,10 +29,12 @@ export interface ServerToClientEvents {
     userId: string;
     isOnline: boolean;
     lastSeen: null;
+    blockedByUserId?: string;
   }) => void;
   "presence:unmasked": (data: {
     userId: string;
     isOnline: boolean;
+    unblockedByUserId?: string;
   }) => void;
   "typing:update": (data: {
     conversationId: string;

@@ -455,6 +455,8 @@ On connection, the server auto-joins the socket to a room per conversation the u
 | `typing:update` | server→client | `{ conversationId, userId, isTyping }` | Broadcast typing state to room |
 | `presence:online` | server→client | `{ userId }` | User came online |
 | `presence:offline` | server→client | `{ userId, lastSeen }` | User went offline |
+| `presence:masked` | server→client | `{ userId, isOnline, lastSeen, blockedByUserId? }` | User blocked: force-strip presence & hide status |
+| `presence:unmasked` | server→client | `{ userId, isOnline, unblockedByUserId? }` | User unblocked: restore presence & active state |
 | `disconnect` | client→server (implicit) | — | Cleanup presence, leave rooms |
 
 ### 8.4 Message send — sequence diagram
