@@ -129,9 +129,6 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
             {title}
           </h2>
           <div className="flex items-center gap-1.5 text-xs">
-            {!isGroup && isOnline && (
-              <span className="w-1.5 h-1.5 rounded-full bg-[#0066ff] animate-pulse" />
-            )}
             <span className={isOnline ? "text-[#0066ff] font-medium" : "text-[#767b93]"}>
               {subtitle}
             </span>
