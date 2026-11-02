@@ -8,6 +8,14 @@ export interface UndoDeleteState {
   message?: Message;
 }
 
+export interface QuotedMessage {
+  _id: string;
+  senderId: string;
+  senderUsername: string;
+  content: string;
+  type: "text" | "image" | "file";
+}
+
 interface ChatState {
   activeConversationId: string | null;
   conversations: Conversation[];
@@ -26,6 +34,26 @@ interface ChatState {
   searchQuery: string;
   isSelectionMode: boolean;
   selectedMessageIds: string[];
+
+  // Quoted reply state
+  replyingTo: QuotedMessage | null;
+  setReplyingTo: (msg: QuotedMessage | null) => void;
+
+  // Forwarding modal state
+  forwardingMessage: { _id: string; content: string } | null;
+  setForwardingMessage: (msg: { _id: string; content: string } | null) => void;
+
+  // Pin duration dialog state
+  pinningMessage: Message | null;
+  setPinningMessage: (msg: Message | null) => void;
+
+  // Pin toggle action
+  togglePinMessage: (
+    conversationId: string,
+    messageId: string,
+    isPinned: boolean,
+    duration?: "24h" | "7d" | "30d"
+  ) => void;
 
   setActiveConversationId: (id: string | null) => void;
   setContactDrawerOpen: (open: boolean) => void;
@@ -88,6 +116,68 @@ export const useChatStore = create<ChatState>((set, get) => ({
   searchQuery: "",
   isSelectionMode: false,
   selectedMessageIds: [],
+
+  replyingTo: null,
+  setReplyingTo: (replyingTo) => set({ replyingTo }),
+
+  forwardingMessage: null,
+  setForwardingMessage: (forwardingMessage) => set({ forwardingMessage }),
+
+  pinningMessage: null,
+  setPinningMessage: (pinningMessage) => set({ pinningMessage }),
+
+  togglePinMessage: (conversationId, messageId, isPinned, duration = "7d") =>
+    set((state) => {
+      const convMessages = state.messages[conversationId] || [];
+      const now = new Date();
+      let expiresAt: string | undefined = undefined;
+      if (isPinned) {
+        const ms =
+          duration === "24h"
+            ? 24 * 60 * 60 * 1000
+            : duration === "30d"
+            ? 30 * 24 * 60 * 60 * 1000
+            : 7 * 24 * 60 * 60 * 1000;
+        expiresAt = new Date(now.getTime() + ms).toISOString();
+      }
+
+      // If we are pinning a message, unpin any previously pinned message in this conversation so the top bar shows the newest pin
+      const updatedMessages = convMessages.map((m) => {
+        if (m._id === messageId) {
+          return {
+            ...m,
+            isPinned,
+            pinDuration: isPinned ? duration : undefined,
+            pinnedAt: isPinned ? now.toISOString() : undefined,
+            pinnedExpiresAt: expiresAt,
+          };
+        }
+        if (isPinned && m.isPinned) {
+          // Unpin previous pins if only 1 message can be prominently pinned at a time
+          return { ...m, isPinned: false };
+        }
+        return m;
+      });
+
+      const targetMsg = updatedMessages.find((m) => m._id === messageId);
+      const updatedConversations = state.conversations.map((c) => {
+        if (c._id === conversationId) {
+          return {
+            ...c,
+            pinnedMessage: isPinned ? targetMsg || null : null,
+          };
+        }
+        return c;
+      });
+
+      return {
+        messages: {
+          ...state.messages,
+          [conversationId]: updatedMessages,
+        },
+        conversations: updatedConversations,
+      };
+    }),
 
   setActiveConversationId: (id) => {
     set((state) => {

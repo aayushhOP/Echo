@@ -8,6 +8,10 @@ import { ChatHeader } from "./ChatHeader";
 import { ChatSearchBar } from "./ChatSearchBar";
 import { ChatSelectionBar } from "./ChatSelectionBar";
 import { MessageBubble } from "./MessageBubble";
+import { QuotedReplyPreview } from "./QuotedReplyPreview";
+import { ForwardMessageModal } from "./ForwardMessageModal";
+import { PinMessageDurationModal } from "./PinMessageDurationModal";
+import { PinnedMessageBanner } from "./PinnedMessageBanner";
 import { UndoSnackbar } from "./UndoSnackbar";
 import { MessageInput } from "./MessageInput";
 import { TypingIndicator } from "./TypingIndicator";
@@ -55,6 +59,10 @@ export const ChatWindow: FC<ChatWindowProps> = ({
     searchQuery,
     undoDeleteState,
     setUndoDeleteState,
+    pinningMessage,
+    togglePinMessage,
+    setReplyingTo,
+    addMessage,
   } = useChatStore();
 
   const { sendMessage, reactMessage, markAsRead, emitMessagesDeleted } = useSocket();
@@ -68,6 +76,81 @@ export const ChatWindow: FC<ChatWindowProps> = ({
   const activeConv = conversations.find((c) => c._id === activeConversationId);
   const currentMessages = activeConversationId ? messages[activeConversationId] || [] : [];
   const hasCachedMessages = currentMessages.length > 0;
+
+  // Active pinned message in the current conversation
+  const activePinnedMessage = useMemo(() => {
+    if (activeConv?.pinnedMessage) return activeConv.pinnedMessage;
+    return currentMessages.slice().reverse().find((m) => m.isPinned) || null;
+  }, [activeConv?.pinnedMessage, currentMessages]);
+
+  const handleGoToMessage = (messageId: string) => {
+    const container = messageListRef.current;
+    const el = document.getElementById(`msg-${messageId}`);
+    if (!container || !el) return;
+
+    // Calculate exact target scrollTop within the messageList container only
+    const containerRect = container.getBoundingClientRect();
+    const elRect = el.getBoundingClientRect();
+    const offset = elRect.top - containerRect.top + container.scrollTop - (container.clientHeight / 2 - el.clientHeight / 2);
+
+    container.scrollTo({
+      top: Math.max(0, offset),
+      behavior: "smooth",
+    });
+
+    el.classList.add("ring-2", "ring-[#0066ff]", "transition-all", "duration-500");
+    setTimeout(() => {
+      el.classList.remove("ring-2", "ring-[#0066ff]");
+    }, 1500);
+  };
+
+  const handleReplyMessage = (msg: Message) => {
+    const senderId =
+      typeof msg.senderId === "string"
+        ? msg.senderId
+        : msg.senderId?._id || msg.senderId?.id || "";
+
+    const senderName =
+      typeof msg.senderId === "string"
+        ? "User"
+        : msg.senderId?.username || "User";
+
+    const currentUserId = currentUser?.id || (currentUser as any)?._id;
+    const isOwn = Boolean(currentUserId && senderId && currentUserId === senderId);
+
+    setReplyingTo({
+      _id: msg._id,
+      senderId,
+      senderUsername: isOwn ? "You" : senderName,
+      content: msg.content || "",
+      type: msg.type === "image" || msg.type === "file" ? msg.type : "text",
+    });
+  };
+
+  const handleConfirmPin = (duration: "24h" | "7d" | "30d") => {
+    if (!activeConversationId || !pinningMessage) return;
+    const msgId = pinningMessage._id;
+    togglePinMessage(activeConversationId, msgId, true, duration);
+
+    // Add in-chat system message: "You pinned a message"
+    const systemMsg: Message = {
+      _id: `sys-${Date.now()}`,
+      conversationId: activeConversationId,
+      senderId: currentUser?.id || "system",
+      content: "You pinned a message",
+      type: "system",
+      reactions: [],
+      readBy: [],
+      status: "sent",
+      createdAt: new Date().toISOString(),
+    };
+    addMessage(systemMsg);
+  };
+
+  const handleUnpinPinnedMessage = (messageId: string) => {
+    if (!activeConversationId) return;
+    togglePinMessage(activeConversationId, messageId, false);
+  };
 
   // Filter messages live when search is active
   const filteredMessages = useMemo(() => {
@@ -251,7 +334,7 @@ export const ChatWindow: FC<ChatWindowProps> = ({
   const handleSendMessage = (
     content: string,
     type: "text" | "image" | "file" = "text",
-    metadata?: { mediaUrl?: string; fileName?: string; fileSize?: number }
+    metadata?: { mediaUrl?: string; fileName?: string; fileSize?: number; replyTo?: string | null }
   ) => {
     if (!activeConversationId || !currentUser) return;
 
@@ -270,6 +353,7 @@ export const ChatWindow: FC<ChatWindowProps> = ({
       mediaUrl: metadata?.mediaUrl,
       fileName: metadata?.fileName,
       fileSize: metadata?.fileSize,
+      replyTo: metadata?.replyTo,
       reactions: [],
       readBy: [currentUser.id],
       status: "pending",
@@ -283,6 +367,42 @@ export const ChatWindow: FC<ChatWindowProps> = ({
       content,
       type,
       metadata,
+      (res) => {
+        if (res.success && res.message) {
+          reconcileMessage(tempId, res.message);
+        }
+      }
+    );
+  };
+
+  const handleForwardMessage = async (targetConversationId: string, content: string) => {
+    if (!currentUser) return;
+    const tempId = `temp-${Date.now()}-${Math.random()}`;
+    const optimisticMsg: Message = {
+      _id: tempId,
+      conversationId: targetConversationId,
+      senderId: {
+        id: currentUser.id,
+        _id: currentUser.id,
+        username: currentUser.username,
+        avatarUrl: currentUser.avatarUrl,
+      },
+      content,
+      type: "text",
+      isForwarded: true,
+      reactions: [],
+      readBy: [currentUser.id],
+      status: "pending",
+      createdAt: new Date().toISOString(),
+    };
+
+    addOptimisticMessage(optimisticMsg);
+
+    sendMessage(
+      targetConversationId,
+      content,
+      "text",
+      { isForwarded: true },
       (res) => {
         if (res.success && res.message) {
           reconcileMessage(tempId, res.message);
@@ -483,6 +603,15 @@ export const ChatWindow: FC<ChatWindowProps> = ({
       {/* In-chat Search Bar */}
       <ChatSearchBar />
 
+      {/* WhatsApp Pinned Message Banner (just below panel header) */}
+      {activePinnedMessage && (
+        <PinnedMessageBanner
+          pinnedMessage={activePinnedMessage}
+          onGoToMessage={handleGoToMessage}
+          onUnpinMessage={handleUnpinPinnedMessage}
+        />
+      )}
+
       {/* Message Stream */}
       <div
         ref={messageListRef}
@@ -524,7 +653,24 @@ export const ChatWindow: FC<ChatWindowProps> = ({
               const showDateSeparator = currentDate && currentDate !== prevDate;
 
               return (
-                <div key={msg._id} className="flex flex-col">
+                <div
+                  key={msg._id}
+                  id={`msg-${msg._id}`}
+                  onDoubleClick={(e) => {
+                    if (isSelectionMode || msg.type === "system") return;
+                    const target = e.target as HTMLElement;
+                    // Ignore clicks directly inside interactive elements (buttons, links, inputs)
+                    if (
+                      target.closest("button") ||
+                      target.closest("a") ||
+                      target.closest("input")
+                    ) {
+                      return;
+                    }
+                    handleReplyMessage(msg);
+                  }}
+                  className="flex flex-col rounded-2xl transition-all"
+                >
                   {showDateSeparator && (
                     <div className="text-[#5f6377] text-[11px] tracking-wide my-4 select-none text-center font-normal">
                       {formatDateSeparator(msg.createdAt)}
@@ -555,15 +701,29 @@ export const ChatWindow: FC<ChatWindowProps> = ({
         </div>
       </div>
 
-      {/* Docked Bottom Input Bar with File Attachment Trigger */}
-      <MessageInput
-        conversationId={activeConversationId}
-        onSendMessage={handleSendMessage}
-        isBlocked={isDirectBlocked}
-        onUnblock={handleUnblockCounterpart}
-        isGroup={activeConv?.type === "group"}
-        onlyAdminsMessage={!!activeConv?.settings?.onlyAdminsMessage}
-        isCurrentUserAdmin={isGroupAdmin}
+      {/* Docked Bottom Input Bar with Quoted Reply Preview */}
+      <div className="flex flex-col">
+        <QuotedReplyPreview />
+        <MessageInput
+          conversationId={activeConversationId}
+          onSendMessage={handleSendMessage}
+          isBlocked={isDirectBlocked}
+          onUnblock={handleUnblockCounterpart}
+          isGroup={activeConv?.type === "group"}
+          onlyAdminsMessage={!!activeConv?.settings?.onlyAdminsMessage}
+          isCurrentUserAdmin={isGroupAdmin}
+        />
+      </div>
+
+      {/* Forward Message Modal */}
+      <ForwardMessageModal
+        conversations={conversations}
+        onForwardMessage={handleForwardMessage}
+      />
+
+      {/* WhatsApp Pin Message Duration Modal */}
+      <PinMessageDurationModal
+        onConfirmPin={handleConfirmPin}
       />
 
       {/* Mobile-only Undo Snackbar when Chat List panel is hidden */}

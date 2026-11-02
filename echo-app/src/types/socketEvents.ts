@@ -68,6 +68,7 @@ export interface ClientToServerEvents {
       fileName?: string | null;
       fileSize?: number | null;
       replyTo?: string | null;
+      isForwarded?: boolean;
     },
     callback?: (response: { success: boolean; message?: Message; error?: string }) => void
   ) => void;

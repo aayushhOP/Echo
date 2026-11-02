@@ -1,11 +1,13 @@
 import { FC, memo, useState, useRef, useEffect } from "react";
-import { Clock, FileText, Download, Smile, Plus, X, ImageOff, Ban, MoreHorizontal, Check } from "lucide-react";
+import { Clock, FileText, Download, Smile, Plus, X, ImageOff, Ban, MoreHorizontal, Check, Pin, Forward } from "lucide-react";
 import { Message } from "../../types/message";
 import { useAuthStore } from "../../store/authStore";
+import { useChatStore } from "../../store/chatStore";
 import { formatTime } from "../../utils/date";
 import { MessageStatusTick } from "./MessageStatusTick";
 import { DeleteMessageModal } from "./DeleteMessageModal";
 import { ReactionsDetailModal } from "./ReactionsDetailModal";
+import { MessageContextMenu } from "./MessageContextMenu";
 import { isSameUser } from "../../utils/chatUtils";
 
 interface MessageBubbleProps {
@@ -58,10 +60,20 @@ const MessageBubbleComponent: FC<MessageBubbleProps> = ({
   const currentUser = useAuthStore((state) => state.user);
   const [showQuickTray, setShowQuickTray] = useState(false);
   const [showFullPicker, setShowFullPicker] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isReactionsModalOpen, setIsReactionsModalOpen] = useState(false);
   const [imageError, setImageError] = useState(false);
   const popoverRef = useRef<HTMLDivElement>(null);
+  const optionsButtonRef = useRef<HTMLButtonElement>(null);
+
+  const {
+    setReplyingTo,
+    setForwardingMessage,
+    enterSelectionMode,
+    togglePinMessage,
+    setPinningMessage,
+  } = useChatStore();
 
   const senderId =
     typeof message.senderId === "string"
@@ -105,6 +117,58 @@ const MessageBubbleComponent: FC<MessageBubbleProps> = ({
     setShowQuickTray(false);
     setShowFullPicker(false);
   };
+
+  const handleReply = () => {
+    setReplyingTo({
+      _id: message._id,
+      senderId: senderId || "",
+      senderUsername: isOwn ? "You" : senderName,
+      content: message.content || "",
+      type: message.type === "image" || message.type === "file" ? message.type : "text",
+    });
+  };
+
+  const handleCopy = () => {
+    if (message.content) {
+      navigator.clipboard.writeText(message.content);
+    } else if (message.mediaUrl) {
+      navigator.clipboard.writeText(message.mediaUrl);
+    }
+  };
+
+  const handleForward = () => {
+    setForwardingMessage({
+      _id: message._id,
+      content: message.content || message.mediaUrl || "",
+    });
+  };
+
+  const handleTogglePin = () => {
+    if (message.isPinned) {
+      // Unpin immediately
+      togglePinMessage(message.conversationId, message._id, false);
+    } else {
+      // Open duration dialog
+      setPinningMessage(message);
+    }
+  };
+
+  const handleSelect = () => {
+    enterSelectionMode(message._id);
+  };
+
+  // System Messages (e.g., "You pinned a message", "Aayush pinned a message")
+  if (message.type === "system") {
+    return (
+      <div className="flex justify-center my-2.5 px-4 select-none animate-in fade-in zoom-in-95 duration-150">
+        <div className="bg-[#182229]/80 border border-white/[0.05] rounded-xl px-3.5 py-1 text-center shadow-sm max-w-sm">
+          <p className="text-[11px] text-slate-300 font-normal tracking-wide">
+            {message.content}
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   // 1. Tombstone Rendering (Deleted for Everyone)
   if (message.isDeletedForEveryone) {
@@ -181,6 +245,19 @@ const MessageBubbleComponent: FC<MessageBubbleProps> = ({
           onToggleSelect(message._id);
         }
       }}
+      onDoubleClick={(e) => {
+        // Prevent trigger if selection mode or user double-clicked inside child interactive elements
+        if (isSelectionMode) return;
+        const target = e.target as HTMLElement;
+        if (
+          target.closest("button") ||
+          target.closest("a") ||
+          target.closest("input")
+        ) {
+          return;
+        }
+        handleReply();
+      }}
       className={`flex flex-col group relative select-text mb-1.5 ${
         isOwn ? "items-end" : "items-start"
       } ${isSelectionMode ? "cursor-pointer" : ""}`}
@@ -223,6 +300,18 @@ const MessageBubbleComponent: FC<MessageBubbleProps> = ({
 
         {/* --- Message Bubble Container --- */}
         <div className="relative w-fit max-w-full">
+          {/* Pinned Icon Indicator */}
+          {message.isPinned && (
+            <div
+              className={`absolute -top-2 ${
+                isOwn ? "right-2" : "left-2"
+              } flex items-center justify-center w-4 h-4 rounded-full bg-[#171824] border border-white/10 shadow-sm text-[#0066ff] z-10`}
+              title="Pinned message"
+            >
+              <Pin size={10} className="fill-[#0066ff]" />
+            </div>
+          )}
+
           {/* Image Type */}
           {message.type === "image" && message.mediaUrl && (
             <div
@@ -275,6 +364,16 @@ const MessageBubbleComponent: FC<MessageBubbleProps> = ({
                   : "bg-[#232533] border-white/[0.04] text-[#f0f2f8] rounded-tl-sm hover:bg-[#282a3b]"
               } ${isPending ? "opacity-75 ring-1 ring-[#0066ff]/40" : ""}`}
             >
+              {message.isForwarded && (
+                <div
+                  className={`flex items-center gap-1 mb-1.5 text-[11px] italic font-normal select-none ${
+                    isOwn ? "text-white/80" : "text-slate-400"
+                  }`}
+                >
+                  <Forward size={13} className="shrink-0" />
+                  <span>Forwarded</span>
+                </div>
+              )}
               <div className="flex items-center gap-3">
                 <div
                   className={`p-2 rounded-xl shrink-0 flex items-center justify-center ${
@@ -330,6 +429,18 @@ const MessageBubbleComponent: FC<MessageBubbleProps> = ({
                   : "bg-[#232533] text-[#f0f2f8] rounded-tl-sm hover:bg-[#282a3b] border border-white/[0.04] shadow-sm"
               } ${isPending ? "opacity-75 ring-1 ring-[#0066ff]/40" : ""}`}
             >
+              {/* WhatsApp-Style Forwarded Banner */}
+              {message.isForwarded && (
+                <div
+                  className={`flex items-center gap-1 mb-1 text-[11px] italic font-normal select-none ${
+                    isOwn ? "text-white/80" : "text-slate-400"
+                  }`}
+                >
+                  <Forward size={13} className="shrink-0" />
+                  <span>Forwarded</span>
+                </div>
+              )}
+
               <div className="flex flex-wrap items-baseline justify-end gap-x-2 gap-y-0.5">
                 <span className="whitespace-pre-wrap break-words mr-auto text-left flex-1 min-w-[20px] select-text">
                   {message.content}
@@ -364,6 +475,7 @@ const MessageBubbleComponent: FC<MessageBubbleProps> = ({
               onClick={() => {
                 setShowQuickTray(!showQuickTray);
                 setShowFullPicker(false);
+                setIsMenuOpen(false);
               }}
               className={`p-1.5 rounded-full text-[#505469] hover:text-[#f0f2f8] hover:bg-white/[0.04] transition-all cursor-pointer ${
                 showQuickTray || showFullPicker ? "opacity-100 bg-white/[0.08] text-[#f0f2f8]" : "opacity-0 group-hover:opacity-100"
@@ -373,17 +485,38 @@ const MessageBubbleComponent: FC<MessageBubbleProps> = ({
               <Smile size={16} />
             </button>
 
-            {/* Options button (visible on hover) to trigger Delete Modal */}
-            {(onDeleteForMe || onDeleteForEveryone) && (
-              <button
-                type="button"
-                onClick={() => setIsDeleteModalOpen(true)}
-                className="opacity-0 group-hover:opacity-100 p-1.5 rounded-full text-[#505469] hover:text-[#f0f2f8] hover:bg-white/[0.04] transition-all cursor-pointer"
-                title="Message options"
-              >
-                <MoreHorizontal size={15} />
-              </button>
-            )}
+            {/* Options button (visible on hover) to toggle Context Menu */}
+            <button
+              ref={optionsButtonRef}
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsMenuOpen((prev) => !prev);
+                setShowQuickTray(false);
+                setShowFullPicker(false);
+              }}
+              className={`p-1.5 rounded-full text-[#505469] hover:text-[#f0f2f8] hover:bg-white/[0.04] transition-all cursor-pointer ${
+                isMenuOpen ? "opacity-100 bg-white/[0.08] text-[#f0f2f8]" : "opacity-0 group-hover:opacity-100"
+              }`}
+              title="Message options"
+            >
+              <MoreHorizontal size={15} />
+            </button>
+
+            {/* WhatsApp Context Menu Dropdown */}
+            <MessageContextMenu
+              isOpen={isMenuOpen}
+              onClose={() => setIsMenuOpen(false)}
+              triggerRef={optionsButtonRef}
+              isOwnMessage={isOwn}
+              isPinned={message.isPinned}
+              onReply={handleReply}
+              onCopy={handleCopy}
+              onForward={handleForward}
+              onTogglePin={handleTogglePin}
+              onSelect={handleSelect}
+              onDelete={() => setIsDeleteModalOpen(true)}
+            />
 
             {/* --- 6 Emojis + Plus Button Quick Tray --- */}
             {showQuickTray && !showFullPicker && (
@@ -540,6 +673,8 @@ export const MessageBubble = memo(MessageBubbleComponent, (prevProps, nextProps)
     prevProps.message._id === nextProps.message._id &&
     prevProps.message.status === nextProps.message.status &&
     prevProps.message.content === nextProps.message.content &&
+    prevProps.message.isForwarded === nextProps.message.isForwarded &&
+    prevProps.message.isPinned === nextProps.message.isPinned &&
     prevProps.message.isDeletedForEveryone === nextProps.message.isDeletedForEveryone &&
     prevProps.message.deletedBy?.userId === nextProps.message.deletedBy?.userId &&
     prevProps.message.reactions === nextProps.message.reactions &&

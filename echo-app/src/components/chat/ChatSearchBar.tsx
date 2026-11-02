@@ -8,7 +8,7 @@ export const ChatSearchBar: FC = () => {
   if (!isSearchOpen) return null;
 
   return (
-    <div className="h-12 bg-[#171824] border-b border-white/[0.06] px-4 flex items-center gap-2 animate-in slide-in-from-top-2 duration-150 relative z-20 shrink-0">
+    <div className="h-12 bg-[#171824] border-b border-white/[0.06] px-4 flex items-center gap-2 animate-in slide-in-from-top-2 duration-150 relative z-10 shrink-0">
       <Search size={16} className="text-slate-400 shrink-0" />
       <input
         type="text"

@@ -34,6 +34,7 @@ export interface IMessage extends Document {
   }[];
   isDroppedDueToBlock?: boolean;
   status: "sent" | "delivered" | "read";
+  isForwarded?: boolean;
   // WhatsApp Deletion Extensions
   isDeletedForEveryone: boolean;
   deletedAt?: Date;
@@ -71,6 +72,7 @@ const messageSchema = new Schema<IMessage>(
     ],
     isDroppedDueToBlock: { type: Boolean, default: false },
     status: { type: String, enum: ["sent", "delivered", "read"], default: "sent", index: true },
+    isForwarded: { type: Boolean, default: false },
     // WhatsApp Deletion attributes
     isDeletedForEveryone: { type: Boolean, default: false, index: true },
     deletedAt: { type: Date },

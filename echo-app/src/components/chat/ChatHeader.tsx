@@ -106,7 +106,7 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
   };
 
   return (
-    <header className="h-16 shrink-0 bg-[#171824]/90 backdrop-blur-md border-b border-white/[0.04] px-6 flex items-center justify-between z-20 relative">
+    <header className="h-16 shrink-0 bg-[#171824]/90 backdrop-blur-md border-b border-white/[0.04] px-6 flex items-center justify-between z-30 relative">
       {/* 1. Clickable Header Profile -> Opens Contact Info Drawer */}
       <div
         onClick={handleProfileClick}

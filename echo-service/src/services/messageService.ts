@@ -22,6 +22,7 @@ export interface CreateMessageDTO {
   fileName?: string | null;
   fileSize?: number | null;
   replyTo?: string | null;
+  isForwarded?: boolean;
 }
 
 export const createMessage = async (
@@ -117,6 +118,7 @@ export const createMessage = async (
     fileName: dto.fileName || null,
     fileSize: dto.fileSize || null,
     replyTo: dto.replyTo ? new Types.ObjectId(dto.replyTo) : null,
+    isForwarded: !!dto.isForwarded,
     reactions: [],
     readBy: [userObjectId],
     deliveredTo: [],

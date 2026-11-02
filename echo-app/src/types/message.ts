@@ -1,6 +1,6 @@
 import { User } from "./user";
 
-export type MessageType = "text" | "image" | "file";
+export type MessageType = "text" | "image" | "file" | "system";
 export type MessageStatus = "pending" | "sent" | "delivered" | "read";
 
 export interface IReactionUser {
@@ -42,6 +42,11 @@ export interface Message {
   replyTo?: string | null;
   readBy: string[];
   status: MessageStatus;
+  isForwarded?: boolean;
+  isPinned?: boolean;
+  pinDuration?: "24h" | "7d" | "30d";
+  pinnedAt?: string;
+  pinnedExpiresAt?: string;
   isDeletedForEveryone?: boolean;
   deletedAt?: string;
   deletedBy?: IDeletedBy;
@@ -100,6 +105,7 @@ export interface Conversation {
   inviteToken?: string;
   settings?: IGroupSettings;
   lastMessage?: Message;
+  pinnedMessage?: Message | null;
   isPinned?: boolean;
   isMuted?: boolean;
   unreadCount?: number;

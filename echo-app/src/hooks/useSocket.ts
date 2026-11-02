@@ -265,7 +265,7 @@ export const useSocket = () => {
       conversationId: string,
       content: string,
       type: "text" | "image" | "file" = "text",
-      metadata?: { mediaUrl?: string | null; fileName?: string | null; fileSize?: number | null },
+      metadata?: { mediaUrl?: string | null; fileName?: string | null; fileSize?: number | null; replyTo?: string | null; isForwarded?: boolean },
       callback?: (response: { success: boolean; message?: any; error?: string }) => void
     ) => {
       const activeSock = socketRef.current || useSocketStore.getState().socket;
@@ -283,6 +283,8 @@ export const useSocket = () => {
           mediaUrl: metadata?.mediaUrl,
           fileName: metadata?.fileName,
           fileSize: metadata?.fileSize,
+          replyTo: metadata?.replyTo,
+          isForwarded: metadata?.isForwarded,
         },
         callback
       );

@@ -13,6 +13,7 @@ const sendMessageSchema = z.object({
   fileName: z.string().max(255).optional().nullable(),
   fileSize: z.number().max(10485760).optional().nullable(),
   replyTo: z.string().regex(/^[0-9a-fA-F]{24}$/).optional().nullable(),
+  isForwarded: z.boolean().optional(),
 });
 
 const reactMessageSchema = z.object({
@@ -37,7 +38,7 @@ export const registerMessageHandlers = (io: Server, socket: Socket) => {
         return;
       }
 
-      const { conversationId, content, type, mediaUrl, fileName, fileSize, replyTo } = parsed.data;
+      const { conversationId, content, type, mediaUrl, fileName, fileSize, replyTo, isForwarded } = parsed.data;
 
       // WhatsApp Rule: Restricted Messaging Mode check
       const conversation = await Conversation.findById(conversationId);
@@ -75,6 +76,7 @@ export const registerMessageHandlers = (io: Server, socket: Socket) => {
         fileName: fileName ?? undefined,
         fileSize: fileSize ?? undefined,
         replyTo: replyTo ?? undefined,
+        isForwarded: isForwarded ?? undefined,
       });
 
       // Confirm to sender socket immediately (1 Tick: "sent")

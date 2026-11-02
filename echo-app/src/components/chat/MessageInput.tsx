@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import EmojiPicker, { Theme, EmojiClickData } from "emoji-picker-react";
 import { useTypingIndicator } from "../../hooks/useTypingIndicator";
+import { useChatStore } from "../../store/chatStore";
 import { messageApi } from "../../api/messageApi";
 import { cn } from "../../utils/cn";
 
@@ -22,7 +23,7 @@ interface MessageInputProps {
   onSendMessage: (
     content: string,
     type?: "text" | "image" | "file",
-    metadata?: { mediaUrl?: string; fileName?: string; fileSize?: number }
+    metadata?: { mediaUrl?: string; fileName?: string; fileSize?: number; replyTo?: string | null }
   ) => void;
   disabled?: boolean;
   isBlocked?: boolean;
@@ -46,6 +47,8 @@ export const MessageInput: FC<MessageInputProps> = ({
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showAttachmentMenu, setShowAttachmentMenu] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const replyingTo = useChatStore((state) => state.replyingTo);
+  const setReplyingTo = useChatStore((state) => state.setReplyingTo);
   const [pendingFile, setPendingFile] = useState<{
     file: File;
     previewUrl?: string;
@@ -63,7 +66,7 @@ export const MessageInput: FC<MessageInputProps> = ({
   const attachmentButtonRef = useRef<HTMLButtonElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Focus textarea when conversation opens or changes
+  // Focus textarea when conversation opens, changes, or replyingTo changes
   useEffect(() => {
     if (conversationId && !disabled && !isBlocked) {
       const timer = setTimeout(() => {
@@ -71,7 +74,7 @@ export const MessageInput: FC<MessageInputProps> = ({
       }, 50);
       return () => clearTimeout(timer);
     }
-  }, [conversationId, disabled, isBlocked]);
+  }, [conversationId, disabled, isBlocked, replyingTo]);
 
   // Specific file input refs
   const docInputRef = useRef<HTMLInputElement>(null);
@@ -267,6 +270,7 @@ export const MessageInput: FC<MessageInputProps> = ({
     if (disabled || isUploading) return;
 
     const trimmed = content.trim();
+    const replyToId = replyingTo?._id || null;
 
     // If there is an attached file, upload first
     if (pendingFile) {
@@ -279,10 +283,12 @@ export const MessageInput: FC<MessageInputProps> = ({
           mediaUrl: uploadRes.url,
           fileName: uploadRes.fileName,
           fileSize: uploadRes.fileSize,
+          replyTo: replyToId,
         });
 
         setContent("");
         removePendingFile();
+        if (replyToId) setReplyingTo(null);
         handleStopTyping();
       } catch (err: any) {
         console.error("Upload error", err);
@@ -296,8 +302,11 @@ export const MessageInput: FC<MessageInputProps> = ({
     // Regular text message
     if (!trimmed) return;
 
-    onSendMessage(trimmed, "text");
+    onSendMessage(trimmed, "text", {
+      replyTo: replyToId,
+    });
     setContent("");
+    if (replyToId) setReplyingTo(null);
     handleStopTyping();
 
     if (textareaRef.current) {
