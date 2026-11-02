@@ -5,6 +5,7 @@ import { IConversation } from "../../types/chat";
 import { useAuthStore } from "../../store/authStore";
 import { useChatStore } from "../../store/chatStore";
 import { formatTime } from "../../utils/date";
+import { getOtherParticipant } from "../../utils/chatUtils";
 
 interface ChatHeaderProps {
   conversation: IConversation;
@@ -50,14 +51,10 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
   }, [isMenuOpen]);
 
   const isGroup = conversation.type === "group";
-  const myId = currentUser?.id || (currentUser as any)?._id;
   const blockedUsers = currentUser?.blockedUsers || [];
 
   const otherParticipant = !isGroup
-    ? conversation.participants.find((p) => {
-        const pId = p.id || (p as any)._id;
-        return pId && pId !== myId;
-      })
+    ? getOtherParticipant(conversation.participants, currentUser)
     : null;
 
   const otherId = otherParticipant ? otherParticipant.id || (otherParticipant as any)._id : null;

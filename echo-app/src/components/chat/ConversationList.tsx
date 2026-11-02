@@ -7,6 +7,7 @@ import { Avatar } from "../common/Avatar";
 import { CreateChatModal } from "./CreateChatModal";
 import { UndoSnackbar } from "./UndoSnackbar";
 import { formatTime } from "../../utils/date";
+import { getOtherParticipant } from "../../utils/chatUtils";
 import { Plus, Users, MessageSquare, Loader2, Search } from "lucide-react";
 import { cn } from "../../utils/cn";
 
@@ -57,7 +58,6 @@ export const ConversationList: FC = () => {
 
   // Filter conversations by search term
   const filteredConversations = useMemo(() => {
-    const myId = currentUser?.id || (currentUser as any)?._id;
     const query = searchQuery.toLowerCase().trim();
 
     return conversations.filter((conv) => {
@@ -68,10 +68,7 @@ export const ConversationList: FC = () => {
         return conv.groupName?.toLowerCase().includes(query);
       }
 
-      const otherParticipant = conv.participants.find((p) => {
-        const pId = p.id || (p as any)._id;
-        return pId && pId !== myId;
-      });
+      const otherParticipant = getOtherParticipant(conv.participants, currentUser);
 
       return otherParticipant?.username.toLowerCase().includes(query);
     });
@@ -137,10 +134,7 @@ export const ConversationList: FC = () => {
           const blockedUsers = currentUser?.blockedUsers || [];
 
           const otherParticipant = !isGroup
-            ? conv.participants.find((p) => {
-                const pId = p.id || (p as any)._id;
-                return pId && pId !== myId;
-              })
+            ? getOtherParticipant(conv.participants, currentUser)
             : null;
 
           const title = isGroup

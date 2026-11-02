@@ -172,30 +172,51 @@ export const toggleReaction = async (
   }
 
   const userObjectId = new Types.ObjectId(userId);
-  const reactionIndex = message.reactions.findIndex((r) => r.emoji === emoji);
+  const userIdStr = userId.toString();
 
-  if (reactionIndex > -1) {
-    const existing = message.reactions[reactionIndex];
-    const userIndex = existing.users.findIndex(
-      (u) => u.toString() === userId
+  // Find if user already reacted with ANY emoji on this message
+  let existingEmojiReactionIndex = -1;
+  let existingEmojiUserIndex = -1;
+
+  for (let rIdx = 0; rIdx < message.reactions.length; rIdx++) {
+    const uIdx = message.reactions[rIdx].users.findIndex(
+      (u: any) => (u._id ? u._id.toString() : u.toString()) === userIdStr
     );
+    if (uIdx > -1) {
+      existingEmojiReactionIndex = rIdx;
+      existingEmojiUserIndex = uIdx;
+      break;
+    }
+  }
 
-    if (userIndex > -1) {
-      // User already reacted -> remove their reaction
-      existing.users.splice(userIndex, 1);
-      if (existing.users.length === 0) {
-        message.reactions.splice(reactionIndex, 1);
-      }
-    } else {
-      // User hasn't reacted with this emoji -> add
-      existing.users.push(userObjectId);
+  // Case 1: User already reacted with the EXACT SAME emoji -> remove it (toggle off)
+  if (
+    existingEmojiReactionIndex > -1 &&
+    message.reactions[existingEmojiReactionIndex].emoji === emoji
+  ) {
+    message.reactions[existingEmojiReactionIndex].users.splice(existingEmojiUserIndex, 1);
+    if (message.reactions[existingEmojiReactionIndex].users.length === 0) {
+      message.reactions.splice(existingEmojiReactionIndex, 1);
     }
   } else {
-    // New reaction emoji
-    message.reactions.push({
-      emoji,
-      users: [userObjectId],
-    });
+    // Case 2: User already reacted with a DIFFERENT emoji -> remove old one first (WhatsApp 1-reaction rule)
+    if (existingEmojiReactionIndex > -1) {
+      message.reactions[existingEmojiReactionIndex].users.splice(existingEmojiUserIndex, 1);
+      if (message.reactions[existingEmojiReactionIndex].users.length === 0) {
+        message.reactions.splice(existingEmojiReactionIndex, 1);
+      }
+    }
+
+    // Now add the user to the target emoji reaction
+    const targetReactionIndex = message.reactions.findIndex((r) => r.emoji === emoji);
+    if (targetReactionIndex > -1) {
+      message.reactions[targetReactionIndex].users.push(userObjectId);
+    } else {
+      message.reactions.push({
+        emoji,
+        users: [userObjectId],
+      });
+    }
   }
 
   await message.save();

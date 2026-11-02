@@ -10,13 +10,13 @@ import {
 } from "../types/conversation";
 
 export const messagePopulation = [
-  { path: "senderId", select: "_id username avatarUrl" },
+  { path: "senderId", select: "_id clerkId username avatarUrl" },
   {
     path: "replyTo",
     select: "_id content senderId type mediaUrl fileName",
-    populate: { path: "senderId", select: "_id username avatarUrl" },
+    populate: { path: "senderId", select: "_id clerkId username avatarUrl" },
   },
-  { path: "reactions.users", select: "_id username avatarUrl" },
+  { path: "reactions.users", select: "_id clerkId username avatarUrl" },
 ];
 
 export const getConversationsForUser = async (userId: string) => {
@@ -32,11 +32,11 @@ export const getConversationsForUser = async (userId: string) => {
   const conversations = await Conversation.find({
     participants: userObjectId,
   })
-    .populate("participants", "_id username avatarUrl status bio phone isOnline lastSeen")
-    .populate("admins", "_id username avatarUrl")
+    .populate("participants", "_id clerkId username avatarUrl status bio phone isOnline lastSeen")
+    .populate("admins", "_id clerkId username avatarUrl")
     .populate({
       path: "lastMessage",
-      populate: { path: "senderId", select: "_id username avatarUrl" },
+      populate: { path: "senderId", select: "_id clerkId username avatarUrl" },
     })
     .sort({ updatedAt: -1 });
 
@@ -115,8 +115,8 @@ export const getConversationById = async (conversationId: string, userId: string
   }
 
   const conversation = await Conversation.findById(conversationId)
-    .populate("participants", "_id username avatarUrl status bio phone isOnline lastSeen")
-    .populate("admins", "_id username avatarUrl")
+    .populate("participants", "_id clerkId username avatarUrl status bio phone isOnline lastSeen")
+    .populate("admins", "_id clerkId username avatarUrl")
     .populate("lastMessage");
 
   if (!conversation) {
@@ -180,7 +180,7 @@ export const createConversation = async (
       type: "direct",
       participants: { $all: [currentUserId, otherUserId] },
     })
-      .populate("participants", "_id username avatarUrl status isOnline lastSeen")
+      .populate("participants", "_id clerkId username avatarUrl status isOnline lastSeen")
       .populate("lastMessage");
 
     if (existingConversation) {
@@ -195,7 +195,7 @@ export const createConversation = async (
 
     const populated = await Conversation.findById(newConversation._id).populate(
       "participants",
-      "_id username avatarUrl status isOnline lastSeen"
+      "_id clerkId username avatarUrl status isOnline lastSeen"
     );
 
     return { conversation: populated!, isNew: true };
@@ -255,8 +255,8 @@ export const createConversation = async (
     });
 
     const populated = await Conversation.findById(newGroup._id)
-      .populate("participants", "_id username avatarUrl status isOnline lastSeen")
-      .populate("admins", "_id username avatarUrl");
+      .populate("participants", "_id clerkId username avatarUrl status isOnline lastSeen")
+      .populate("admins", "_id clerkId username avatarUrl");
 
     return { conversation: populated!, isNew: true };
   }
@@ -390,8 +390,8 @@ export const updateConversation = async (
   await conversation.save();
 
   const populated = await Conversation.findById(conversation._id)
-    .populate("participants", "_id username avatarUrl status isOnline lastSeen")
-    .populate("admins", "_id username avatarUrl")
+    .populate("participants", "_id clerkId username avatarUrl status isOnline lastSeen")
+    .populate("admins", "_id clerkId username avatarUrl")
     .populate("lastMessage");
 
   return populated!;

@@ -2,6 +2,7 @@ import { IUser, IUserPreferences } from "../models/User";
 
 export interface UserProfileDTO {
   id: string;
+  clerkId?: string;
   username: string;
   email: string;
   avatarUrl?: string;
@@ -36,6 +37,7 @@ export interface UpdateProfileDTO {
 
 export const formatUserProfile = (user: IUser & { createdAt: Date; updatedAt: Date }): UserProfileDTO => ({
   id: user._id.toString(),
+  clerkId: user.clerkId,
   username: user.username,
   email: user.email,
   avatarUrl: user.avatarUrl,

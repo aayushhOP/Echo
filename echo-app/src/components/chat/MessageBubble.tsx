@@ -5,6 +5,7 @@ import { useAuthStore } from "../../store/authStore";
 import { formatTime } from "../../utils/date";
 import { MessageStatusTick } from "./MessageStatusTick";
 import { DeleteMessageModal } from "./DeleteMessageModal";
+import { ReactionsDetailModal } from "./ReactionsDetailModal";
 
 interface MessageBubbleProps {
   message: Message;
@@ -57,6 +58,7 @@ const MessageBubbleComponent: FC<MessageBubbleProps> = ({
   const [showQuickTray, setShowQuickTray] = useState(false);
   const [showFullPicker, setShowFullPicker] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isReactionsModalOpen, setIsReactionsModalOpen] = useState(false);
   const [imageError, setImageError] = useState(false);
   const popoverRef = useRef<HTMLDivElement>(null);
 
@@ -463,16 +465,16 @@ const MessageBubbleComponent: FC<MessageBubbleProps> = ({
                   (u) => (typeof u === "string" ? u === currentUserId : u._id === currentUserId)
                 )
               : false;
-            const userNames = r.users
-              .map((u) => (typeof u === "string" ? "User" : u.username || "User"))
-              .join(", ");
 
             return (
               <button
                 key={r.emoji}
                 type="button"
-                onClick={() => onReact(message._id, r.emoji)}
-                title={userNames ? `${userNames} reacted with ${r.emoji}` : `React with ${r.emoji}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsReactionsModalOpen(true);
+                }}
+                title="View reactions"
                 className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-xs transition-colors border select-none cursor-pointer ${
                   hasReacted
                     ? "bg-[#0066ff]/20 border-[#0066ff]/60 text-[#0066ff] font-semibold"
@@ -486,6 +488,16 @@ const MessageBubbleComponent: FC<MessageBubbleProps> = ({
           })}
         </div>
       )}
+
+      {/* WhatsApp-style Reactions Detail Modal */}
+      <ReactionsDetailModal
+        isOpen={isReactionsModalOpen}
+        onClose={() => setIsReactionsModalOpen(false)}
+        reactions={message.reactions || []}
+        currentUserId={currentUserId || ""}
+        onRemoveReaction={(emoji) => onReact(message._id, emoji)}
+        onAddReactionClick={() => setShowQuickTray(true)}
+      />
 
       {/* Delete Message Modal */}
       <DeleteMessageModal

@@ -15,6 +15,7 @@ import { Message } from "../../types/message";
 import { userApi } from "../../api/userApi";
 import { MessageSquareOff, Loader2 } from "lucide-react";
 import { formatDateSeparator } from "../../utils/date";
+import { getOtherParticipant } from "../../utils/chatUtils";
 import chatBg from "../../assets/chat-bg.jpg";
 
 interface ChatWindowProps {
@@ -350,10 +351,7 @@ export const ChatWindow: FC<ChatWindowProps> = ({
 
   const counterpart =
     activeConv?.type === "direct"
-      ? activeConv.participants.find((p) => {
-          const pId = (p as any)._id || (p as any).id;
-          return pId && pId !== myId;
-        }) || activeConv.participants[0]
+      ? getOtherParticipant(activeConv.participants, currentUser)
       : null;
 
   const counterpartId = counterpart ? (counterpart as any)._id || (counterpart as any).id : null;

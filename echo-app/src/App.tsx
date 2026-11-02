@@ -53,19 +53,31 @@ export const App: FC = () => {
 
         // Fetch or create profile via backend /api/users/me
         const backendUser = await syncUserWithBackend(token);
-        if (!backendUser && clerkUser && isMounted) {
-          // Fallback optimistic user profile from Clerk
-          const email = clerkUser.primaryEmailAddress?.emailAddress || "";
-          setAuth(
-            {
-              id: clerkUser.id,
-              username: clerkUser.username || clerkUser.firstName || email.split("@")[0] || "User",
-              email,
-              avatarUrl: clerkUser.imageUrl,
-              isOnline: true,
-            },
-            token
-          );
+        if (isMounted) {
+          if (backendUser && clerkUser) {
+            // Keep clerkId on the user object for infallible participant comparison
+            setAuth(
+              {
+                ...backendUser,
+                clerkId: clerkUser.id,
+              },
+              token
+            );
+          } else if (!backendUser && clerkUser) {
+            // Fallback optimistic user profile from Clerk
+            const email = clerkUser.primaryEmailAddress?.emailAddress || "";
+            setAuth(
+              {
+                id: clerkUser.id,
+                clerkId: clerkUser.id,
+                username: clerkUser.username || clerkUser.firstName || email.split("@")[0] || "User",
+                email,
+                avatarUrl: clerkUser.imageUrl,
+                isOnline: true,
+              },
+              token
+            );
+          }
         }
       } catch (err) {
         console.error("[App] Failed syncing auth session:", err);

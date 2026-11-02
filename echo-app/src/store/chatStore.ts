@@ -592,41 +592,62 @@ export const useChatStore = create<ChatState>((set, get) => ({
         nextMessages[convId] = list.map((msg) => {
           if (msg._id === messageId) {
             found = true;
-            const currentReactions = [...(msg.reactions || [])];
-            const reactionIndex = currentReactions.findIndex((r) => r.emoji === emoji);
+            const currentReactions: IReaction[] = (msg.reactions || []).map((r) => ({
+              emoji: r.emoji,
+              users: [...r.users],
+            }));
 
-            if (reactionIndex > -1) {
-              const r = currentReactions[reactionIndex];
-              const userIndex = r.users.findIndex((u) =>
-                typeof u === "string" ? u === user.id : u._id === user.id
+            const userIdStr = user.id.toString();
+
+            // Find if user already reacted with ANY emoji
+            let existingEmojiReactionIndex = -1;
+            let existingEmojiUserIndex = -1;
+
+            for (let rIdx = 0; rIdx < currentReactions.length; rIdx++) {
+              const uIdx = currentReactions[rIdx].users.findIndex(
+                (u) => (typeof u === "string" ? u : u._id) === userIdStr
               );
+              if (uIdx > -1) {
+                existingEmojiReactionIndex = rIdx;
+                existingEmojiUserIndex = uIdx;
+                break;
+              }
+            }
 
-              if (userIndex > -1) {
-                // Remove reaction
-                r.users.splice(userIndex, 1);
-                if (r.users.length === 0) {
-                  currentReactions.splice(reactionIndex, 1);
-                }
-              } else {
-                // Add user to reaction
-                r.users.push({
-                  _id: user.id,
-                  username: user.username,
-                  avatarUrl: user.avatarUrl,
-                });
+            // Case 1: Same emoji -> remove (toggle off)
+            if (
+              existingEmojiReactionIndex > -1 &&
+              currentReactions[existingEmojiReactionIndex].emoji === emoji
+            ) {
+              currentReactions[existingEmojiReactionIndex].users.splice(existingEmojiUserIndex, 1);
+              if (currentReactions[existingEmojiReactionIndex].users.length === 0) {
+                currentReactions.splice(existingEmojiReactionIndex, 1);
               }
             } else {
-              // New reaction emoji
-              currentReactions.push({
-                emoji,
-                users: [
-                  {
-                    _id: user.id,
-                    username: user.username,
-                    avatarUrl: user.avatarUrl,
-                  },
-                ],
-              });
+              // Case 2: Different emoji -> remove old reaction first (WhatsApp 1-reaction rule)
+              if (existingEmojiReactionIndex > -1) {
+                currentReactions[existingEmojiReactionIndex].users.splice(existingEmojiUserIndex, 1);
+                if (currentReactions[existingEmojiReactionIndex].users.length === 0) {
+                  currentReactions.splice(existingEmojiReactionIndex, 1);
+                }
+              }
+
+              // Add user to the target emoji
+              const targetIndex = currentReactions.findIndex((r) => r.emoji === emoji);
+              const userObj = {
+                _id: user.id,
+                username: user.username,
+                avatarUrl: user.avatarUrl,
+              };
+
+              if (targetIndex > -1) {
+                currentReactions[targetIndex].users.push(userObj);
+              } else {
+                currentReactions.push({
+                  emoji,
+                  users: [userObj],
+                });
+              }
             }
 
             return {

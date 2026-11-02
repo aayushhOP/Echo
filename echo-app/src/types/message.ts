@@ -72,6 +72,7 @@ export interface IGroupSettings {
 export interface ConversationParticipant {
   _id: string;
   id?: string;
+  clerkId?: string;
   username: string;
   email?: string;
   avatarUrl?: string;

@@ -24,6 +24,7 @@ import { userApi } from "../../api/userApi";
 import { groupApi } from "../../api/groupApi";
 import { GroupSettingsModal } from "./GroupSettingsModal";
 import { Conversation, IGroupSettings } from "../../types/message";
+import { getOtherParticipant } from "../../utils/chatUtils";
 import { useChatStore } from "../../store/chatStore";
 import { useAuthStore } from "../../store/authStore";
 
@@ -173,10 +174,7 @@ export const ContactDetailDrawer: React.FC<ContactDetailDrawerProps> = ({
   // Identify display counterpart for 1-on-1 chats
   const counterpart =
     conversation.type === "direct"
-      ? conversation.participants.find((p) => {
-          const pId = (p as any)._id || (p as any).id;
-          return pId && pId !== currentUserId;
-        }) || conversation.participants[0]
+      ? getOtherParticipant(conversation.participants, currentUser)
       : null;
 
   const counterpartId = counterpart ? (counterpart as any)._id || (counterpart as any).id : null;
