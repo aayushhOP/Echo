@@ -18,6 +18,7 @@ import {
   Settings,
   Copy,
   Check,
+  Trash2,
 } from "lucide-react";
 import { messageApi, MediaItem } from "../../api/messageApi";
 import { userApi } from "../../api/userApi";
@@ -90,6 +91,7 @@ export const ContactDetailDrawer: React.FC<ContactDetailDrawerProps> = ({
     conversation.type === "group" &&
     (conversation.admins?.includes(currentUserId) ||
       conversation.creatorId === currentUserId ||
+      (conversation.creatorId as any)?._id === currentUserId ||
       conversation.groupParticipants?.some(
         (gp: any) => {
           const uId = typeof gp.userId === "string" ? gp.userId : gp.userId?._id || gp.userId?.id;
@@ -97,15 +99,27 @@ export const ContactDetailDrawer: React.FC<ContactDetailDrawerProps> = ({
         }
       ));
 
-  const handleUpdateSetting = async (key: keyof IGroupSettings, value: boolean) => {
+  const isCurrentUserCreator =
+    conversation.type === "group" &&
+    Boolean(
+      conversation.creatorId &&
+        (conversation.creatorId === currentUserId ||
+          (conversation.creatorId as any)?._id === currentUserId ||
+          (conversation.creatorId as any)?.id === currentUserId)
+    );
+
+  const [isDeletingGroup, setIsDeletingGroup] = useState(false);
+
+  const handleSaveSettings = async (updatedSettings: IGroupSettings) => {
     try {
       setIsUpdatingSettings(true);
-      const res = await groupApi.updateSettings(conversation._id, { [key]: value });
+      const res = await groupApi.updateSettings(conversation._id, updatedSettings);
       if (res.success && res.settings) {
         updateGroupSettingsInConversation(conversation._id, res.settings);
       }
+      setIsSettingsModalOpen(false);
     } catch (err: any) {
-      alert(err.response?.data?.message || err.message || "Failed to update group setting");
+      alert(err.response?.data?.message || err.message || "Failed to update group settings");
     } finally {
       setIsUpdatingSettings(false);
     }
@@ -171,6 +185,29 @@ export const ContactDetailDrawer: React.FC<ContactDetailDrawerProps> = ({
       alert(err.response?.data?.message || err.message || "Failed to leave group");
     } finally {
       setIsLeavingGroup(false);
+    }
+  };
+
+  const handleDeleteGroup = async () => {
+    const confirmed = await confirm({
+      title: "Delete group?",
+      message:
+        "Are you sure you want to delete this group? All messages and media will be permanently deleted for all members. This action cannot be undone.",
+      confirmText: "Delete Group",
+      cancelText: "Cancel",
+      variant: "danger",
+    });
+    if (!confirmed) return;
+
+    try {
+      setIsDeletingGroup(true);
+      await groupApi.deleteGroup(conversation._id);
+      removeConversationFromList(conversation._id);
+      onClose();
+    } catch (err: any) {
+      alert(err.response?.data?.message || err.message || "Failed to delete group");
+    } finally {
+      setIsDeletingGroup(false);
     }
   };
 
@@ -340,7 +377,7 @@ export const ContactDetailDrawer: React.FC<ContactDetailDrawerProps> = ({
 
   return (
     <aside
-      className={`fixed top-0 right-0 h-screen w-80 bg-[#161722] border-l border-white/[0.04] z-40 flex flex-col transition-transform duration-300 ease-in-out select-none shadow-2xl ${
+      className={`fixed top-0 right-0 h-screen w-full sm:w-96 md:w-[420px] max-w-full bg-[#161722] border-l border-white/[0.04] z-40 flex flex-col transition-transform duration-300 ease-in-out select-none shadow-2xl ${
         isOpen ? "translate-x-0" : "translate-x-full"
       }`}
       aria-label="Conversation Details"
@@ -754,17 +791,28 @@ export const ContactDetailDrawer: React.FC<ContactDetailDrawerProps> = ({
           )}
         </div>
 
-        {/* Danger zone: Leave Group (for group conversations) */}
+        {/* Danger zone: Leave & Delete Group (for group conversations) */}
         {conversation.type === "group" && (
-          <div className="mt-auto p-4 border-t border-slate-800/60 bg-[#12131c]">
+          <div className="mt-auto p-4 border-t border-slate-800/60 bg-[#12131c] flex flex-col gap-2.5">
             <button
               onClick={handleLeaveGroup}
-              disabled={isLeavingGroup}
+              disabled={isLeavingGroup || isDeletingGroup}
               className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium transition-colors bg-rose-500/10 text-rose-500 hover:bg-rose-500/20 disabled:opacity-50 cursor-pointer"
             >
               <LogOut size={16} />
               <span>{isLeavingGroup ? "Leaving Group..." : "Exit Group"}</span>
             </button>
+
+            {isCurrentUserCreator && (
+              <button
+                onClick={handleDeleteGroup}
+                disabled={isLeavingGroup || isDeletingGroup}
+                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium transition-colors bg-rose-600/20 text-rose-400 hover:bg-rose-600/30 hover:text-rose-300 border border-rose-500/30 disabled:opacity-50 cursor-pointer"
+              >
+                <Trash2 size={16} />
+                <span>{isDeletingGroup ? "Deleting Group..." : "Delete Group"}</span>
+              </button>
+            )}
           </div>
         )}
 
@@ -806,7 +854,7 @@ export const ContactDetailDrawer: React.FC<ContactDetailDrawerProps> = ({
               requireAdminApproval: false,
             }
           }
-          onUpdateSetting={handleUpdateSetting}
+          onSaveSettings={handleSaveSettings}
           isUpdating={isUpdatingSettings}
         />
       )}

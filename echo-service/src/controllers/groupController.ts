@@ -4,6 +4,7 @@ import { Types } from "mongoose";
 import { AuthenticatedRequest } from "../middlewares/authMiddleware";
 import { AppError } from "../middlewares/errorHandler";
 import Conversation from "../models/Conversation";
+import Message from "../models/Message";
 import { getIO } from "../sockets";
 
 const getParam = (param: string | string[] | undefined): string => {
@@ -782,6 +783,83 @@ export const rejectJoinRequest = async (
     } catch (e) {}
 
     res.status(200).json({ success: true, message: "Join request rejected" });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * DELETE /api/conversations/:id/delete-group or /api/groups/:id
+ * Permanently deletes the group, all its messages, and broadcasts conversation:deleted to all participants.
+ * Only the creator of the group is authorized to perform this operation.
+ */
+export const deleteGroup = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  const id = getParam(req.params.id);
+  const currentUserId = req.userId;
+
+  try {
+    if (!currentUserId) throw new AppError("Authentication required", 401);
+    if (!Types.ObjectId.isValid(id)) {
+      throw new AppError("Invalid group ID provided", 400);
+    }
+
+    const conversation = await Conversation.findById(id);
+    if (!conversation || conversation.type !== "group") {
+      throw new AppError("Group not found", 404);
+    }
+
+    const creatorIdStr = conversation.creatorId
+      ? typeof conversation.creatorId === "string"
+        ? conversation.creatorId
+        : (conversation.creatorId as any)._id?.toString() || (conversation.creatorId as any).toString()
+      : null;
+
+    if (!creatorIdStr || creatorIdStr !== currentUserId) {
+      throw new AppError("Only the group creator can delete this group", 403);
+    }
+
+    // Capture participants list before deletion for broadcast
+    const participantIds = (conversation.participants || []).map((p: any) =>
+      typeof p === "string" ? p : p._id?.toString() || p.toString()
+    );
+
+    // 1. Delete all messages associated with the conversation
+    await Message.deleteMany({ conversationId: new Types.ObjectId(id) });
+
+    // 2. Delete the conversation document itself
+    await Conversation.findByIdAndDelete(id);
+
+    // 3. Broadcast real-time deletion event
+    try {
+      const io = getIO();
+      if (io) {
+        // Emit to conversation room (for anyone currently inside the chat)
+        io.to(`conversation:${id}`).emit("conversation:deleted", {
+          conversationId: id,
+        });
+        io.to(`conv:${id}`).emit("conversation:deleted", {
+          conversationId: id,
+        });
+
+        // Also emit directly to every participant's personal room
+        participantIds.forEach((pId: string) => {
+          io.to(`user:${pId}`).emit("conversation:deleted", {
+            conversationId: id,
+          });
+        });
+      }
+    } catch {
+      // Socket broadcast failure shouldn't fail HTTP response
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Group and its messages permanently deleted",
+    });
   } catch (error) {
     next(error);
   }

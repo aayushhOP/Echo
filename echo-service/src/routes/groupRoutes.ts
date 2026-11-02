@@ -11,6 +11,7 @@ import {
   joinGroupByInviteToken,
   approveJoinRequest,
   rejectJoinRequest,
+  deleteGroup,
 } from "../controllers/groupController";
 
 const router = Router();
@@ -30,5 +31,6 @@ router.post("/:id/leave", leaveGroup);
 router.post("/:id/invite-link/generate", generateInviteLink);
 router.post("/:id/requests/:targetUserId/approve", approveJoinRequest);
 router.post("/:id/requests/:targetUserId/reject", rejectJoinRequest);
+router.delete("/:id", deleteGroup);
 
 export { router as groupRoutes };

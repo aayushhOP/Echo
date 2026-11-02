@@ -25,6 +25,7 @@ import {
   joinGroupByInviteToken,
   approveJoinRequest,
   rejectJoinRequest,
+  deleteGroup,
 } from "../controllers/groupController";
 
 const router = Router();
@@ -41,6 +42,7 @@ router.post("/", createConversationHandler);
 router.get("/:id", getConversationByIdHandler);
 router.patch("/:id", updateConversationHandler);
 router.delete("/:id", deleteConversationHandler);
+router.delete("/:id/delete-group", deleteGroup);
 router.post("/:id/clear", clearChatMessages);
 router.delete("/:id/messages", deleteSelectedMessagesHandler);
 router.post("/:id/read", markConversationAsReadHandler);
