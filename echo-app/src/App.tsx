@@ -7,6 +7,7 @@ import { useAuthStore } from "./store/authStore";
 import { configureAxiosAuth } from "./api/axiosClient";
 import { useServerWarmup } from "./hooks/useServerWarmup";
 import { ServerWarmupModal } from "./components/common/ServerWarmupModal";
+import { ConfirmationModal } from "./components/common/ConfirmationModal";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -93,6 +94,7 @@ export const App: FC = () => {
 
   return (
     <QueryClientProvider client={queryClient}>
+      <ConfirmationModal />
       <ServerWarmupModal
         isVisible={isWarmingUp}
         elapsedSeconds={elapsedSeconds}

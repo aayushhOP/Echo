@@ -303,14 +303,15 @@ export const deleteConversationHandler = async (
       throw new AppError("Authentication required", 401);
     }
     const { id } = req.params;
-    await conversationService.deleteConversation(id as string, req.userId);
+    const clerkId = req.auth?.userId;
+    await conversationService.deleteConversation(id as string, req.userId, clerkId);
 
-    // Broadcast conversation deletion to participants if socket server is initialized
+    // Notify only the deleting user's personal room across their active tabs/devices
     try {
       const { getIO } = await import("../sockets/index.js");
       const io = getIO();
       if (io) {
-        io.to(`conversation:${id}`).emit("conversation:deleted", {
+        io.to(`user:${req.userId}`).emit("conversation:deleted", {
           conversationId: id,
         });
       }

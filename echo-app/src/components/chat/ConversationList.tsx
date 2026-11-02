@@ -56,11 +56,16 @@ export const ConversationList: FC = () => {
     staleTime: 1000 * 30, // 30s
   });
 
-  // Filter conversations by search term
+  // Filter conversations by search term, and hide empty direct chats from the list
   const filteredConversations = useMemo(() => {
     const query = searchQuery.toLowerCase().trim();
 
     return conversations.filter((conv) => {
+      // Direct chats should only appear in the sidebar if they have at least one message
+      if (conv.type === "direct" && !conv.lastMessage) {
+        return false;
+      }
+
       if (!query) return true;
 
       const isGroup = conv.type === "group";
@@ -74,6 +79,10 @@ export const ConversationList: FC = () => {
     });
   }, [conversations, searchQuery, currentUser]);
 
+  const visibleConversationsCount = useMemo(() => {
+    return conversations.filter((c) => c.type === "group" || !!c.lastMessage).length;
+  }, [conversations]);
+
   return (
     <aside className="w-full h-full flex flex-col bg-[#161722] border-r border-white/[0.04] shrink-0 select-none relative">
       {/* Header with Title and + New Chat button */}
@@ -81,7 +90,7 @@ export const ConversationList: FC = () => {
         <div>
           <h1 className="text-base font-bold text-white tracking-tight">Chats</h1>
           <p className="text-[11px] text-[#767b93]">
-            {conversations.length} conversation{conversations.length !== 1 ? "s" : ""}
+            {visibleConversationsCount} conversation{visibleConversationsCount !== 1 ? "s" : ""}
           </p>
         </div>
         <button

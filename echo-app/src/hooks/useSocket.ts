@@ -5,6 +5,7 @@ import { useAuthStore } from "../store/authStore";
 import { useSocketStore, AppSocket } from "../store/socketStore";
 import { useChatStore } from "../store/chatStore";
 import { Message, IReaction } from "../types/message";
+import { messageApi } from "../api/messageApi";
 
 export const useSocket = () => {
   const { getToken, isSignedIn } = useAuth();
@@ -27,6 +28,7 @@ export const useSocket = () => {
     updateGroupSettingsInConversation,
     updateMemberRoleInConversation,
     removeMemberFromConversationState,
+    addOrUpdateConversation,
   } = useChatStore();
 
   useEffect(() => {
@@ -105,10 +107,29 @@ export const useSocket = () => {
     });
 
     // Real-time chat events
-    newSocket.on("message:new", (data: any) => {
+    newSocket.on("message:new", async (data: any) => {
       const msg: Message = data?.message || data;
       if (msg && msg._id) {
         handleNewMessage(msg);
+
+        // If this conversation is not yet in the active conversation list (e.g. first incoming message in direct chat),
+        // fetch and add it immediately so it appears on the chat list without requiring a page reload.
+        const currentConversations = useChatStore.getState().conversations;
+        const exists = currentConversations.some((c) => c._id === msg.conversationId);
+        if (!exists && msg.conversationId) {
+          try {
+            const freshConv = await messageApi.getConversationById(msg.conversationId);
+            if (freshConv) {
+              addOrUpdateConversation({
+                ...freshConv,
+                lastMessage: msg,
+                unreadCount: useChatStore.getState().activeConversationId !== msg.conversationId ? 1 : 0,
+              });
+            }
+          } catch (err) {
+            console.error("[useSocket] Error fetching new conversation for incoming message:", err);
+          }
+        }
       }
     });
 

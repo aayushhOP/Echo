@@ -16,6 +16,7 @@ import { userApi } from "../../api/userApi";
 import { MessageSquareOff, Loader2 } from "lucide-react";
 import { formatDateSeparator } from "../../utils/date";
 import { getOtherParticipant } from "../../utils/chatUtils";
+import { useConfirm } from "../../store/confirmDialogStore";
 import chatBg from "../../assets/chat-bg.jpg";
 
 interface ChatWindowProps {
@@ -32,6 +33,7 @@ export const ChatWindow: FC<ChatWindowProps> = ({
   const currentUser = useAuthStore((state) => state.user);
   const addBlockedUser = useAuthStore((state) => state.addBlockedUser);
   const removeBlockedUser = useAuthStore((state) => state.removeBlockedUser);
+  const confirm = useConfirm();
   const {
     activeConversationId,
     conversations,
@@ -375,9 +377,27 @@ export const ChatWindow: FC<ChatWindowProps> = ({
     if (!counterpartId) return;
     try {
       if (isDirectBlocked) {
+        const confirmed = await confirm({
+          title: `Unblock ${counterpart?.username || "user"}?`,
+          message: "They will be able to send you messages and see your online status again.",
+          confirmText: "Unblock",
+          cancelText: "Cancel",
+          variant: "info",
+        });
+        if (!confirmed) return;
+
         await userApi.unblockUser(counterpartId);
         removeBlockedUser(counterpartId);
       } else {
+        const confirmed = await confirm({
+          title: `Block ${counterpart?.username || "user"}?`,
+          message: "Blocked contacts will not be able to send you private messages or see your active status.",
+          confirmText: "Block Contact",
+          cancelText: "Cancel",
+          variant: "warning",
+        });
+        if (!confirmed) return;
+
         await userApi.blockUser(counterpartId);
         addBlockedUser(counterpartId);
       }
@@ -389,9 +409,13 @@ export const ChatWindow: FC<ChatWindowProps> = ({
 
   const handleDeleteChat = async () => {
     if (!activeConversationId) return;
-    const confirmed = window.confirm(
-      "Are you sure you want to delete this chat? All messages will be permanently removed."
-    );
+    const confirmed = await confirm({
+      title: "Delete this chat?",
+      message: "All messages in this conversation will be permanently removed for you. This action cannot be reversed.",
+      confirmText: "Delete Chat",
+      cancelText: "Keep Chat",
+      variant: "danger",
+    });
     if (!confirmed) return;
 
     try {
@@ -405,9 +429,13 @@ export const ChatWindow: FC<ChatWindowProps> = ({
 
   const handleDeleteSelectedMessages = async (ids: string[]) => {
     if (!activeConversationId || ids.length === 0 || isDeletingSelected) return;
-    const confirmed = window.confirm(
-      `Are you sure you want to delete ${ids.length} selected message${ids.length > 1 ? "s" : ""}?`
-    );
+    const confirmed = await confirm({
+      title: `Delete ${ids.length} selected message${ids.length > 1 ? "s" : ""}?`,
+      message: `Are you sure you want to delete ${ids.length} selected message${ids.length > 1 ? "s" : ""}?`,
+      confirmText: "Delete",
+      cancelText: "Cancel",
+      variant: "danger",
+    });
     if (!confirmed) return;
 
     try {

@@ -2,6 +2,7 @@ import { FC } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useClerk } from "@clerk/clerk-react";
 import { useAuthStore } from "../../store/authStore";
+import { useConfirm } from "../../store/confirmDialogStore";
 import { MessageSquare, User, LogOut, Radio } from "lucide-react";
 import { Avatar } from "../common/Avatar";
 import { useSocketStore } from "../../store/socketStore";
@@ -13,8 +14,19 @@ export const NavigationSidebar: FC = () => {
   const currentUser = useAuthStore((state) => state.user);
   const clearAuth = useAuthStore((state) => state.clearAuth);
   const isConnected = useSocketStore((state) => state.isConnected);
+  const confirm = useConfirm();
 
   const handleLogout = async () => {
+    const shouldLogout = await confirm({
+      title: "Log out of Echo Chat?",
+      message: "You will need to sign back in to access your conversations.",
+      confirmText: "Log Out",
+      cancelText: "Stay Signed In",
+      variant: "danger",
+    });
+
+    if (!shouldLogout) return;
+
     try {
       await signOut();
     } finally {

@@ -124,8 +124,9 @@ export const createMessage = async (
     status: "sent",
   });
 
-  // Update conversation lastMessage reference and updatedAt
+  // Update conversation lastMessage reference, clear deletedBy for all participants, and update timestamp
   conversation.lastMessage = message._id as Types.ObjectId;
+  conversation.deletedBy = [];
   await conversation.save();
 
   const populated = await Message.findById(message._id)

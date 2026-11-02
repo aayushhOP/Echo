@@ -31,6 +31,11 @@ export const getConversationsForUser = async (userId: string) => {
 
   const conversations = await Conversation.find({
     participants: userObjectId,
+    deletedBy: { $ne: userObjectId },
+    $or: [
+      { type: "group" },
+      { lastMessage: { $exists: true, $ne: null } },
+    ],
   })
     .populate("participants", "_id clerkId username avatarUrl status bio phone isOnline lastSeen")
     .populate("admins", "_id clerkId username avatarUrl")
@@ -636,7 +641,8 @@ export const getConversationMedia = async (
 
 export const deleteConversation = async (
   conversationId: string,
-  userId: string
+  userId: string,
+  clerkId?: string
 ): Promise<void> => {
   if (!Types.ObjectId.isValid(conversationId)) {
     throw new AppError("Invalid conversation ID", 400);
@@ -654,11 +660,27 @@ export const deleteConversation = async (
     throw new AppError("Conversation not found", 404);
   }
 
-  // 1. Delete all messages associated with conversation
-  await Message.deleteMany({ conversationId: convObjectId });
+  // 1. Gather all identifier variations for this user (userId and clerkId)
+  const identifiersToPush: string[] = [userId];
+  if (clerkId) {
+    identifiersToPush.push(clerkId);
+  } else {
+    const userDoc = await User.findById(userObjectId).select("clerkId");
+    if (userDoc?.clerkId) {
+      identifiersToPush.push(userDoc.clerkId);
+    }
+  }
 
-  // 2. Delete conversation document
-  await Conversation.findByIdAndDelete(convObjectId);
+  // 2. Hide all existing messages in this conversation for this user only
+  await Message.updateMany(
+    { conversationId: convObjectId },
+    { $addToSet: { deletedForUsers: { $each: identifiersToPush } } }
+  );
+
+  // 3. Mark the conversation as deleted for this user
+  await Conversation.findByIdAndUpdate(convObjectId, {
+    $addToSet: { deletedBy: userObjectId },
+  });
 };
 
 export const deleteSelectedMessages = async (

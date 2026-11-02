@@ -27,6 +27,7 @@ import { Conversation, IGroupSettings } from "../../types/message";
 import { getOtherParticipant } from "../../utils/chatUtils";
 import { useChatStore } from "../../store/chatStore";
 import { useAuthStore } from "../../store/authStore";
+import { useConfirm } from "../../store/confirmDialogStore";
 
 export interface ContactDetailDrawerProps {
   isOpen: boolean;
@@ -79,6 +80,7 @@ export const ContactDetailDrawer: React.FC<ContactDetailDrawerProps> = ({
   const removeConversationFromList = useChatStore(
     (state) => state.removeConversationFromList
   );
+  const confirm = useConfirm();
 
   const isCurrentUserAdmin =
     conversation.type === "group" &&
@@ -126,7 +128,17 @@ export const ContactDetailDrawer: React.FC<ContactDetailDrawerProps> = ({
   };
 
   const handleRemove = async (targetUserId: string) => {
-    if (!window.confirm("Are you sure you want to remove this member?")) return;
+    const targetMember = conversation.participants?.find((p: any) => (p._id || p.id) === targetUserId);
+    const memberName = targetMember?.username || "this member";
+    const confirmed = await confirm({
+      title: `Remove ${memberName}?`,
+      message: "Are you sure you want to remove this member from the group?",
+      confirmText: "Remove Member",
+      cancelText: "Cancel",
+      variant: "danger",
+    });
+    if (!confirmed) return;
+
     try {
       setActiveMenuMemberId(null);
       await groupApi.removeMember(conversation._id, targetUserId);
@@ -137,7 +149,15 @@ export const ContactDetailDrawer: React.FC<ContactDetailDrawerProps> = ({
   };
 
   const handleLeaveGroup = async () => {
-    if (!window.confirm("Are you sure you want to leave this group?")) return;
+    const confirmed = await confirm({
+      title: "Leave this group?",
+      message: "You will no longer receive messages or be able to participate in this group conversation.",
+      confirmText: "Leave Group",
+      cancelText: "Stay in Group",
+      variant: "danger",
+    });
+    if (!confirmed) return;
+
     try {
       setIsLeavingGroup(true);
       await groupApi.leaveGroup(conversation._id);
@@ -256,11 +276,30 @@ export const ContactDetailDrawer: React.FC<ContactDetailDrawerProps> = ({
   const handleToggleBlock = async () => {
     if (!counterpartId || isTogglingBlock) return;
     try {
-      setIsTogglingBlock(true);
       if (isBlocked) {
+        const confirmed = await confirm({
+          title: `Unblock ${displayName}?`,
+          message: "They will be able to send you messages and see your online status again.",
+          confirmText: "Unblock",
+          cancelText: "Cancel",
+          variant: "info",
+        });
+        if (!confirmed) return;
+
+        setIsTogglingBlock(true);
         await userApi.unblockUser(counterpartId);
         removeBlockedUser(counterpartId);
       } else {
+        const confirmed = await confirm({
+          title: `Block ${displayName}?`,
+          message: "Blocked contacts will not be able to send you private messages or see your active status.",
+          confirmText: "Block Contact",
+          cancelText: "Cancel",
+          variant: "warning",
+        });
+        if (!confirmed) return;
+
+        setIsTogglingBlock(true);
         await userApi.blockUser(counterpartId);
         addBlockedUser(counterpartId);
       }
