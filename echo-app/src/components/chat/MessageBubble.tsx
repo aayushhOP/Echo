@@ -19,8 +19,8 @@ interface MessageBubbleProps {
   onToggleSelect?: (messageId: string) => void;
 }
 
-// 5 default quick reactions (WhatsApp Desktop style)
-const QUICK_EMOJIS = ["👍", "❤️", "😂", "😮", "😢"];
+// 6 default quick reactions (WhatsApp Desktop style)
+const QUICK_EMOJIS = ["👍", "❤️", "😂", "😮", "😢", "🙏"];
 
 // Extended emoji panel items
 const EXTENDED_EMOJI_CATEGORIES = {
@@ -75,6 +75,11 @@ const MessageBubbleComponent: FC<MessageBubbleProps> = ({
   const currentUserId = currentUser?.id || (currentUser as any)?._id;
   const isOwn = Boolean(currentUserId && senderId && currentUserId === senderId);
   const isPending = message.status === "pending";
+
+  // Find user's active reaction emoji on this message if any
+  const myReactionEmoji = message.reactions?.find((r) =>
+    r.users.some((u) => (typeof u === "string" ? u === currentUserId : u._id === currentUserId))
+  )?.emoji;
 
   const formattedTime = message.createdAt
     ? formatTime(message.createdAt)
@@ -379,23 +384,34 @@ const MessageBubbleComponent: FC<MessageBubbleProps> = ({
               </button>
             )}
 
-            {/* --- 5 Emojis + Plus Button Quick Tray --- */}
+            {/* --- 6 Emojis + Plus Button Quick Tray --- */}
             {showQuickTray && !showFullPicker && (
               <div
                 className={`absolute -top-12 bg-[#1b1c27] border border-white/[0.08] rounded-full px-2 py-1 flex items-center gap-1 shadow-2xl z-30 select-none animate-in fade-in zoom-in-75 slide-in-from-bottom-2 duration-200 ease-out ${
                   isOwn ? "right-0 origin-bottom-right" : "left-0 origin-bottom-left"
                 }`}
               >
-                {QUICK_EMOJIS.map((emoji) => (
-                  <button
-                    key={emoji}
-                    type="button"
-                    onClick={() => handleSelectEmoji(emoji)}
-                    className="hover:scale-135 active:scale-95 transition-transform duration-150 text-base p-1 rounded-full cursor-pointer"
-                  >
-                    {emoji}
-                  </button>
-                ))}
+                {QUICK_EMOJIS.map((emoji) => {
+                  const isSelected = myReactionEmoji === emoji;
+                  return (
+                    <button
+                      key={emoji}
+                      type="button"
+                      onClick={() => handleSelectEmoji(emoji)}
+                      className={`relative hover:scale-135 active:scale-95 transition-all duration-150 text-base p-1.5 rounded-full cursor-pointer ${
+                        isSelected
+                          ? "bg-white/[0.12] shadow-sm shadow-black/40 scale-110"
+                          : "hover:bg-white/[0.06]"
+                      }`}
+                      title={isSelected ? "Remove reaction" : `React with ${emoji}`}
+                    >
+                      {emoji}
+                      {isSelected && (
+                        <span className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-[#0066ff]" />
+                      )}
+                    </button>
+                  );
+                })}
 
                 {/* Plus Button to open full icon panel */}
                 <button
@@ -436,16 +452,22 @@ const MessageBubbleComponent: FC<MessageBubbleProps> = ({
                         {category}
                       </p>
                       <div className="grid grid-cols-6 gap-1">
-                        {emojis.map((emoji) => (
-                          <button
-                            key={emoji}
-                            type="button"
-                            onClick={() => handleSelectEmoji(emoji)}
-                            className="w-8 h-8 rounded-lg flex items-center justify-center text-lg hover:bg-white/[0.06] hover:scale-110 transition-all cursor-pointer"
-                          >
-                            {emoji}
-                          </button>
-                        ))}
+                        {emojis.map((emoji) => {
+                          const isSelected = myReactionEmoji === emoji;
+                          return (
+                            <button
+                              key={emoji}
+                              type="button"
+                              onClick={() => handleSelectEmoji(emoji)}
+                              className={`relative w-8 h-8 rounded-lg flex items-center justify-center text-lg hover:bg-white/[0.06] hover:scale-110 active:scale-95 transition-all cursor-pointer ${
+                                isSelected ? "bg-[#0066ff]/20 border border-[#0066ff]/50 scale-105" : ""
+                              }`}
+                              title={isSelected ? "Remove reaction" : `React with ${emoji}`}
+                            >
+                              {emoji}
+                            </button>
+                          );
+                        })}
                       </div>
                     </div>
                   ))}
