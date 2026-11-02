@@ -60,8 +60,17 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
   const otherId = otherParticipant ? otherParticipant.id || (otherParticipant as any)._id : null;
   const isBlockedByMe = otherId ? blockedUsers.includes(otherId) : false;
 
+  // Check if either party blocked the other (direct conversation)
+  const isBlocked =
+    !isGroup &&
+    Boolean(
+      isBlockedByMe ||
+      (otherParticipant as any)?.isBlocked ||
+      (otherParticipant as any)?.blockedUsers?.includes(currentUser?.id || (currentUser as any)?._id)
+    );
+
   const isOnline =
-    !isGroup && otherId && !isBlockedByMe
+    !isGroup && otherId && !isBlocked
       ? onlineUsers.has(otherId) || !!otherParticipant?.isOnline
       : false;
 
@@ -70,13 +79,16 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
     : otherParticipant?.username || "Chat";
 
   const lastSeenIso =
-    otherId && !isBlockedByMe
+    otherId && !isBlocked
       ? userLastSeen[otherId] || otherParticipant?.lastSeen
       : undefined;
 
   let subtitle = "";
   if (isGroup) {
     subtitle = `${conversation.participants.length} members`;
+  } else if (isBlocked) {
+    // When blocked by either user, show no online status, no last seen, no "Offline" text
+    subtitle = "";
   } else if (isOnline) {
     subtitle = "Active now";
   } else if (lastSeenIso) {
@@ -128,11 +140,13 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
           <h2 className="text-sm font-semibold text-white truncate group-hover:text-[#0066ff] transition-colors">
             {title}
           </h2>
-          <div className="flex items-center gap-1.5 text-xs">
-            <span className={isOnline ? "text-[#0066ff] font-medium" : "text-[#767b93]"}>
-              {subtitle}
-            </span>
-          </div>
+          {subtitle && (
+            <div className="flex items-center gap-1.5 text-xs">
+              <span className={isOnline ? "text-[#0066ff] font-medium" : "text-[#767b93]"}>
+                {subtitle}
+              </span>
+            </div>
+          )}
         </div>
       </div>
 

@@ -152,8 +152,16 @@ export const ConversationList: FC = () => {
 
           const otherId = otherParticipant ? otherParticipant.id || (otherParticipant as any)._id : null;
           const isBlockedByMe = otherId ? blockedUsers.includes(otherId) : false;
+          const isBlocked =
+            !isGroup &&
+            Boolean(
+              isBlockedByMe ||
+              (otherParticipant as any)?.isBlocked ||
+              (otherParticipant as any)?.blockedUsers?.includes(myId)
+            );
+
           const isParticipantOnline =
-            !isGroup && otherId && !isBlockedByMe
+            !isGroup && otherId && !isBlocked
               ? onlineUsers.has(otherId) || !!otherParticipant?.isOnline
               : false;
 

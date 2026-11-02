@@ -24,6 +24,11 @@ export const getConversationsForUser = async (userId: string) => {
   const currentUser = await User.findById(userId).select("blockedUsers clerkId");
   const myBlockedSet = new Set((currentUser?.blockedUsers || []).map((id) => id.toString()));
 
+  // Also query users who blocked this user so block masking is bidirectional
+  const usersWhoBlockedMe = await User.find({ blockedUsers: userObjectId }).select("_id");
+  const blockedBySet = new Set(usersWhoBlockedMe.map((u) => u._id.toString()));
+  const totalBlockedSet = new Set([...myBlockedSet, ...blockedBySet]);
+
   const userDeleteIdentifiers = [userId];
   if (currentUser?.clerkId) {
     userDeleteIdentifiers.push(currentUser.clerkId);
@@ -71,10 +76,10 @@ export const getConversationsForUser = async (userId: string) => {
         convObj.lastMessage = latestVisibleMessage || undefined;
       }
 
-      // Mask isOnline / lastSeen of blocked participants for the blocker
+      // Mask isOnline / lastSeen of blocked or blocker participants (bidirectional)
       if (Array.isArray(convObj.participants)) {
         convObj.participants = convObj.participants.map((p: any) => {
-          if (p && p._id && myBlockedSet.has(p._id.toString())) {
+          if (p && p._id && totalBlockedSet.has(p._id.toString())) {
             return {
               ...p,
               isOnline: false,
@@ -139,10 +144,14 @@ export const getConversationById = async (conversationId: string, userId: string
   const currentUser = await User.findById(userId).select("blockedUsers");
   const myBlockedSet = new Set((currentUser?.blockedUsers || []).map((id) => id.toString()));
 
+  const usersWhoBlockedMe = await User.find({ blockedUsers: new Types.ObjectId(userId) }).select("_id");
+  const blockedBySet = new Set(usersWhoBlockedMe.map((u) => u._id.toString()));
+  const totalBlockedSet = new Set([...myBlockedSet, ...blockedBySet]);
+
   const convObj: any = conversation.toObject();
   if (Array.isArray(convObj.participants)) {
     convObj.participants = convObj.participants.map((p: any) => {
-      if (p && p._id && myBlockedSet.has(p._id.toString())) {
+      if (p && p._id && totalBlockedSet.has(p._id.toString())) {
         return {
           ...p,
           isOnline: false,
