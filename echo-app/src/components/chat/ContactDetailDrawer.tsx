@@ -83,6 +83,7 @@ export const ContactDetailDrawer: React.FC<ContactDetailDrawerProps> = ({
   const setParticipantBlockedStatus = useChatStore(
     (state) => state.setParticipantBlockedStatus
   );
+  const setReplyingTo = useChatStore((state) => state.setReplyingTo);
   const confirm = useConfirm();
 
   const isCurrentUserAdmin =
@@ -319,6 +320,7 @@ export const ContactDetailDrawer: React.FC<ContactDetailDrawerProps> = ({
         await userApi.blockUser(counterpartId);
         addBlockedUser(counterpartId);
         setParticipantBlockedStatus(counterpartId, true);
+        setReplyingTo(null);
       }
     } catch (err: any) {
       console.error("Failed to toggle block status:", err);

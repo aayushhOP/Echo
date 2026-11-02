@@ -31,6 +31,7 @@ export const useSocket = () => {
     updateMemberRoleInConversation,
     removeMemberFromConversationState,
     setParticipantBlockedStatus,
+    setReplyingTo,
     addOrUpdateConversation,
   } = useChatStore();
 
@@ -161,6 +162,7 @@ export const useSocket = () => {
     newSocket.on("presence:masked", ({ userId, blockedByUserId }: { userId: string; isOnline: boolean; lastSeen: null; blockedByUserId?: string }) => {
       setUserPresence(userId, false, undefined);
       setParticipantBlockedStatus(userId, true);
+      setReplyingTo(null);
       if (blockedByUserId) {
         addBlockedByUser(blockedByUserId);
       }

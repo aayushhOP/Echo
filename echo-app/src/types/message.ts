@@ -112,6 +112,7 @@ export interface Conversation {
   unreadCount?: number;
   createdAt?: string;
   updatedAt: string;
+  isBlockedByMe?: boolean;
 }
 
 // Aliases matching spec types exactly

@@ -16,6 +16,7 @@ interface MessageContextMenuProps {
   triggerRef?: React.RefObject<HTMLButtonElement | null>;
   isOwnMessage: boolean;
   isPinned?: boolean;
+  canReply?: boolean;
   onReply: () => void;
   onCopy: () => void;
   onForward: () => void;
@@ -30,6 +31,7 @@ export const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
   triggerRef,
   isOwnMessage,
   isPinned,
+  canReply = true,
   onReply,
   onCopy,
   onForward,
@@ -113,18 +115,20 @@ export const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
           }`}
         >
           {/* 1. Reply */}
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onClose();
-              onReply();
-            }}
-            className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-slate-200 hover:text-white hover:bg-white/[0.05] transition-colors cursor-pointer text-left"
-          >
-            <Reply size={15} className="text-slate-400 shrink-0" />
-            <span>Reply</span>
-          </button>
+          {canReply && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onClose();
+                onReply();
+              }}
+              className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-slate-200 hover:text-white hover:bg-white/[0.05] transition-colors cursor-pointer text-left"
+            >
+              <Reply size={15} className="text-slate-400 shrink-0" />
+              <span>Reply</span>
+            </button>
+          )}
 
           {/* 2. Copy */}
           <button

@@ -27,6 +27,7 @@ interface MessageInputProps {
   ) => void;
   disabled?: boolean;
   isBlocked?: boolean;
+  isBlockedByMe?: boolean;
   onUnblock?: () => void;
   isGroup?: boolean;
   onlyAdminsMessage?: boolean;
@@ -38,6 +39,7 @@ export const MessageInput: FC<MessageInputProps> = ({
   onSendMessage,
   disabled = false,
   isBlocked = false,
+  isBlockedByMe = false,
   onUnblock,
   isGroup = false,
   onlyAdminsMessage = false,
@@ -355,14 +357,20 @@ export const MessageInput: FC<MessageInputProps> = ({
       <div className="px-4 py-3 bg-transparent shrink-0 relative z-10">
         <div className="max-w-xl mx-auto flex items-center justify-center gap-2.5 px-5 py-3 rounded-2xl bg-[#1b1c27]/90 backdrop-blur-md border border-white/[0.08] shadow-xl text-center text-xs text-slate-300">
           <Ban className="w-4 h-4 text-rose-400 shrink-0" />
-          <span>You blocked this contact.</span>
-          <button
-            type="button"
-            onClick={onUnblock}
-            className="text-[#38bdf8] hover:text-[#0066ff] font-semibold hover:underline transition-colors cursor-pointer"
-          >
-            Unblock
-          </button>
+          {isBlockedByMe ? (
+            <>
+              <span>You blocked this contact.</span>
+              <button
+                type="button"
+                onClick={onUnblock}
+                className="text-[#38bdf8] hover:text-[#0066ff] font-semibold hover:underline transition-colors cursor-pointer"
+              >
+                Unblock
+              </button>
+            </>
+          ) : (
+            <span>You can't reply to this conversation.</span>
+          )}
         </div>
       </div>
     );

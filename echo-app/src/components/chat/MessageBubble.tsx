@@ -20,6 +20,7 @@ interface MessageBubbleProps {
   isSelectionMode?: boolean;
   isSelected?: boolean;
   onToggleSelect?: (messageId: string) => void;
+  canReply?: boolean;
 }
 
 // 6 default quick reactions (WhatsApp Desktop style)
@@ -56,6 +57,7 @@ const MessageBubbleComponent: FC<MessageBubbleProps> = ({
   isSelectionMode = false,
   isSelected = false,
   onToggleSelect,
+  canReply = true,
 }) => {
   const currentUser = useAuthStore((state) => state.user);
   const [showQuickTray, setShowQuickTray] = useState(false);
@@ -246,8 +248,8 @@ const MessageBubbleComponent: FC<MessageBubbleProps> = ({
         }
       }}
       onDoubleClick={(e) => {
-        // Prevent trigger if selection mode or user double-clicked inside child interactive elements
-        if (isSelectionMode) return;
+        // Prevent trigger if selection mode, reply disabled, or user double-clicked inside child interactive elements
+        if (isSelectionMode || !canReply) return;
         const target = e.target as HTMLElement;
         if (
           target.closest("button") ||
@@ -510,6 +512,7 @@ const MessageBubbleComponent: FC<MessageBubbleProps> = ({
               triggerRef={optionsButtonRef}
               isOwnMessage={isOwn}
               isPinned={message.isPinned}
+              canReply={canReply}
               onReply={handleReply}
               onCopy={handleCopy}
               onForward={handleForward}

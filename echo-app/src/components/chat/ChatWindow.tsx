@@ -478,10 +478,27 @@ export const ChatWindow: FC<ChatWindowProps> = ({
       : null;
 
   const counterpartId = counterpart ? (counterpart as any)._id || (counterpart as any).id : null;
-  const isDirectBlocked =
+  const isDirectBlockedByMe =
     activeConv?.type === "direct" && counterpartId && currentUser?.blockedUsers
       ? currentUser.blockedUsers.includes(counterpartId)
       : false;
+  const isDirectBlockedByOther =
+    activeConv?.type === "direct" && counterpartId && currentUser?.blockedBy
+      ? currentUser.blockedBy.includes(counterpartId)
+      : false;
+  const isDirectBlocked =
+    activeConv?.type === "direct" &&
+    Boolean(
+      isDirectBlockedByMe ||
+      isDirectBlockedByOther ||
+      (counterpart as any)?.isBlocked ||
+      (counterpart as any)?.blockedUsers?.includes(currentUser?.id || (currentUser as any)?._id)
+    );
+
+  const isInputDisabled =
+    isDirectBlocked ||
+    Boolean(activeConv?.type === "group" && activeConv?.settings?.onlyAdminsMessage && !isGroupAdmin);
+  const canReply = !isInputDisabled;
 
   const handleUnblockCounterpart = async () => {
     if (!counterpartId) return;
@@ -498,7 +515,7 @@ export const ChatWindow: FC<ChatWindowProps> = ({
   const handleToggleBlockCounterpart = async () => {
     if (!counterpartId) return;
     try {
-      if (isDirectBlocked) {
+      if (isDirectBlockedByMe) {
         const confirmed = await confirm({
           title: `Unblock ${counterpart?.username || "user"}?`,
           message: "They will be able to send you messages and see your online status again.",
@@ -524,6 +541,7 @@ export const ChatWindow: FC<ChatWindowProps> = ({
         await userApi.blockUser(counterpartId);
         addBlockedUser(counterpartId);
         setParticipantBlockedStatus(counterpartId, true);
+        setReplyingTo(null);
       }
     } catch (err: any) {
       console.error("Failed to update block status:", err);
@@ -661,7 +679,7 @@ export const ChatWindow: FC<ChatWindowProps> = ({
                   key={msg._id}
                   id={`msg-${msg._id}`}
                   onDoubleClick={(e) => {
-                    if (isSelectionMode || msg.type === "system") return;
+                    if (isSelectionMode || msg.type === "system" || !canReply) return;
                     const target = e.target as HTMLElement;
                     // Ignore clicks directly inside interactive elements (buttons, links, inputs)
                     if (
@@ -690,6 +708,7 @@ export const ChatWindow: FC<ChatWindowProps> = ({
                     isSelectionMode={isSelectionMode}
                     isSelected={selectedMessageIds.includes(msg._id)}
                     onToggleSelect={toggleSelectMessage}
+                    canReply={canReply}
                   />
                 </div>
               );
@@ -712,6 +731,7 @@ export const ChatWindow: FC<ChatWindowProps> = ({
           conversationId={activeConversationId}
           onSendMessage={handleSendMessage}
           isBlocked={isDirectBlocked}
+          isBlockedByMe={isDirectBlockedByMe}
           onUnblock={handleUnblockCounterpart}
           isGroup={activeConv?.type === "group"}
           onlyAdminsMessage={!!activeConv?.settings?.onlyAdminsMessage}
