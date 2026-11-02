@@ -1,4 +1,4 @@
-import { FC, useState, useRef, useEffect, FormEvent, KeyboardEvent, ChangeEvent } from "react";
+import { FC, useState, useRef, useEffect, useMemo, FormEvent, KeyboardEvent, ChangeEvent } from "react";
 import { createPortal } from "react-dom";
 import {
   Send,
@@ -11,12 +11,17 @@ import {
   Camera,
   Ban,
   Lock,
+  Users,
 } from "lucide-react";
 import EmojiPicker, { Theme, EmojiClickData } from "emoji-picker-react";
 import { useTypingIndicator } from "../../hooks/useTypingIndicator";
 import { useChatStore } from "../../store/chatStore";
 import { messageApi } from "../../api/messageApi";
 import { cn } from "../../utils/cn";
+
+import { useAuthStore } from "../../store/authStore";
+import { User } from "../../types/user";
+import { ConversationParticipant } from "../../types/message";
 
 interface MessageInputProps {
   conversationId: string;
@@ -32,6 +37,7 @@ interface MessageInputProps {
   isGroup?: boolean;
   onlyAdminsMessage?: boolean;
   isCurrentUserAdmin?: boolean;
+  participants?: (User | ConversationParticipant)[];
 }
 
 export const MessageInput: FC<MessageInputProps> = ({
@@ -44,6 +50,7 @@ export const MessageInput: FC<MessageInputProps> = ({
   isGroup = false,
   onlyAdminsMessage = false,
   isCurrentUserAdmin = false,
+  participants = [],
 }) => {
   const [content, setContent] = useState("");
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
@@ -56,6 +63,117 @@ export const MessageInput: FC<MessageInputProps> = ({
     previewUrl?: string;
     isImage: boolean;
   } | null>(null);
+
+  const currentUser = useAuthStore((state) => state.user);
+  const myId = currentUser?.id || (currentUser as any)?._id;
+
+  // Mentions (@) state for group chats
+  const [mentionQuery, setMentionQuery] = useState<string | null>(null);
+  const [mentionStartIndex, setMentionStartIndex] = useState<number>(-1);
+  const [mentionSelectedIndex, setMentionSelectedIndex] = useState<number>(0);
+  const mentionMenuRef = useRef<HTMLDivElement>(null);
+
+  // Filter group members for mentions
+  const mentionOptions = useMemo(() => {
+    if (!isGroup || mentionQuery === null) return [];
+
+    const query = mentionQuery.toLowerCase();
+    const options: Array<{
+      type: "all" | "member";
+      id: string;
+      username: string;
+      avatarUrl?: string;
+    }> = [];
+
+    // "all" option
+    if ("all".includes(query)) {
+      options.push({
+        type: "all",
+        id: "all",
+        username: "all",
+      });
+    }
+
+    // Participants list (excluding current user if desired or showing everyone)
+    participants.forEach((p) => {
+      const pId = p.id || (p as any)._id;
+      if (pId === myId) return; // Don't mention oneself
+      const username = p.username || "";
+      if (username.toLowerCase().includes(query)) {
+        options.push({
+          type: "member",
+          id: pId,
+          username,
+          avatarUrl: p.avatarUrl,
+        });
+      }
+    });
+
+    return options;
+  }, [isGroup, mentionQuery, participants, myId]);
+
+  // Reset selected index when options change
+  useEffect(() => {
+    setMentionSelectedIndex(0);
+  }, [mentionOptions.length]);
+
+  // Check mention cursor position on content change or selection
+  const checkMentionTrigger = (text: string, cursorPosition: number) => {
+    if (!isGroup) {
+      setMentionQuery(null);
+      return;
+    }
+
+    // Look backward from cursorPosition for an '@'
+    const textBeforeCursor = text.slice(0, cursorPosition);
+    const lastAtIndex = textBeforeCursor.lastIndexOf("@");
+
+    if (lastAtIndex === -1) {
+      setMentionQuery(null);
+      return;
+    }
+
+    // Ensure @ is at the beginning of input or preceded by whitespace
+    const charBeforeAt = lastAtIndex > 0 ? textBeforeCursor[lastAtIndex - 1] : " ";
+    if (!/\s/.test(charBeforeAt)) {
+      setMentionQuery(null);
+      return;
+    }
+
+    // The query is between lastAtIndex + 1 and cursorPosition
+    const query = textBeforeCursor.slice(lastAtIndex + 1);
+
+    // If query contains spaces or newline, user has finished mentioning or moved past it
+    if (/\s/.test(query)) {
+      setMentionQuery(null);
+      return;
+    }
+
+    setMentionStartIndex(lastAtIndex);
+    setMentionQuery(query);
+  };
+
+  const handleSelectMention = (option: { type: "all" | "member"; username: string }) => {
+    if (mentionStartIndex === -1 || !textareaRef.current) return;
+
+    const mentionText = `@${option.username} `;
+    const beforeAt = content.slice(0, mentionStartIndex);
+    const afterCursor = content.slice(textareaRef.current.selectionEnd);
+
+    const newContent = `${beforeAt}${mentionText}${afterCursor}`;
+    setContent(newContent);
+    setMentionQuery(null);
+    setMentionStartIndex(-1);
+
+    // Place cursor right after inserted mention
+    setTimeout(() => {
+      if (textareaRef.current) {
+        const nextPos = beforeAt.length + mentionText.length;
+        textareaRef.current.focus();
+        textareaRef.current.setSelectionRange(nextPos, nextPos);
+      }
+    }, 0);
+  };
 
   // Camera modal streaming state
   const [isCameraActive, setIsCameraActive] = useState(false);
@@ -107,15 +225,24 @@ export const MessageInput: FC<MessageInputProps> = ({
       ) {
         setShowAttachmentMenu(false);
       }
+
+      if (
+        mentionMenuRef.current &&
+        !mentionMenuRef.current.contains(target) &&
+        textareaRef.current &&
+        !textareaRef.current.contains(target)
+      ) {
+        setMentionQuery(null);
+      }
     };
 
-    if (showEmojiPicker || showAttachmentMenu) {
+    if (showEmojiPicker || showAttachmentMenu || mentionQuery !== null) {
       document.addEventListener("mousedown", handleClickOutside);
     }
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, [showEmojiPicker, showAttachmentMenu]);
+  }, [showEmojiPicker, showAttachmentMenu, mentionQuery]);
 
   // Clean up preview object URL
   useEffect(() => {
@@ -317,6 +444,33 @@ export const MessageInput: FC<MessageInputProps> = ({
   };
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
+    // If mention suggestions popup is visible
+    if (mentionQuery !== null && mentionOptions.length > 0) {
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setMentionSelectedIndex((prev) => (prev + 1) % mentionOptions.length);
+        return;
+      }
+      if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setMentionSelectedIndex((prev) => (prev - 1 + mentionOptions.length) % mentionOptions.length);
+        return;
+      }
+      if (e.key === "Enter" || e.key === "Tab") {
+        e.preventDefault();
+        const selected = mentionOptions[mentionSelectedIndex];
+        if (selected) {
+          handleSelectMention(selected);
+        }
+        return;
+      }
+      if (e.key === "Escape") {
+        e.preventDefault();
+        setMentionQuery(null);
+        return;
+      }
+    }
+
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSubmit();
@@ -328,9 +482,10 @@ export const MessageInput: FC<MessageInputProps> = ({
     textareaRef.current?.focus();
   };
 
-  const handleChange = (val: string) => {
+  const handleChange = (val: string, cursorPosition: number) => {
     setContent(val);
     handleKeystroke();
+    checkMentionTrigger(val, cursorPosition);
 
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
@@ -457,6 +612,57 @@ export const MessageInput: FC<MessageInputProps> = ({
           </div>
         </div>
 
+        {/* Mention Suggestions Popup (WhatsApp Style) */}
+        {mentionQuery !== null && mentionOptions.length > 0 && (
+          <div
+            ref={mentionMenuRef}
+            className="absolute bottom-full left-0 mb-2 w-72 max-h-60 overflow-y-auto bg-[#1b1c27] border border-white/[0.08] rounded-2xl shadow-2xl p-1.5 flex flex-col gap-0.5 animate-in fade-in slide-in-from-bottom-2 duration-150 z-50 pointer-events-auto"
+          >
+            {mentionOptions.map((opt: { type: "all" | "member"; id: string; username: string; avatarUrl?: string }, idx: number) => {
+              const isSelected = idx === mentionSelectedIndex;
+              return (
+                <button
+                  key={opt.id}
+                  type="button"
+                  onClick={() => handleSelectMention(opt)}
+                  onMouseEnter={() => setMentionSelectedIndex(idx)}
+                  className={cn(
+                    "flex items-center gap-3 px-3 py-2 rounded-xl text-left transition-colors cursor-pointer w-full",
+                    isSelected ? "bg-white/[0.08]" : "hover:bg-white/[0.04]"
+                  )}
+                >
+                  {opt.type === "all" ? (
+                    <div className="w-8 h-8 rounded-full bg-[#0066ff]/20 text-[#0066ff] flex items-center justify-center shrink-0 border border-[#0066ff]/30">
+                      <Users size={16} />
+                    </div>
+                  ) : opt.avatarUrl ? (
+                    <img
+                      src={opt.avatarUrl}
+                      alt={opt.username}
+                      className="w-8 h-8 rounded-full object-cover shrink-0 border border-white/10"
+                    />
+                  ) : (
+                    <div className="w-8 h-8 rounded-full bg-slate-800 text-white font-semibold text-xs flex items-center justify-center shrink-0 border border-white/10">
+                      {opt.username.slice(0, 2).toUpperCase()}
+                    </div>
+                  )}
+
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-semibold text-white truncate">
+                      {opt.username}
+                    </p>
+                    {opt.type === "all" && (
+                      <p className="text-[10px] text-[#767b93] truncate">
+                        Mention all members in this chat
+                      </p>
+                    )}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
         {/* Attachment Preview Card */}
         {pendingFile && (
           <div className="flex items-center gap-3 p-2.5 rounded-2xl bg-[#13141d] border border-white/[0.04] w-fit max-w-sm animate-in fade-in duration-150 shadow-lg">
@@ -564,8 +770,16 @@ export const MessageInput: FC<MessageInputProps> = ({
             ref={textareaRef}
             rows={1}
             value={content}
-            onChange={(e) => handleChange(e.target.value)}
+            onChange={(e) => handleChange(e.target.value, e.target.selectionStart || 0)}
             onKeyDown={handleKeyDown}
+            onClick={(e) => {
+              const target = e.target as HTMLTextAreaElement;
+              checkMentionTrigger(target.value, target.selectionStart || 0);
+            }}
+            onKeyUp={(e) => {
+              const target = e.target as HTMLTextAreaElement;
+              checkMentionTrigger(target.value, target.selectionStart || 0);
+            }}
             placeholder={
               isUploading
                 ? "Uploading attachment..."

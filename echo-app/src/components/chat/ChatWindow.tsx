@@ -702,6 +702,7 @@ export const ChatWindow: FC<ChatWindowProps> = ({
                     message={msg}
                     isGroup={activeConv?.type === "group"}
                     isGroupAdmin={isGroupAdmin}
+                    participants={activeConv?.participants}
                     onReact={handleReact}
                     onDeleteForMe={handleDeleteForMe}
                     onDeleteForEveryone={handleDeleteForEveryone}
@@ -736,6 +737,7 @@ export const ChatWindow: FC<ChatWindowProps> = ({
           isGroup={activeConv?.type === "group"}
           onlyAdminsMessage={!!activeConv?.settings?.onlyAdminsMessage}
           isCurrentUserAdmin={isGroupAdmin}
+          participants={activeConv?.participants}
         />
       </div>
 

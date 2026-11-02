@@ -1,5 +1,6 @@
 import { create } from "zustand";
-import { Conversation, Message, IReaction } from "../types/message";
+import { Conversation, Message, IReaction, ConversationParticipant } from "../types/message";
+import { User } from "../types/user";
 import { useAuthStore } from "./authStore";
 
 export interface UndoDeleteState {
@@ -30,6 +31,8 @@ interface ChatState {
 
   // Advanced Header Actions state
   isContactDrawerOpen: boolean;
+  contactDrawerUser: (User | ConversationParticipant) | null;
+  setContactDrawerUser: (user: (User | ConversationParticipant) | null) => void;
   isSearchOpen: boolean;
   searchQuery: string;
   isSelectionMode: boolean;
@@ -113,6 +116,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
   setUndoDeleteState: (undoDeleteState) => set({ undoDeleteState }),
 
   isContactDrawerOpen: false,
+  contactDrawerUser: null,
+  setContactDrawerUser: (user) => set({ contactDrawerUser: user, isContactDrawerOpen: !!user }),
   isSearchOpen: false,
   searchQuery: "",
   isSelectionMode: false,
@@ -195,11 +200,16 @@ export const useChatStore = create<ChatState>((set, get) => ({
         isSelectionMode: false,
         selectedMessageIds: [],
         isContactDrawerOpen: false,
+        contactDrawerUser: null,
       };
     });
   },
 
-  setContactDrawerOpen: (open) => set({ isContactDrawerOpen: open }),
+  setContactDrawerOpen: (open) =>
+    set((state) => ({
+      isContactDrawerOpen: open,
+      contactDrawerUser: open ? state.contactDrawerUser : null,
+    })),
 
   toggleSearch: () =>
     set((state) => ({
@@ -239,6 +249,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       activeConversationId:
         state.activeConversationId === conversationId ? null : state.activeConversationId,
       isContactDrawerOpen: false,
+      contactDrawerUser: null,
       isSelectionMode: false,
       selectedMessageIds: [],
       isSearchOpen: false,
@@ -935,6 +946,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       onlineUsers: new Set<string>(),
       userLastSeen: {},
       isContactDrawerOpen: false,
+      contactDrawerUser: null,
       isSearchOpen: false,
       searchQuery: "",
       isSelectionMode: false,

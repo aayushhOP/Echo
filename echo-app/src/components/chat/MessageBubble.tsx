@@ -9,11 +9,14 @@ import { DeleteMessageModal } from "./DeleteMessageModal";
 import { ReactionsDetailModal } from "./ReactionsDetailModal";
 import { MessageContextMenu } from "./MessageContextMenu";
 import { isSameUser } from "../../utils/chatUtils";
+import { User } from "../../types/user";
+import { ConversationParticipant } from "../../types/message";
 
 interface MessageBubbleProps {
   message: Message;
   isGroup?: boolean;
   isGroupAdmin?: boolean;
+  participants?: (User | ConversationParticipant)[];
   onReact: (messageId: string, emoji: string) => void;
   onDeleteForMe?: (messageId: string) => void;
   onDeleteForEveryone?: (messageId: string) => void;
@@ -51,6 +54,7 @@ const MessageBubbleComponent: FC<MessageBubbleProps> = ({
   message,
   isGroup = false,
   isGroupAdmin = false,
+  participants = [],
   onReact,
   onDeleteForMe,
   onDeleteForEveryone,
@@ -75,6 +79,7 @@ const MessageBubbleComponent: FC<MessageBubbleProps> = ({
     enterSelectionMode,
     togglePinMessage,
     setPinningMessage,
+    setContactDrawerUser,
   } = useChatStore();
 
   const senderId =
@@ -445,7 +450,60 @@ const MessageBubbleComponent: FC<MessageBubbleProps> = ({
 
               <div className="flex flex-wrap items-baseline justify-end gap-x-2 gap-y-0.5">
                 <span className="whitespace-pre-wrap break-words mr-auto text-left flex-1 min-w-[20px] select-text">
-                  {message.content}
+                  {message.content
+                    .split(/(https?:\/\/[^\s]+|@\w+)/g)
+                    .map((part, index) => {
+                      if (/^https?:\/\/[^\s]+$/.test(part)) {
+                        return (
+                          <a
+                            key={index}
+                            href={part}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className={
+                              isOwn
+                                ? "text-sky-200 underline decoration-sky-300/50 hover:text-white cursor-pointer break-all"
+                                : "text-[#38bdf8] underline decoration-sky-400/50 hover:text-sky-300 cursor-pointer break-all"
+                            }
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            {part}
+                          </a>
+                        );
+                      }
+
+                      if (part.startsWith("@")) {
+                        const targetUsername = part.slice(1);
+                        const matchedMember = participants.find(
+                          (p) => (p.username || "").toLowerCase() === targetUsername.toLowerCase()
+                        );
+
+                        return (
+                          <span
+                            key={index}
+                            onClick={(e) => {
+                              if (matchedMember) {
+                                e.stopPropagation();
+                                setContactDrawerUser(matchedMember);
+                              }
+                            }}
+                            className={
+                              matchedMember
+                                ? isOwn
+                                  ? "font-semibold text-sky-200 underline decoration-sky-300/40 hover:text-white cursor-pointer"
+                                  : "font-semibold text-[#00a3ff] hover:underline cursor-pointer"
+                                : isOwn
+                                ? "font-semibold text-sky-200 cursor-default"
+                                : "font-semibold text-[#00a3ff] cursor-default"
+                            }
+                          >
+                            {part}
+                          </span>
+                        );
+                      }
+
+                      return part;
+                    })}
                 </span>
 
                 <span

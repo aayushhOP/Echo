@@ -15,6 +15,7 @@ export const ChatPage: FC = () => {
   const conversations = useChatStore((state) => state.conversations);
   const addOrUpdateConversation = useChatStore((state) => state.addOrUpdateConversation);
   const isContactDrawerOpen = useChatStore((state) => state.isContactDrawerOpen);
+  const contactDrawerUser = useChatStore((state) => state.contactDrawerUser);
   const setContactDrawerOpen = useChatStore((state) => state.setContactDrawerOpen);
   const toggleSearch = useChatStore((state) => state.toggleSearch);
   const currentUser = useAuthStore((state) => state.user);
@@ -127,6 +128,7 @@ export const ChatPage: FC = () => {
               onTogglePin={handleTogglePin}
               onToggleMute={handleToggleMute}
               onSearchClick={toggleSearch}
+              viewingParticipant={contactDrawerUser}
             />
           )}
         </div>

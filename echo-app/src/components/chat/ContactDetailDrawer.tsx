@@ -39,6 +39,7 @@ export interface ContactDetailDrawerProps {
   onToggleMute: (conversationId: string) => Promise<void>;
   onSearchClick?: () => void;
   onOpenMediaItem?: (url: string) => void;
+  viewingParticipant?: any;
 }
 
 export const ContactDetailDrawer: React.FC<ContactDetailDrawerProps> = ({
@@ -50,6 +51,7 @@ export const ContactDetailDrawer: React.FC<ContactDetailDrawerProps> = ({
   onToggleMute,
   onSearchClick,
   onOpenMediaItem,
+  viewingParticipant,
 }) => {
   const [activeTab, setActiveTab] = useState<"media" | "docs">("media");
   const [mediaItems, setMediaItems] = useState<MediaItem[]>([]);
@@ -84,6 +86,7 @@ export const ContactDetailDrawer: React.FC<ContactDetailDrawerProps> = ({
   const setParticipantBlockedStatus = useChatStore(
     (state) => state.setParticipantBlockedStatus
   );
+  const setContactDrawerUser = useChatStore((state) => state.setContactDrawerUser);
   const setReplyingTo = useChatStore((state) => state.setReplyingTo);
   const confirm = useConfirm();
 
@@ -232,23 +235,21 @@ export const ContactDetailDrawer: React.FC<ContactDetailDrawerProps> = ({
     setTimeout(() => setHasCopiedInvite(false), 2000);
   };
 
-  // Identify display counterpart for 1-on-1 chats
-  const counterpart =
-    conversation.type === "direct"
-      ? getOtherParticipant(conversation.participants, currentUser)
-      : null;
+  // Identify display counterpart for 1-on-1 chats, or a specific member selected from group chat
+  const effectiveMember = viewingParticipant || (conversation.type === "direct" ? getOtherParticipant(conversation.participants, currentUser) : null);
+  const isViewingSpecificUser = Boolean(effectiveMember);
 
+  const counterpart = effectiveMember;
   const counterpartId = counterpart ? (counterpart as any)._id || (counterpart as any).id : null;
   const isBlockedByMe =
-    conversation.type === "direct" && counterpartId && currentUser?.blockedUsers
+    counterpartId && currentUser?.blockedUsers
       ? currentUser.blockedUsers.includes(counterpartId)
       : false;
   const isBlockedByOther =
-    conversation.type === "direct" && counterpartId && currentUser?.blockedBy
+    counterpartId && currentUser?.blockedBy
       ? currentUser.blockedBy.includes(counterpartId)
       : false;
   const isBlocked =
-    conversation.type === "direct" &&
     Boolean(
       isBlockedByMe ||
       isBlockedByOther ||
@@ -257,19 +258,19 @@ export const ContactDetailDrawer: React.FC<ContactDetailDrawerProps> = ({
     );
 
   const isOnline =
-    conversation.type === "direct" && counterpartId && !isBlocked
+    counterpartId && !isBlocked
       ? onlineUsers.has(counterpartId) || !!counterpart?.isOnline
       : false;
 
   const displayName =
-    conversation.type === "group"
+    !isViewingSpecificUser && conversation.type === "group"
       ? conversation.groupName || "Group Chat"
       : counterpart?.username || "User";
 
   const displayBio =
     (counterpart as any)?.bio ||
     (counterpart as any)?.status ||
-    (conversation.type === "group"
+    (!isViewingSpecificUser && conversation.type === "group"
       ? `${conversation.participants.length} participants in this group`
       : "Hey there! I am using Echo");
 
@@ -385,7 +386,7 @@ export const ContactDetailDrawer: React.FC<ContactDetailDrawerProps> = ({
       {/* Drawer Header */}
       <div className="h-16 px-5 border-b border-white/[0.04] flex items-center justify-between shrink-0">
         <h3 className="font-semibold text-sm text-[#f0f2f8]">
-          {conversation.type === "group" ? "Group Info" : "Contact Info"}
+          {!isViewingSpecificUser && conversation.type === "group" ? "Group Info" : "Contact Info"}
         </h3>
         <button
           onClick={onClose}
@@ -403,7 +404,7 @@ export const ContactDetailDrawer: React.FC<ContactDetailDrawerProps> = ({
         <div className="flex flex-col items-center py-6 px-4 border-b border-white/[0.04] text-center">
           <div className="relative">
             <div className="w-20 h-20 rounded-full bg-[#1b1c27] border-2 border-white/[0.08] flex items-center justify-center text-lg font-bold text-white overflow-hidden shadow-inner ring-2 ring-[#0066ff]/20">
-              {conversation.type === "group" ? (
+              {!isViewingSpecificUser && conversation.type === "group" ? (
                 (conversation as any).groupAvatar ? (
                   <img
                     src={(conversation as any).groupAvatar}
@@ -425,7 +426,7 @@ export const ContactDetailDrawer: React.FC<ContactDetailDrawerProps> = ({
                 </div>
               )}
             </div>
-            {conversation.type === "direct" && isOnline && (
+            {isViewingSpecificUser && isOnline && (
               <span
                 className="absolute bottom-1 right-1 w-4 h-4 bg-emerald-500 border-2 border-[#161722] rounded-full ring-2 ring-emerald-500/20"
                 title="Online"
@@ -440,7 +441,7 @@ export const ContactDetailDrawer: React.FC<ContactDetailDrawerProps> = ({
             {displayBio}
           </p>
 
-          {conversation.type === "direct" && (counterpart as any)?.email && (
+          {isViewingSpecificUser && (counterpart as any)?.email && (
             <p className="text-[11px] text-[#505469] mt-1">
               {(counterpart as any).email}
             </p>
@@ -504,7 +505,7 @@ export const ContactDetailDrawer: React.FC<ContactDetailDrawerProps> = ({
         </div>
 
         {/* Group Administration & Settings Section */}
-        {conversation.type === "group" && (
+        {!isViewingSpecificUser && conversation.type === "group" && (
           <div className="py-3 px-4 border-b border-white/[0.04] space-y-2">
             {isCurrentUserAdmin && (
               <button
@@ -560,7 +561,7 @@ export const ContactDetailDrawer: React.FC<ContactDetailDrawerProps> = ({
         )}
 
         {/* Group Participants (Rendered only for group chats) */}
-        {conversation.type === "group" && (
+        {!isViewingSpecificUser && conversation.type === "group" && (
           <div className="py-4 border-b border-white/[0.04]">
             <div className="px-5 mb-2 flex items-center justify-between">
               <span className="text-xs font-semibold text-[#f0f2f8]">
@@ -588,7 +589,10 @@ export const ContactDetailDrawer: React.FC<ContactDetailDrawerProps> = ({
                     key={memberId || member.username}
                     className="flex items-center justify-between p-2 rounded-lg hover:bg-white/[0.02] transition-colors relative"
                   >
-                    <div className="flex items-center gap-2.5 min-w-0">
+                    <div
+                      className="flex items-center gap-2.5 min-w-0 cursor-pointer flex-1"
+                      onClick={() => memberId !== currentUserId && setContactDrawerUser(member)}
+                    >
                       <div className="relative">
                         <div className="w-8 h-8 rounded-full bg-[#1b1c27] flex items-center justify-center text-xs text-white shrink-0 font-medium overflow-hidden">
                           {member.avatarUrl ? (
@@ -792,7 +796,7 @@ export const ContactDetailDrawer: React.FC<ContactDetailDrawerProps> = ({
         </div>
 
         {/* Danger zone: Leave & Delete Group (for group conversations) */}
-        {conversation.type === "group" && (
+        {!isViewingSpecificUser && conversation.type === "group" && (
           <div className="mt-auto p-4 border-t border-slate-800/60 bg-[#12131c] flex flex-col gap-2.5">
             <button
               onClick={handleLeaveGroup}
@@ -816,8 +820,8 @@ export const ContactDetailDrawer: React.FC<ContactDetailDrawerProps> = ({
           </div>
         )}
 
-        {/* Danger zone for 1-on-1 direct conversations */}
-        {conversation.type === "direct" && counterpartId && (
+        {/* Danger zone for 1-on-1 direct conversations or viewed specific member */}
+        {(conversation.type === "direct" || isViewingSpecificUser) && counterpartId && counterpartId !== currentUserId && (
           <div className="mt-auto p-4 border-t border-slate-800/60 bg-[#12131c]">
             <button
               onClick={handleToggleBlock}

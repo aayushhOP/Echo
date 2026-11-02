@@ -4,7 +4,7 @@ import { Phone, Video, Search, MoreVertical, Users, CheckSquare, X, Ban, Trash2 
 import { IConversation } from "../../types/chat";
 import { useAuthStore } from "../../store/authStore";
 import { useChatStore } from "../../store/chatStore";
-import { formatTime } from "../../utils/date";
+import { formatLastSeen } from "../../utils/date";
 import { getOtherParticipant } from "../../utils/chatUtils";
 
 interface ChatHeaderProps {
@@ -95,7 +95,7 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
   } else if (isOnline) {
     subtitle = "Active now";
   } else if (lastSeenIso) {
-    subtitle = `Last seen ${formatTime(lastSeenIso)}`;
+    subtitle = formatLastSeen(lastSeenIso);
   } else {
     subtitle = "Offline";
   }
