@@ -11,6 +11,7 @@ export interface UserProfileDTO {
   phone?: string;
   preferences?: IUserPreferences;
   blockedUsers: string[];
+  blockedBy?: string[];
   isOnline: boolean;
   lastSeen: Date;
   createdAt: Date;
@@ -35,7 +36,10 @@ export interface UpdateProfileDTO {
   preferences?: Partial<IUserPreferences>;
 }
 
-export const formatUserProfile = (user: IUser & { createdAt: Date; updatedAt: Date }): UserProfileDTO => ({
+export const formatUserProfile = (
+  user: IUser & { createdAt: Date; updatedAt: Date },
+  blockedByUsers?: string[]
+): UserProfileDTO => ({
   id: user._id.toString(),
   clerkId: user.clerkId,
   username: user.username,
@@ -48,6 +52,7 @@ export const formatUserProfile = (user: IUser & { createdAt: Date; updatedAt: Da
   blockedUsers: Array.isArray(user.blockedUsers)
     ? user.blockedUsers.map((b: any) => (b._id ? b._id.toString() : b.toString()))
     : [],
+  blockedBy: blockedByUsers || [],
   isOnline: user.isOnline,
   lastSeen: user.lastSeen,
   createdAt: user.createdAt,

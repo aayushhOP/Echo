@@ -86,6 +86,7 @@ export interface ConversationParticipant {
   phone?: string;
   isOnline?: boolean;
   lastSeen?: string;
+  isBlocked?: boolean;
 }
 
 export interface Conversation {

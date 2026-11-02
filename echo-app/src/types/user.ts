@@ -8,6 +8,7 @@ export interface User {
   status?: string;
   isOnline: boolean;
   blockedUsers?: string[];
+  blockedBy?: string[];
   lastSeen?: string;
   createdAt?: string;
   updatedAt?: string;

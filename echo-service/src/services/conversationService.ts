@@ -77,6 +77,7 @@ export const getConversationsForUser = async (userId: string) => {
       }
 
       // Mask isOnline / lastSeen of blocked or blocker participants (bidirectional)
+      // and annotate isBlocked on participant so client knows the relationship is blocked
       if (Array.isArray(convObj.participants)) {
         convObj.participants = convObj.participants.map((p: any) => {
           if (p && p._id && totalBlockedSet.has(p._id.toString())) {
@@ -84,6 +85,7 @@ export const getConversationsForUser = async (userId: string) => {
               ...p,
               isOnline: false,
               lastSeen: null,
+              isBlocked: true,
             };
           }
           return p;
@@ -156,6 +158,7 @@ export const getConversationById = async (conversationId: string, userId: string
           ...p,
           isOnline: false,
           lastSeen: null,
+          isBlocked: true,
         };
       }
       return p;

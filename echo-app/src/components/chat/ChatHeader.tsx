@@ -52,6 +52,7 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 
   const isGroup = conversation.type === "group";
   const blockedUsers = currentUser?.blockedUsers || [];
+  const blockedBy = currentUser?.blockedBy || [];
 
   const otherParticipant = !isGroup
     ? getOtherParticipant(conversation.participants, currentUser)
@@ -59,12 +60,14 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 
   const otherId = otherParticipant ? otherParticipant.id || (otherParticipant as any)._id : null;
   const isBlockedByMe = otherId ? blockedUsers.includes(otherId) : false;
+  const isBlockedByOther = otherId ? blockedBy.includes(otherId) : false;
 
   // Check if either party blocked the other (direct conversation)
   const isBlocked =
     !isGroup &&
     Boolean(
       isBlockedByMe ||
+      isBlockedByOther ||
       (otherParticipant as any)?.isBlocked ||
       (otherParticipant as any)?.blockedUsers?.includes(currentUser?.id || (currentUser as any)?._id)
     );

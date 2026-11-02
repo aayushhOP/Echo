@@ -22,6 +22,7 @@ export const ConversationList: FC = () => {
     activeConversationId,
     setActiveConversationId,
     onlineUsers,
+    typingUsers,
     undoDeleteState,
     setUndoDeleteState,
     restoreMessageForMe,
@@ -141,6 +142,7 @@ export const ConversationList: FC = () => {
           const isGroup = conv.type === "group";
           const myId = currentUser?.id || (currentUser as any)?._id;
           const blockedUsers = currentUser?.blockedUsers || [];
+          const blockedBy = currentUser?.blockedBy || [];
 
           const otherParticipant = !isGroup
             ? getOtherParticipant(conv.participants, currentUser)
@@ -152,10 +154,12 @@ export const ConversationList: FC = () => {
 
           const otherId = otherParticipant ? otherParticipant.id || (otherParticipant as any)._id : null;
           const isBlockedByMe = otherId ? blockedUsers.includes(otherId) : false;
+          const isBlockedByOther = otherId ? blockedBy.includes(otherId) : false;
           const isBlocked =
             !isGroup &&
             Boolean(
               isBlockedByMe ||
+              isBlockedByOther ||
               (otherParticipant as any)?.isBlocked ||
               (otherParticipant as any)?.blockedUsers?.includes(myId)
             );
@@ -203,6 +207,14 @@ export const ConversationList: FC = () => {
           const lastMsgTime = lastMsg?.createdAt ? formatTime(lastMsg.createdAt) : "";
           const unreadCount = conv.unreadCount || 0;
           const hasUnread = unreadCount > 0 && !isSelected;
+
+          // Check if someone else in this conversation is typing while this chat is NOT open
+          const convTypingMap = typingUsers[conv._id] || {};
+          const isSomeoneTyping =
+            !isSelected &&
+            Object.entries(convTypingMap).some(
+              ([userId, isTyping]) => isTyping && userId !== myId
+            );
 
           return (
             <div
@@ -292,18 +304,24 @@ export const ConversationList: FC = () => {
                 </div>
 
                 <div className="flex items-center justify-between gap-2">
-                  <p
-                    className={cn(
-                      "text-xs truncate",
-                      isSelected
-                        ? "text-white/90"
-                        : hasUnread
-                        ? "text-slate-100 font-medium"
-                        : "text-[#767b93]"
-                    )}
-                  >
-                    {lastMsgSnippet}
-                  </p>
+                  {isSomeoneTyping ? (
+                    <p className="text-xs truncate font-medium text-[#25d366] flex items-center gap-1.5 animate-pulse">
+                      <span>typing...</span>
+                    </p>
+                  ) : (
+                    <p
+                      className={cn(
+                        "text-xs truncate",
+                        isSelected
+                          ? "text-white/90"
+                          : hasUnread
+                          ? "text-slate-100 font-medium"
+                          : "text-[#767b93]"
+                      )}
+                    >
+                      {lastMsgSnippet}
+                    </p>
+                  )}
 
                   {/* Unread count badge (vanishes instantly when conversation is active) */}
                   {hasUnread && (

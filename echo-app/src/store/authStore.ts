@@ -12,6 +12,8 @@ interface AuthState {
   updateUser: (updatedUser: Partial<User>) => void;
   addBlockedUser: (userId: string) => void;
   removeBlockedUser: (userId: string) => void;
+  addBlockedByUser: (userId: string) => void;
+  removeBlockedByUser: (userId: string) => void;
   clearAuth: () => void;
   syncUserWithBackend: (token: string) => Promise<User | null>;
 }
@@ -54,6 +56,28 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         user: {
           ...current,
           blockedUsers: current.blockedUsers.filter((id) => id !== userId),
+        },
+      });
+    }
+  },
+
+  addBlockedByUser: (userId: string) => {
+    const current = get().user;
+    if (current) {
+      const existing = current.blockedBy || [];
+      if (!existing.includes(userId)) {
+        set({ user: { ...current, blockedBy: [...existing, userId] } });
+      }
+    }
+  },
+
+  removeBlockedByUser: (userId: string) => {
+    const current = get().user;
+    if (current && current.blockedBy) {
+      set({
+        user: {
+          ...current,
+          blockedBy: current.blockedBy.filter((id) => id !== userId),
         },
       });
     }

@@ -198,13 +198,25 @@ export const ContactDetailDrawer: React.FC<ContactDetailDrawerProps> = ({
       : null;
 
   const counterpartId = counterpart ? (counterpart as any)._id || (counterpart as any).id : null;
-  const isBlocked =
+  const isBlockedByMe =
     conversation.type === "direct" && counterpartId && currentUser?.blockedUsers
       ? currentUser.blockedUsers.includes(counterpartId)
       : false;
+  const isBlockedByOther =
+    conversation.type === "direct" && counterpartId && currentUser?.blockedBy
+      ? currentUser.blockedBy.includes(counterpartId)
+      : false;
+  const isBlocked =
+    conversation.type === "direct" &&
+    Boolean(
+      isBlockedByMe ||
+      isBlockedByOther ||
+      (counterpart as any)?.isBlocked ||
+      (counterpart as any)?.blockedUsers?.includes(currentUser?.id || (currentUser as any)?._id)
+    );
 
   const isOnline =
-    conversation.type === "direct" && counterpartId
+    conversation.type === "direct" && counterpartId && !isBlocked
       ? onlineUsers.has(counterpartId) || !!counterpart?.isOnline
       : false;
 
@@ -276,7 +288,7 @@ export const ContactDetailDrawer: React.FC<ContactDetailDrawerProps> = ({
   const handleToggleBlock = async () => {
     if (!counterpartId || isTogglingBlock) return;
     try {
-      if (isBlocked) {
+      if (isBlockedByMe) {
         const confirmed = await confirm({
           title: `Unblock ${displayName}?`,
           message: "They will be able to send you messages and see your online status again.",
@@ -756,17 +768,17 @@ export const ContactDetailDrawer: React.FC<ContactDetailDrawerProps> = ({
               onClick={handleToggleBlock}
               disabled={isTogglingBlock}
               className={`w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium transition-colors ${
-                isBlocked
+                isBlockedByMe
                   ? "bg-slate-800 text-slate-300 hover:bg-slate-700"
                   : "bg-rose-500/10 text-rose-500 hover:bg-rose-500/20"
               } disabled:opacity-50`}
             >
               <Ban size={16} />
               {isTogglingBlock
-                ? isBlocked
+                ? isBlockedByMe
                   ? "Unblocking..."
                   : "Blocking..."
-                : isBlocked
+                : isBlockedByMe
                 ? "Unblock Contact"
                 : "Block Contact"}
             </button>

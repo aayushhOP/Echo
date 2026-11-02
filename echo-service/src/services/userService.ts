@@ -13,7 +13,9 @@ export const getCurrentUserProfile = async (userId: string): Promise<UserProfile
   if (!user) {
     throw new AppError("User not found", 404);
   }
-  return formatUserProfile(user as any);
+  const usersWhoBlockedMe = await User.find({ blockedUsers: user._id }).select("_id");
+  const blockedByUsers = usersWhoBlockedMe.map((u) => u._id.toString());
+  return formatUserProfile(user as any, blockedByUsers);
 };
 
 export const updateCurrentUserProfile = async (
