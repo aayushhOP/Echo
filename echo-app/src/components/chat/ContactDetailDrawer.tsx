@@ -19,11 +19,13 @@ import {
   Copy,
   Check,
   Trash2,
+  UserPlus,
 } from "lucide-react";
 import { messageApi, MediaItem } from "../../api/messageApi";
 import { userApi } from "../../api/userApi";
 import { groupApi } from "../../api/groupApi";
 import { GroupSettingsModal } from "./GroupSettingsModal";
+import { AddGroupMembersModal } from "./AddGroupMembersModal";
 import { Conversation, IGroupSettings } from "../../types/message";
 import { getOtherParticipant } from "../../utils/chatUtils";
 import { useChatStore } from "../../store/chatStore";
@@ -61,6 +63,7 @@ export const ContactDetailDrawer: React.FC<ContactDetailDrawerProps> = ({
   const [isTogglingMute, setIsTogglingMute] = useState(false);
   const [isTogglingBlock, setIsTogglingBlock] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+  const [isAddMembersModalOpen, setIsAddMembersModalOpen] = useState(false);
   const [isUpdatingSettings, setIsUpdatingSettings] = useState(false);
   const [inviteUrl, setInviteUrl] = useState<string>("");
   const [isGeneratingInvite, setIsGeneratingInvite] = useState(false);
@@ -234,6 +237,15 @@ export const ContactDetailDrawer: React.FC<ContactDetailDrawerProps> = ({
     navigator.clipboard.writeText(inviteUrl);
     setHasCopiedInvite(true);
     setTimeout(() => setHasCopiedInvite(false), 2000);
+  };
+
+  const handleAddMembers = async (selectedUserIds: string[]) => {
+    const updated = await messageApi.updateConversation(conversation._id, {
+      addParticipants: selectedUserIds,
+    });
+    if (updated) {
+      useChatStore.getState().addOrUpdateConversation(updated);
+    }
   };
 
   // Identify display counterpart for 1-on-1 chats, or a specific member selected from group chat
@@ -575,6 +587,16 @@ export const ContactDetailDrawer: React.FC<ContactDetailDrawerProps> = ({
               <span className="text-xs font-semibold text-[#f0f2f8]">
                 Members ({conversation.participants.length})
               </span>
+              {(!conversation.settings?.onlyAdminsAddMembers || isCurrentUserAdmin) && (
+                <button
+                  type="button"
+                  onClick={() => setIsAddMembersModalOpen(true)}
+                  className="flex items-center gap-1.5 text-xs text-[#0066ff] hover:text-[#38bdf8] font-medium transition cursor-pointer"
+                >
+                  <UserPlus size={14} />
+                  <span>Add Members</span>
+                </button>
+              )}
             </div>
             <div className="space-y-1 px-3">
               {conversation.participants.map((member) => {
@@ -857,6 +879,16 @@ export const ContactDetailDrawer: React.FC<ContactDetailDrawerProps> = ({
           </div>
         )}
       </div>
+
+      {/* Add Group Members Modal */}
+      {conversation.type === "group" && (
+        <AddGroupMembersModal
+          isOpen={isAddMembersModalOpen}
+          onClose={() => setIsAddMembersModalOpen(false)}
+          conversation={conversation}
+          onAddMembers={handleAddMembers}
+        />
+      )}
 
       {/* Group Settings Modal */}
       {conversation.type === "group" && (

@@ -5,6 +5,7 @@ import { ChatPage } from "../pages/ChatPage";
 import { ProfilePage } from "../pages/ProfilePage";
 import { SettingsPage } from "../pages/SettingsPage";
 import { ContactsPage } from "../pages/ContactsPage";
+import { GroupsPage } from "../pages/GroupsPage";
 import { InvitePage } from "../pages/InvitePage";
 import { AppLayout } from "../components/layout/AppLayout";
 import { ProtectedRoute, PublicRoute } from "./RouteGuards";
@@ -39,6 +40,10 @@ export const appRouter = createBrowserRouter([
           {
             path: "/contacts",
             element: <ContactsPage />,
+          },
+          {
+            path: "/groups",
+            element: <GroupsPage />,
           },
           {
             path: "/profile",
