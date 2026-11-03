@@ -17,7 +17,19 @@ export const useNotifications = (currentUserId: string) => {
   // Request browser permission upon initial hook mount (if not decided)
   useEffect(() => {
     notificationService.requestDesktopPermission();
-  }, []);
+
+    const handleCustomNav = (event: Event) => {
+      const customEvent = event as CustomEvent<{ conversationId: string }>;
+      if (customEvent.detail?.conversationId) {
+        setActiveConversationId(customEvent.detail.conversationId);
+      }
+    };
+
+    window.addEventListener("echo:navigate-conversation", handleCustomNav);
+    return () => {
+      window.removeEventListener("echo:navigate-conversation", handleCustomNav);
+    };
+  }, [setActiveConversationId]);
 
   useEffect(() => {
     if (!socket) return;
