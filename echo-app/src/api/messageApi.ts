@@ -130,6 +130,43 @@ export const messageApi = {
     return res.data;
   },
 
+  uploadVoiceNote: async (
+    blob: Blob,
+    duration: number,
+    waveform: number[]
+  ): Promise<{
+    success: boolean;
+    fileUrl: string;
+    mediaUrl: string;
+    audioMetadata: {
+      duration: number;
+      waveform: number[];
+      mimeType: string;
+    };
+  }> => {
+    const formData = new FormData();
+    const ext = blob.type.includes("mp4") ? "m4a" : "webm";
+    formData.append("audio", blob, `voice-note.${ext}`);
+    formData.append("duration", duration.toString());
+    formData.append("waveform", JSON.stringify(waveform));
+
+    const res = await axiosClient.post<{
+      success: boolean;
+      fileUrl: string;
+      mediaUrl: string;
+      audioMetadata: {
+        duration: number;
+        waveform: number[];
+        mimeType: string;
+      };
+    }>("/media/voice-note", formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+    return res.data;
+  },
+
   deleteConversation: async (conversationId: string): Promise<{ success: boolean; message: string }> => {
     const res = await axiosClient.delete<{ success: boolean; message: string }>(`/conversations/${conversationId}`);
     return res.data;

@@ -348,8 +348,15 @@ export const ChatWindow: FC<ChatWindowProps> = ({
 
   const handleSendMessage = (
     content: string,
-    type: "text" | "image" | "file" = "text",
-    metadata?: { mediaUrl?: string; fileName?: string; fileSize?: number; replyTo?: string | null }
+    type: "text" | "image" | "file" | "audio" = "text",
+    metadata?: {
+      mediaUrl?: string;
+      fileUrl?: string;
+      audioMetadata?: { duration: number; waveform: number[]; mimeType: string };
+      fileName?: string;
+      fileSize?: number;
+      replyTo?: string | null;
+    }
   ) => {
     if (!activeConversationId || !currentUser) return;
 
@@ -365,7 +372,9 @@ export const ChatWindow: FC<ChatWindowProps> = ({
       },
       content,
       type,
-      mediaUrl: metadata?.mediaUrl,
+      mediaUrl: metadata?.mediaUrl || metadata?.fileUrl,
+      fileUrl: metadata?.fileUrl || metadata?.mediaUrl,
+      audioMetadata: metadata?.audioMetadata,
       fileName: metadata?.fileName,
       fileSize: metadata?.fileSize,
       replyTo: metadata?.replyTo,

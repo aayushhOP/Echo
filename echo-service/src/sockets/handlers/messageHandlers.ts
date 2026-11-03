@@ -8,10 +8,18 @@ import { Types } from "mongoose";
 const sendMessageSchema = z.object({
   conversationId: z.string().regex(/^[0-9a-fA-F]{24}$/, "Invalid conversationId"),
   content: z.string().max(4000).optional().default(""),
-  type: z.enum(["text", "image", "file"]).default("text"),
-  mediaUrl: z.string().url().optional().nullable(),
+  type: z.enum(["text", "image", "file", "audio"]).default("text"),
+  mediaUrl: z.string().optional().nullable(),
+  fileUrl: z.string().optional().nullable(),
   fileName: z.string().max(255).optional().nullable(),
-  fileSize: z.number().max(10485760).optional().nullable(),
+  fileSize: z.number().max(20971520).optional().nullable(), // up to 20MB
+  audioMetadata: z
+    .object({
+      duration: z.number().default(0),
+      waveform: z.array(z.number()).default([]),
+      mimeType: z.string().default("audio/webm"),
+    })
+    .optional(),
   replyTo: z.string().regex(/^[0-9a-fA-F]{24}$/).optional().nullable(),
   isForwarded: z.boolean().optional(),
 });
@@ -38,7 +46,7 @@ export const registerMessageHandlers = (io: Server, socket: Socket) => {
         return;
       }
 
-      const { conversationId, content, type, mediaUrl, fileName, fileSize, replyTo, isForwarded } = parsed.data;
+      const { conversationId, content, type, mediaUrl, fileUrl, fileName, fileSize, audioMetadata, replyTo, isForwarded } = parsed.data;
 
       // WhatsApp Rule: Restricted Messaging Mode check
       const conversation = await Conversation.findById(conversationId);
@@ -72,9 +80,11 @@ export const registerMessageHandlers = (io: Server, socket: Socket) => {
         conversationId,
         content,
         type,
-        mediaUrl: mediaUrl ?? undefined,
+        mediaUrl: mediaUrl ?? fileUrl ?? undefined,
+        fileUrl: fileUrl ?? mediaUrl ?? undefined,
         fileName: fileName ?? undefined,
         fileSize: fileSize ?? undefined,
+        audioMetadata: audioMetadata ?? undefined,
         replyTo: replyTo ?? undefined,
         isForwarded: isForwarded ?? undefined,
       });

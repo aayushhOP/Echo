@@ -8,7 +8,7 @@ export const messagePopulation = [
   { path: "senderId", select: "_id username avatarUrl" },
   {
     path: "replyTo",
-    select: "_id content senderId type mediaUrl fileName",
+    select: "_id content senderId type mediaUrl fileUrl audioMetadata fileName",
     populate: { path: "senderId", select: "_id username avatarUrl" },
   },
   { path: "reactions.users", select: "_id username avatarUrl" },
@@ -17,10 +17,16 @@ export const messagePopulation = [
 export interface CreateMessageDTO {
   conversationId: string;
   content?: string;
-  type?: "text" | "image" | "file";
+  type?: "text" | "image" | "file" | "audio";
   mediaUrl?: string | null;
+  fileUrl?: string | null;
   fileName?: string | null;
   fileSize?: number | null;
+  audioMetadata?: {
+    duration: number;
+    waveform: number[];
+    mimeType: string;
+  };
   replyTo?: string | null;
   isForwarded?: boolean;
 }
@@ -34,9 +40,9 @@ export const createMessage = async (
   }
 
   const content = dto.content ? dto.content.trim() : "";
-  const hasMedia = !!dto.mediaUrl;
+  const hasMedia = !!dto.mediaUrl || !!dto.fileUrl;
 
-  if (!content && !hasMedia) {
+  if (!content && !hasMedia && dto.type !== "audio") {
     throw new AppError("Message content or media is required", 400);
   }
 
@@ -114,9 +120,11 @@ export const createMessage = async (
     senderId: userObjectId,
     content: content,
     type: dto.type || (hasMedia ? "file" : "text"),
-    mediaUrl: dto.mediaUrl || null,
+    mediaUrl: dto.mediaUrl || dto.fileUrl || null,
+    fileUrl: dto.fileUrl || dto.mediaUrl || null,
     fileName: dto.fileName || null,
     fileSize: dto.fileSize || null,
+    audioMetadata: dto.audioMetadata || undefined,
     replyTo: dto.replyTo ? new Types.ObjectId(dto.replyTo) : null,
     isForwarded: !!dto.isForwarded,
     reactions: [],

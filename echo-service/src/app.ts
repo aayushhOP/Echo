@@ -12,6 +12,7 @@ import { userRoutes } from "./routes/userRoutes";
 import { conversationRoutes } from "./routes/conversationRoutes";
 import { groupRoutes } from "./routes/groupRoutes";
 import { messageRoutes } from "./routes/messageRoutes";
+import { mediaRoutes } from "./routes/mediaRoutes";
 import { errorHandler } from "./middlewares/errorHandler";
 
 export const createApp = (): Application => {
@@ -65,6 +66,7 @@ export const createApp = (): Application => {
   app.use("/api/conversations", conversationRoutes);
   app.use("/api/groups", groupRoutes);
   app.use("/api/messages", messageRoutes);
+  app.use("/api/media", mediaRoutes);
 
   // Global Error Handler
   app.use(errorHandler);

@@ -1,7 +1,13 @@
 import { User } from "./user";
 
-export type MessageType = "text" | "image" | "file" | "system";
+export type MessageType = "text" | "image" | "file" | "audio" | "system";
 export type MessageStatus = "pending" | "sent" | "delivered" | "read";
+
+export interface IAudioMetadata {
+  duration: number;
+  waveform: number[];
+  mimeType: string;
+}
 
 export interface IReactionUser {
   _id: string;
@@ -36,6 +42,8 @@ export interface Message {
   content: string;
   type: MessageType;
   mediaUrl?: string | null;
+  fileUrl?: string | null;
+  audioMetadata?: IAudioMetadata;
   fileName?: string | null;
   fileSize?: number | null;
   reactions?: IReaction[];

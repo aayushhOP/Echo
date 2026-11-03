@@ -9,12 +9,15 @@ import {
   FileText,
   Image as ImageIcon,
   Camera,
+  Mic,
   Ban,
   Lock,
   Users,
 } from "lucide-react";
 import EmojiPicker, { Theme, EmojiClickData } from "emoji-picker-react";
 import { useTypingIndicator } from "../../hooks/useTypingIndicator";
+import { useAudioRecorder } from "../../hooks/useAudioRecorder";
+import { VoiceRecordingOverlay } from "./VoiceRecordingOverlay";
 import { useChatStore } from "../../store/chatStore";
 import { messageApi } from "../../api/messageApi";
 import { cn } from "../../utils/cn";
@@ -27,8 +30,15 @@ interface MessageInputProps {
   conversationId: string;
   onSendMessage: (
     content: string,
-    type?: "text" | "image" | "file",
-    metadata?: { mediaUrl?: string; fileName?: string; fileSize?: number; replyTo?: string | null }
+    type?: "text" | "image" | "file" | "audio",
+    metadata?: {
+      mediaUrl?: string;
+      fileUrl?: string;
+      audioMetadata?: { duration: number; waveform: number[]; mimeType: string };
+      fileName?: string;
+      fileSize?: number;
+      replyTo?: string | null;
+    }
   ) => void;
   disabled?: boolean;
   isBlocked?: boolean;
@@ -63,6 +73,44 @@ export const MessageInput: FC<MessageInputProps> = ({
     previewUrl?: string;
     isImage: boolean;
   } | null>(null);
+
+  const {
+    isRecording,
+    recordingDuration,
+    startRecording,
+    stopRecording,
+    cancelRecording,
+  } = useAudioRecorder();
+
+  const handleSendVoiceNote = async () => {
+    try {
+      const result = await stopRecording();
+      if (!result || result.blob.size === 0) return;
+
+      setIsUploading(true);
+      const res = await messageApi.uploadVoiceNote(
+        result.blob,
+        result.duration,
+        result.waveform
+      );
+
+      if (res && (res.fileUrl || res.mediaUrl)) {
+        const replyToId = replyingTo?._id || null;
+        onSendMessage("", "audio", {
+          fileUrl: res.fileUrl,
+          mediaUrl: res.mediaUrl || res.fileUrl,
+          audioMetadata: res.audioMetadata,
+          replyTo: replyToId,
+        });
+        if (replyToId) setReplyingTo(null);
+      }
+    } catch (error) {
+      console.error("Failed to upload voice note:", error);
+      alert("Failed to upload voice note. Please try again.");
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   const currentUser = useAuthStore((state) => state.user);
   const myId = currentUser?.id || (currentUser as any)?._id;
@@ -495,6 +543,21 @@ export const MessageInput: FC<MessageInputProps> = ({
 
   const canSend = !disabled && !isUploading && (content.trim().length > 0 || !!pendingFile);
 
+  if (isRecording) {
+    return (
+      <div className="px-4 md:px-8 lg:px-12 pt-1.5 pb-3 bg-transparent shrink-0 relative z-10">
+        <div className="w-full relative rounded-2xl overflow-hidden shadow-2xl">
+          <VoiceRecordingOverlay
+            isRecording={isRecording}
+            duration={recordingDuration}
+            onCancel={cancelRecording}
+            onSend={handleSendVoiceNote}
+          />
+        </div>
+      </div>
+    );
+  }
+
   // WhatsApp Rule: Show read-only banner if user is not admin during restricted mode
   if (isGroup && onlyAdminsMessage && !isCurrentUserAdmin) {
     return (
@@ -791,24 +854,33 @@ export const MessageInput: FC<MessageInputProps> = ({
             className="flex-1 bg-transparent text-sm text-[#f0f2f8] placeholder-[#505469] focus:outline-none resize-none max-h-32 py-1 leading-relaxed px-1"
           />
 
-          {/* Send Button (Right Side) */}
-          <button
-            type="submit"
-            disabled={!canSend}
-            className={cn(
-              "transition-all p-2 shrink-0 cursor-pointer rounded-xl",
-              canSend
-                ? "bg-gradient-to-tr from-[#0052cc] to-[#0066ff] text-white shadow-md shadow-[#0066ff]/40 hover:scale-105 active:scale-95"
-                : "text-[#313545] cursor-not-allowed hover:bg-white/[0.02]"
-            )}
-            title="Send message"
-          >
-            {isUploading ? (
-              <Loader2 className="w-4 h-4 animate-spin text-white" />
-            ) : (
-              <Send size={16} />
-            )}
-          </button>
+          {/* Send or Mic Button (Right Side) */}
+          {canSend ? (
+            <button
+              type="submit"
+              disabled={!canSend}
+              className={cn(
+                "transition-all p-2 shrink-0 cursor-pointer rounded-xl bg-gradient-to-tr from-[#0052cc] to-[#0066ff] text-white shadow-md shadow-[#0066ff]/40 hover:scale-105 active:scale-95"
+              )}
+              title="Send message"
+            >
+              {isUploading ? (
+                <Loader2 className="w-4 h-4 animate-spin text-white" />
+              ) : (
+                <Send size={16} />
+              )}
+            </button>
+          ) : (
+            <button
+              type="button"
+              disabled={disabled || isUploading}
+              onClick={startRecording}
+              className="p-2 shrink-0 rounded-xl text-slate-400 hover:text-white hover:bg-white/[0.06] transition-colors cursor-pointer disabled:opacity-40"
+              title="Record voice note"
+            >
+              <Mic size={18} />
+            </button>
+          )}
         </form>
       </div>
 

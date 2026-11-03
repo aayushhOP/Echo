@@ -65,8 +65,14 @@ export interface ClientToServerEvents {
     payload: {
       conversationId: string;
       content?: string;
-      type?: "text" | "image" | "file";
+      type?: "text" | "image" | "file" | "audio";
       mediaUrl?: string | null;
+      fileUrl?: string | null;
+      audioMetadata?: {
+        duration: number;
+        waveform: number[];
+        mimeType: string;
+      };
       fileName?: string | null;
       fileSize?: number | null;
       replyTo?: string | null;

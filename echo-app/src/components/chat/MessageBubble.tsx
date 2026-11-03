@@ -8,6 +8,7 @@ import { MessageStatusTick } from "./MessageStatusTick";
 import { DeleteMessageModal } from "./DeleteMessageModal";
 import { ReactionsDetailModal } from "./ReactionsDetailModal";
 import { MessageContextMenu } from "./MessageContextMenu";
+import { VoiceNotePlayer } from "./VoiceNotePlayer";
 import { isSameUser } from "../../utils/chatUtils";
 import { User } from "../../types/user";
 import { ConversationParticipant } from "../../types/message";
@@ -91,6 +92,11 @@ const MessageBubbleComponent: FC<MessageBubbleProps> = ({
     typeof message.senderId === "string"
       ? "User"
       : message.senderId?.username || "User";
+
+  const senderAvatar =
+    typeof message.senderId === "string"
+      ? undefined
+      : message.senderId?.avatarUrl;
 
   const currentUserId = currentUser?.id || (currentUser as any)?._id;
   const isOwn = Boolean(currentUserId && senderId && currentUserId === senderId);
@@ -427,6 +433,51 @@ const MessageBubbleComponent: FC<MessageBubbleProps> = ({
             </div>
           )}
 
+          {/* Audio Voice Note Type */}
+          {message.type === "audio" && (message.mediaUrl || message.fileUrl) && (
+            <div
+              className={`p-2 rounded-2xl border transition-colors shadow-sm ${
+                isOwn
+                  ? "bg-gradient-to-r from-[#0052cc] via-[#0066ff] to-[#0070f3] border-transparent text-white rounded-tr-sm shadow-md shadow-[#0066ff]/20"
+                  : "bg-[#232533] border-white/[0.04] text-[#f0f2f8] rounded-tl-sm hover:bg-[#282a3b]"
+              } ${isPending ? "opacity-75 ring-1 ring-[#0066ff]/40" : ""}`}
+            >
+              {message.isForwarded && (
+                <div
+                  className={`flex items-center gap-1 mb-1 text-[11px] italic font-normal select-none px-1 ${
+                    isOwn ? "text-white/80" : "text-slate-400"
+                  }`}
+                >
+                  <Forward size={13} className="shrink-0" />
+                  <span>Forwarded</span>
+                </div>
+              )}
+              <VoiceNotePlayer
+                audioUrl={(message.fileUrl || message.mediaUrl)!}
+                duration={message.audioMetadata?.duration || 0}
+                waveform={message.audioMetadata?.waveform}
+                isOwnMessage={isOwn}
+                senderAvatar={senderAvatar}
+              />
+              <div
+                className={`flex items-center justify-end gap-1 text-[10px] mt-0.5 px-1 select-none ${
+                  isOwn ? "text-white/70" : "text-[#767b93]"
+                }`}
+              >
+                <span>{formattedTime}</span>
+                {isOwn && (
+                  <span>
+                    {isPending ? (
+                      <Clock className="w-2.5 h-2.5 text-white/70 animate-pulse ml-0.5" />
+                    ) : (
+                      <MessageStatusTick status={message.status as any} isOwnMessage={isOwn} />
+                    )}
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Standard Text Type */}
           {message.type === "text" && message.content && (
             <div
@@ -734,6 +785,9 @@ export const MessageBubble = memo(MessageBubbleComponent, (prevProps, nextProps)
     prevProps.message._id === nextProps.message._id &&
     prevProps.message.status === nextProps.message.status &&
     prevProps.message.content === nextProps.message.content &&
+    prevProps.message.type === nextProps.message.type &&
+    prevProps.message.fileUrl === nextProps.message.fileUrl &&
+    prevProps.message.mediaUrl === nextProps.message.mediaUrl &&
     prevProps.message.isForwarded === nextProps.message.isForwarded &&
     prevProps.message.isPinned === nextProps.message.isPinned &&
     prevProps.message.isDeletedForEveryone === nextProps.message.isDeletedForEveryone &&
