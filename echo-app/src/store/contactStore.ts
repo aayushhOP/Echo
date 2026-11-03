@@ -47,9 +47,12 @@ export const useContactStore = create<ContactState>((set, get) => ({
         (c) =>
           c.contactUserId !== contactUserId &&
           c.targetMongoId !== contactUserId &&
-          c._id !== contactUserId
+          c._id !== contactUserId &&
+          c.username?.toLowerCase() !== contactUserId.toLowerCase()
       ),
     }));
+    // Re-fetch to ensure complete sync with backend state
+    get().fetchContacts();
   },
 
   openAddContactModal: (initialData) =>

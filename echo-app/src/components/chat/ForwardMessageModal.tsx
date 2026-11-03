@@ -3,6 +3,7 @@ import { X, Forward, Search, Send, Loader2 } from "lucide-react";
 import { useChatStore } from "../../store/chatStore";
 import { Conversation } from "../../types/message";
 import { useAuthStore } from "../../store/authStore";
+import { useContactStore } from "../../store/contactStore";
 import { getOtherParticipant } from "../../utils/chatUtils";
 
 interface ForwardMessageModalProps {
@@ -16,6 +17,7 @@ export const ForwardMessageModal: React.FC<ForwardMessageModalProps> = ({
 }) => {
   const { forwardingMessage, setForwardingMessage } = useChatStore();
   const currentUser = useAuthStore((state) => state.user);
+  const getContactDisplayName = useContactStore((state) => state.getContactDisplayName);
   const [search, setSearch] = useState("");
   const [sendingId, setSendingId] = useState<string | null>(null);
 
@@ -26,7 +28,10 @@ export const ForwardMessageModal: React.FC<ForwardMessageModalProps> = ({
       return c.groupName || c.name || "Group";
     }
     const counterpart = getOtherParticipant(c.participants, currentUser);
-    return counterpart?.username || "Direct Chat";
+    if (!counterpart) return "Direct Chat";
+    const cId = counterpart.id || (counterpart as any)._id;
+    const cClerkId = (counterpart as any).clerkId;
+    return getContactDisplayName(cClerkId || cId || counterpart.username, counterpart.username || "Direct Chat");
   };
 
   const filtered = conversations.filter((c) => {

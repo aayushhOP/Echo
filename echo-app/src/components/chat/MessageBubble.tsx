@@ -3,6 +3,7 @@ import { Clock, FileText, Download, Smile, Plus, X, ImageOff, Ban, MoreHorizonta
 import { Message } from "../../types/message";
 import { useAuthStore } from "../../store/authStore";
 import { useChatStore } from "../../store/chatStore";
+import { useContactStore } from "../../store/contactStore";
 import { formatTime } from "../../utils/date";
 import { MessageStatusTick } from "./MessageStatusTick";
 import { DeleteMessageModal } from "./DeleteMessageModal";
@@ -83,23 +84,45 @@ const MessageBubbleComponent: FC<MessageBubbleProps> = ({
     setContactDrawerUser,
   } = useChatStore();
 
+  const getContactDisplayName = useContactStore((state) => state.getContactDisplayName);
+
   const senderId =
     typeof message.senderId === "string"
       ? message.senderId
       : message.senderId?._id || message.senderId?.id;
 
-  const senderName =
+  const rawSenderUsername =
     typeof message.senderId === "string"
       ? "User"
       : message.senderId?.username || "User";
 
-  const senderAvatar =
-    typeof message.senderId === "string"
-      ? undefined
-      : message.senderId?.avatarUrl;
+  const senderClerkId =
+    typeof message.senderId === "object" ? (message.senderId as any)?.clerkId : undefined;
 
   const currentUserId = currentUser?.id || (currentUser as any)?._id;
   const isOwn = Boolean(currentUserId && senderId && currentUserId === senderId);
+
+  // Look in participants list for fallback avatar if message.senderId is just an unpopulated string ID
+  const matchedParticipant = participants.find((p) => {
+    const pid = p.id || (p as any)._id;
+    return pid === senderId || ((p as any).clerkId && (p as any).clerkId === senderId);
+  });
+
+  const effectiveAvatar =
+    typeof message.senderId === "object" && message.senderId?.avatarUrl
+      ? message.senderId.avatarUrl
+      : isOwn
+      ? currentUser?.avatarUrl
+      : matchedParticipant?.avatarUrl;
+
+  const senderName = isOwn
+    ? "You"
+    : getContactDisplayName(
+        senderClerkId || senderId || rawSenderUsername,
+        rawSenderUsername
+      );
+
+  const senderAvatar = effectiveAvatar;
   const isPending = message.status === "pending";
 
   // Find user's active reaction emoji on this message if any using isSameUser helper
@@ -458,6 +481,7 @@ const MessageBubbleComponent: FC<MessageBubbleProps> = ({
                 waveform={message.audioMetadata?.waveform}
                 isOwnMessage={isOwn}
                 senderAvatar={senderAvatar}
+                senderName={rawSenderUsername}
               />
               <div
                 className={`flex items-center justify-end gap-1 text-[10px] mt-0.5 px-1 select-none ${

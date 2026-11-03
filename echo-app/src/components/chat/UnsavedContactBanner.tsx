@@ -19,7 +19,9 @@ export const UnsavedContactBanner: React.FC<UnsavedContactBannerProps> = ({
   participant,
   onBlock,
 }) => {
-  const { isContactSaved, openAddContactModal } = useContactStore();
+  const isContactSaved = useContactStore((state) => state.isContactSaved);
+  const openAddContactModal = useContactStore((state) => state.openAddContactModal);
+  useContactStore((state) => state.contacts); // Subscribe to contacts array changes to trigger instant re-renders
 
   const participantId = participant.id || participant._id;
   const isSaved =

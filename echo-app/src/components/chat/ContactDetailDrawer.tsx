@@ -28,6 +28,7 @@ import { Conversation, IGroupSettings } from "../../types/message";
 import { getOtherParticipant } from "../../utils/chatUtils";
 import { useChatStore } from "../../store/chatStore";
 import { useAuthStore } from "../../store/authStore";
+import { useContactStore } from "../../store/contactStore";
 import { useConfirm } from "../../store/confirmDialogStore";
 
 export interface ContactDetailDrawerProps {
@@ -262,10 +263,17 @@ export const ContactDetailDrawer: React.FC<ContactDetailDrawerProps> = ({
       ? onlineUsers.has(counterpartId) || !!counterpart?.isOnline
       : false;
 
+  const getContactDisplayName = useContactStore((state) => state.getContactDisplayName);
+
   const displayName =
     !isViewingSpecificUser && conversation.type === "group"
       ? conversation.groupName || "Group Chat"
-      : counterpart?.username || "User";
+      : counterpart
+      ? getContactDisplayName(
+          (counterpart as any).clerkId || counterpartId || counterpart.username,
+          counterpart.username || "User"
+        )
+      : "User";
 
   const displayBio =
     (counterpart as any)?.bio ||
@@ -611,7 +619,12 @@ export const ContactDetailDrawer: React.FC<ContactDetailDrawerProps> = ({
                       </div>
                       <div className="min-w-0">
                         <span className="text-xs text-[#f0f2f8] font-medium truncate block">
-                          {member.username}
+                          {memberId === currentUserId
+                            ? member.username
+                            : getContactDisplayName(
+                                (member as any).clerkId || memberId || member.username,
+                                member.username
+                              )}
                           {memberId === currentUserId && (
                             <span className="text-[10px] text-[#505469] ml-1">(You)</span>
                           )}

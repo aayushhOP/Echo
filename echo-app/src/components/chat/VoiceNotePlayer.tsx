@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Play, Pause, Mic } from "lucide-react";
+import { resolveAvatarUrl } from "../../utils/chatUtils";
 
 interface VoiceNotePlayerProps {
   audioUrl: string;
@@ -7,6 +8,7 @@ interface VoiceNotePlayerProps {
   waveform?: number[];
   isOwnMessage: boolean;
   senderAvatar?: string;
+  senderName?: string;
 }
 
 const PLAYBACK_SPEEDS = [1, 1.5, 2];
@@ -17,16 +19,20 @@ export const VoiceNotePlayer: React.FC<VoiceNotePlayerProps> = ({
   waveform = [],
   isOwnMessage,
   senderAvatar,
+  senderName = "User",
 }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [speedIndex, setSpeedIndex] = useState(0);
   const [audioDuration, setAudioDuration] = useState(duration);
+  const [avatarLoadError, setAvatarLoadError] = useState(false);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   // Normalize fallback waveform if none provided
   const bars = waveform && waveform.length > 0 ? waveform : new Array(32).fill(30);
+
+  const resolvedAvatar = resolveAvatarUrl(senderAvatar);
 
   // Resolve relative URLs to full API host if necessary
   const resolvedUrl = React.useMemo(() => {
@@ -129,8 +135,17 @@ export const VoiceNotePlayer: React.FC<VoiceNotePlayerProps> = ({
       {/* Sender Avatar with Mic Badge */}
       <div className="relative flex-shrink-0">
         <div className="w-10 h-10 rounded-full bg-slate-800 border border-white/10 overflow-hidden flex items-center justify-center">
-          {senderAvatar ? (
-            <img src={senderAvatar} alt="Voice sender" className="w-full h-full object-cover" />
+          {resolvedAvatar && !avatarLoadError ? (
+            <img
+              src={resolvedAvatar}
+              alt={senderName}
+              onError={() => setAvatarLoadError(true)}
+              className="w-full h-full object-cover"
+            />
+          ) : senderName && senderName !== "User" ? (
+            <div className="w-full h-full flex items-center justify-center font-bold text-xs text-white bg-slate-700">
+              {senderName.slice(0, 2).toUpperCase()}
+            </div>
           ) : (
             <Mic size={18} className="text-slate-300" />
           )}
