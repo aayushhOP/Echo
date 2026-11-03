@@ -100,6 +100,14 @@ export const App: FC = () => {
         richColors={false}
         theme="dark"
         offset={24}
+        toastOptions={{
+          style: {
+            background: "transparent",
+            border: "none",
+            boxShadow: "none",
+            padding: 0,
+          },
+        }}
       />
       <ConfirmationModal />
       <ServerWarmupModal

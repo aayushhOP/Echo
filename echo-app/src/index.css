@@ -42,6 +42,19 @@
   }
 }
 
+/* Reset Sonner's internal toast wrapper so custom toasts do not show double panels */
+[data-sonner-toaster] [data-sonner-toast] {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  overflow: visible !important;
+}
+
+[data-sonner-toaster] [data-sonner-toast] > * {
+  width: 100%;
+}
+
 /* WhatsApp-style slide in from right for bottom-right toasts */
 @keyframes toastSlideInRight {
   from {
