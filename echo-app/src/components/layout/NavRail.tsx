@@ -17,16 +17,17 @@ export const NavRail: FC = () => {
   const conversations = useChatStore((state) => state.conversations);
   const confirm = useConfirm();
 
-  // Compute unread counts for direct chats and group chats
-  const totalUnreadDirect = conversations.reduce((acc, c) => {
-    return c.type === "direct" ? acc + (c.unreadCount || 0) : acc;
-  }, 0);
+  // Compute count of unread conversations (conversations with unread messages > 0)
+  const unreadDirectConversationsCount = conversations.filter(
+    (c) => c.type === "direct" && (c.unreadCount || 0) > 0
+  ).length;
 
-  const totalUnreadGroup = conversations.reduce((acc, c) => {
-    return c.type === "group" ? acc + (c.unreadCount || 0) : acc;
-  }, 0);
+  const unreadGroupConversationsCount = conversations.filter(
+    (c) => c.type === "group" && (c.unreadCount || 0) > 0
+  ).length;
 
-  const totalUnreadAll = totalUnreadDirect + totalUnreadGroup;
+  const totalUnreadConversationsCount =
+    unreadDirectConversationsCount + unreadGroupConversationsCount;
 
   const handleLogout = async () => {
     const shouldLogout = await confirm({
@@ -48,9 +49,9 @@ export const NavRail: FC = () => {
   };
 
   const navItems = [
-    { label: "Chats", path: "/chat", icon: MessageSquare, unreadCount: totalUnreadAll },
+    { label: "Chats", path: "/chat", icon: MessageSquare, unreadCount: totalUnreadConversationsCount },
     { label: "Contacts", path: "/contacts", icon: ContactRound, unreadCount: 0 },
-    { label: "Groups", path: "/groups", icon: Users, unreadCount: totalUnreadGroup },
+    { label: "Groups", path: "/groups", icon: Users, unreadCount: unreadGroupConversationsCount },
   ];
 
   return (
@@ -96,7 +97,7 @@ export const NavRail: FC = () => {
                     className={cn(
                       "absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold flex items-center justify-center text-white shadow-md animate-in zoom-in-75 duration-150 ring-2 ring-[#1b1c27]",
                       isActive
-                        ? "bg-[#22c55e] text-white shadow-emerald-500/30"
+                        ? "bg-[#38bdf8] text-[#0d0e15] shadow-[#38bdf8]/40"
                         : "bg-[#0066ff] text-white shadow-[#0066ff]/40"
                     )}
                   >
