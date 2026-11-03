@@ -184,14 +184,28 @@ export const ChatWindow: FC<ChatWindowProps> = ({
 
   const isInitialLoading = isQueryFetching && !hasCachedMessages;
 
-  // Auto-scroll to bottom on new messages
+  const myId = currentUser?.id || (currentUser as any)?._id;
+  const currentUserId = currentUser?.id || currentUser?._id;
+
+  // Active typing user names (exclude current user so only recipients see typing indicator)
+  const activeTypingMap = (activeConversationId && typingUsers[activeConversationId]) || {};
+  const activeTypingUserIds = Object.keys(activeTypingMap).filter(
+    (id) => !currentUserId || id !== currentUserId
+  );
+
+  const activeTypingNames = activeConv?.participants
+    .filter((p) => {
+      const pId = p.id || (p as any)._id;
+      return pId && pId !== currentUserId && activeTypingUserIds.includes(pId);
+    })
+    .map((p) => p.username) || [];
+
+  // Auto-scroll to bottom on new messages or typing indicators
   useEffect(() => {
     if (messageListRef.current) {
       messageListRef.current.scrollTop = messageListRef.current.scrollHeight;
     }
-  }, [currentMessages.length]);
-
-  const myId = currentUser?.id || (currentUser as any)?._id;
+  }, [currentMessages.length, activeTypingNames.length]);
 
   // Mark unread messages as read (both via REST API for persistence and Socket.IO for real-time delivery)
   useEffect(() => {
@@ -427,20 +441,6 @@ export const ChatWindow: FC<ChatWindowProps> = ({
     },
     [activeConversationId, currentUser, toggleOptimisticReaction, reactMessage]
   );
-
-  // Active typing user names (exclude current user so only recipients see typing indicator)
-  const currentUserId = currentUser?.id || currentUser?._id;
-  const activeTypingMap = (activeConversationId && typingUsers[activeConversationId]) || {};
-  const activeTypingUserIds = Object.keys(activeTypingMap).filter(
-    (id) => !currentUserId || id !== currentUserId
-  );
-
-  const activeTypingNames = activeConv?.participants
-    .filter((p) => {
-      const pId = p.id || (p as any)._id;
-      return pId && pId !== currentUserId && activeTypingUserIds.includes(pId);
-    })
-    .map((p) => p.username) || [];
 
   const isGroupAdmin = useMemo(() => {
     if (activeConv?.type !== "group" || !myId) return false;
@@ -718,7 +718,7 @@ export const ChatWindow: FC<ChatWindowProps> = ({
 
           {/* Real-time typing indicators */}
           {activeTypingNames.length > 0 && (
-            <div className="pt-2">
+            <div className="pt-0.5 pb-0.5">
               <TypingIndicator names={activeTypingNames} />
             </div>
           )}

@@ -17,9 +17,9 @@ export const TypingIndicator: FC<TypingIndicatorProps> = ({ names }) => {
   }
 
   return (
-    <div className="flex items-center gap-2 px-3 py-1.5 text-xs text-[#767b93] my-1 select-none">
+    <div className="flex items-center gap-2 px-1 py-0.5 text-xs text-[#767b93] select-none">
       <span className="w-1.5 h-1.5 rounded-full bg-[#0066ff] animate-pulse shrink-0" />
-      <span>{text}</span>
+      <span className="truncate">{text}</span>
     </div>
   );
 };
