@@ -35,20 +35,27 @@ export const UnsavedContactBanner: React.FC<UnsavedContactBannerProps> = ({
   }
 
   return (
-    <div className="w-full bg-[#171824]/95 border-b border-amber-500/20 px-6 py-2.5 flex items-center justify-between backdrop-blur-md animate-in slide-in-from-top duration-200 z-20">
-      <div className="flex items-center gap-2.5 min-w-0">
-        <AlertCircle size={16} className="text-amber-400 shrink-0" />
-        <span className="text-xs text-slate-300 truncate">
-          <strong className="text-white">@{participant.username}</strong> is not in your contacts.
-        </span>
+    <div className="w-full bg-[#171824]/95 border-b border-amber-500/20 px-6 py-3.5 flex items-center justify-between backdrop-blur-md animate-in slide-in-from-top duration-200 z-20">
+      <div className="flex items-center gap-3 min-w-0">
+        <div className="w-8 h-8 rounded-full bg-amber-500/10 border border-amber-500/20 flex items-center justify-center shrink-0">
+          <AlertCircle size={18} className="text-amber-400" />
+        </div>
+        <div className="min-w-0">
+          <p className="text-sm font-medium text-slate-200 truncate">
+            <strong className="text-white">@{participant.username}</strong> is not in your contacts.
+          </p>
+          <p className="text-xs text-slate-400">
+            Add them to your contacts to personalize their name and access details easily.
+          </p>
+        </div>
       </div>
 
-      <div className="flex items-center gap-2 shrink-0">
+      <div className="flex items-center gap-2.5 shrink-0 ml-4">
         <button
           onClick={onBlock}
-          className="px-3 py-1 rounded-lg text-xs font-medium text-rose-400 hover:bg-rose-500/10 transition-colors flex items-center gap-1.5 cursor-pointer"
+          className="px-3.5 py-1.5 rounded-xl text-xs font-semibold text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 border border-rose-500/20 transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
         >
-          <Ban size={13} />
+          <Ban size={14} />
           <span>Block</span>
         </button>
 
@@ -63,9 +70,9 @@ export const UnsavedContactBanner: React.FC<UnsavedContactBannerProps> = ({
               phoneNumber: participant.phoneNumber || participant.phone || "",
             })
           }
-          className="px-3 py-1 rounded-lg text-xs font-medium bg-[#0066ff] hover:bg-[#0052cc] text-white transition-colors flex items-center gap-1.5 shadow-md shadow-[#0066ff]/20 cursor-pointer active:scale-95"
+          className="px-4 py-2 rounded-xl text-xs font-semibold bg-[#0066ff] hover:bg-[#0052cc] text-white transition-all flex items-center gap-1.5 shadow-md shadow-[#0066ff]/25 cursor-pointer active:scale-95"
         >
-          <UserPlus size={13} />
+          <UserPlus size={14} />
           <span>Add to Contacts</span>
         </button>
       </div>
