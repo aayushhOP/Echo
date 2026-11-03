@@ -34,6 +34,15 @@ export const useNotifications = (currentUserId: string) => {
         return;
       }
 
+      // Check if this conversation is muted by the current user
+      const conversation = useChatStore
+        .getState()
+        .conversations.find((c) => c._id === msg.conversationId);
+      if (conversation?.isMuted) {
+        // Conversation is muted: silently ignore notifications (no chime, no toast, no desktop popup)
+        return;
+      }
+
       // Extract sender username and avatar
       let senderName = "Someone";
       let senderAvatar: string | undefined = undefined;
@@ -43,9 +52,6 @@ export const useNotifications = (currentUserId: string) => {
         senderAvatar = (msg.senderId as MessageSender).avatarUrl;
       } else {
         // Fallback: check conversation participants if available
-        const conversation = useChatStore
-          .getState()
-          .conversations.find((c) => c._id === msg.conversationId);
         const participant = conversation?.participants.find((p) => {
           const pId = (p as any).id || (p as any)._id;
           return pId === senderId;

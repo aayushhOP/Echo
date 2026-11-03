@@ -77,9 +77,10 @@ export const ChatPage: FC = () => {
   const handleToggleMute = async (conversationId: string) => {
     try {
       const res = await messageApi.toggleMuteConversation(conversationId);
-      if (activeConversation && activeConversation._id === conversationId) {
+      const targetConv = conversations.find((c) => c._id === conversationId);
+      if (targetConv) {
         addOrUpdateConversation({
-          ...activeConversation,
+          ...targetConv,
           isMuted: res.isMuted,
         });
       }

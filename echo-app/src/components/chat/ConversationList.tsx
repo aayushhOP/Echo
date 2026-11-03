@@ -8,7 +8,7 @@ import { CreateChatModal } from "./CreateChatModal";
 import { UndoSnackbar } from "./UndoSnackbar";
 import { formatTime } from "../../utils/date";
 import { getOtherParticipant } from "../../utils/chatUtils";
-import { Plus, Users, MessageSquare, Loader2, Search } from "lucide-react";
+import { Plus, Users, MessageSquare, Loader2, Search, BellOff } from "lucide-react";
 import { cn } from "../../utils/cn";
 
 export const ConversationList: FC = () => {
@@ -277,7 +277,7 @@ export const ConversationList: FC = () => {
                 <div className="flex justify-between items-baseline mb-0.5">
                   <span
                     className={cn(
-                      "text-sm truncate",
+                      "text-sm truncate flex items-center gap-1.5",
                       isSelected
                         ? "font-semibold text-white"
                         : hasUnread
@@ -285,7 +285,15 @@ export const ConversationList: FC = () => {
                         : "font-semibold text-[#f0f2f8]"
                     )}
                   >
-                    {title}
+                    <span className="truncate">{title}</span>
+                    {conv.isMuted && (
+                      <BellOff
+                        className={cn(
+                          "w-3.5 h-3.5 shrink-0",
+                          isSelected ? "text-white/70" : "text-[#767b93]"
+                        )}
+                      />
+                    )}
                   </span>
                   {lastMsgTime && (
                     <span
