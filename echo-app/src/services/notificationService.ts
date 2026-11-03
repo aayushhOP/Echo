@@ -80,22 +80,32 @@ class NotificationService {
     payload: NotificationPayload,
     onNavigate: (convId: string) => void
   ): void {
-    if (!("Notification" in window) || Notification.permission !== "granted") {
+    if (!("Notification" in window)) {
+      console.warn("[notificationService] Notification API not supported in window");
       return;
     }
 
-    const notification = new Notification(`New message from ${payload.senderName}`, {
-      body: payload.content.length > 80 ? `${payload.content.slice(0, 80)}...` : payload.content,
-      icon: payload.senderAvatar || "/favicon.ico",
-      tag: `conv-${payload.conversationId}`, // Groups consecutive messages from same chat
-      silent: true, // Custom playChime() avoids duplicate audio
-    });
+    if (Notification.permission !== "granted") {
+      console.warn("[notificationService] Notification permission is:", Notification.permission);
+      return;
+    }
 
-    notification.onclick = () => {
-      window.focus();
-      onNavigate(payload.conversationId);
-      notification.close();
-    };
+    try {
+      const notification = new Notification(`New message from ${payload.senderName}`, {
+        body: payload.content.length > 80 ? `${payload.content.slice(0, 80)}...` : payload.content,
+        icon: payload.senderAvatar || "/favicon.ico",
+        tag: `conv-${payload.conversationId}`, // Groups consecutive messages from same chat
+        silent: true, // Custom playChime() avoids duplicate audio
+      });
+
+      notification.onclick = () => {
+        window.focus();
+        onNavigate(payload.conversationId);
+        notification.close();
+      };
+    } catch (err) {
+      console.error("[notificationService] Failed to create Notification:", err);
+    }
   }
 }
 

@@ -80,9 +80,23 @@ export const useNotifications = (currentUserId: string) => {
       // Case A: Tab is minimized or behind another window
       if (document.hidden) {
         notificationService.playChime();
-        notificationService.showDesktopNotification(payload, (convId) => {
-          setActiveConversationId(convId);
-        });
+        if ("Notification" in window && Notification.permission === "granted") {
+          notificationService.showDesktopNotification(payload, (convId) => {
+            setActiveConversationId(convId);
+          });
+        } else {
+          // Fallback: If desktop notification permission is not granted or blocked, trigger in-app toast
+          toast.custom(
+            (t) => (
+              <MessageToast
+                payload={payload}
+                onClick={() => setActiveConversationId(payload.conversationId)}
+                onDismiss={() => toast.dismiss(t)}
+              />
+            ),
+            { duration: 4000 }
+          );
+        }
         return;
       }
 

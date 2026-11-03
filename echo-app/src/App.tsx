@@ -97,14 +97,8 @@ export const App: FC = () => {
     <QueryClientProvider client={queryClient}>
       <Toaster
         position="top-right"
-        toastOptions={{
-          style: {
-            background: "transparent",
-            border: "none",
-            boxShadow: "none",
-            padding: 0,
-          },
-        }}
+        richColors={false}
+        theme="dark"
       />
       <ConfirmationModal />
       <ServerWarmupModal
