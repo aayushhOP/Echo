@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { toast } from "sonner";
 import { useSocketStore } from "../store/socketStore";
 import { notificationService, NotificationPayload } from "../services/notificationService";
@@ -11,6 +11,9 @@ export const useNotifications = (currentUserId: string) => {
   const activeConversationId = useChatStore((state) => state.activeConversationId);
   const setActiveConversationId = useChatStore((state) => state.setActiveConversationId);
 
+  // Keep a set of recently notified message IDs to prevent any duplicate notifications
+  const seenMessageIdsRef = useRef<Set<string>>(new Set());
+
   // Request browser permission upon initial hook mount (if not decided)
   useEffect(() => {
     notificationService.requestDesktopPermission();
@@ -22,6 +25,17 @@ export const useNotifications = (currentUserId: string) => {
     const handleNewMessage = (data: any) => {
       const msg: Message = data?.message || data;
       if (!msg || !msg._id) return;
+
+      // Deduplicate: If this message was already notified in this session, skip
+      if (seenMessageIdsRef.current.has(msg._id)) {
+        return;
+      }
+      seenMessageIdsRef.current.add(msg._id);
+      // Clean up cache to prevent memory leak (keep last 100 messages)
+      if (seenMessageIdsRef.current.size > 100) {
+        const firstEntry = seenMessageIdsRef.current.values().next().value;
+        if (firstEntry) seenMessageIdsRef.current.delete(firstEntry);
+      }
 
       // Extract sender id cleanly
       const senderId =
@@ -100,7 +114,7 @@ export const useNotifications = (currentUserId: string) => {
                 onDismiss={() => toast.dismiss(t)}
               />
             ),
-            { duration: 4000 }
+            { id: `msg-toast-${payload.messageId}`, duration: 4000 }
           );
         }
         return;
@@ -117,7 +131,7 @@ export const useNotifications = (currentUserId: string) => {
               onDismiss={() => toast.dismiss(t)}
             />
           ),
-          { duration: 4000 }
+          { id: `msg-toast-${payload.messageId}`, duration: 4000 }
         );
         return;
       }

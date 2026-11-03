@@ -98,13 +98,8 @@ export const registerMessageHandlers = (io: Server, socket: Socket) => {
           const recipientSockets = await io.in(`user:${recipientId}`).allSockets();
           const isRecipientConnected = recipientSockets.size > 0;
 
-          // Relay to recipient's personal room and conversation room (excluding sender)
+          // Relay to recipient's personal room
           io.to(`user:${recipientId}`).emit("message:new", {
-            message: savedMessage,
-          });
-
-          // Also emit to conversation room if anyone else is subscribed
-          socket.to(`conversation:${conversationId}`).emit("message:new", {
             message: savedMessage,
           });
 
