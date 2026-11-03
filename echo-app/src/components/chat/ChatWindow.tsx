@@ -125,7 +125,7 @@ export const ChatWindow: FC<ChatWindowProps> = ({
       senderId,
       senderUsername: isOwn ? "You" : senderName,
       content: msg.content || "",
-      type: msg.type === "image" || msg.type === "file" ? msg.type : "text",
+      type: msg.type === "image" || msg.type === "file" || msg.type === "audio" ? msg.type : "text",
     });
   };
 
@@ -635,8 +635,8 @@ export const ChatWindow: FC<ChatWindowProps> = ({
       {/* In-chat Search Bar */}
       <ChatSearchBar />
 
-      {/* Unsaved Contact Banner (if direct message and counterpart not saved in contacts) */}
-      {counterpart && (
+      {/* Unsaved Contact Banner (if direct message, not blocked, and counterpart not saved in contacts) */}
+      {counterpart && !isDirectBlocked && (
         <UnsavedContactBanner
           participant={counterpart as any}
           onBlock={handleToggleBlockCounterpart}

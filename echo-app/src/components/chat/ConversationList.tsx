@@ -229,10 +229,12 @@ export const ConversationList: FC = () => {
             } else {
               if (lastMsg.type === "image") {
                 bodyText = "📷 Photo";
+              } else if (lastMsg.type === "audio") {
+                bodyText = "🎤 Voice message";
               } else if (lastMsg.type === "file") {
                 bodyText = `📎 ${lastMsg.fileName || "Attachment"}`;
               } else {
-                bodyText = lastMsg.content;
+                bodyText = lastMsg.content || "";
               }
 
               // WhatsApp Desktop convention: prefix with "You: " if message is from the logged in user

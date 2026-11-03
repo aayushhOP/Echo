@@ -14,7 +14,7 @@ export interface QuotedMessage {
   senderId: string;
   senderUsername: string;
   content: string;
-  type: "text" | "image" | "file";
+  type: "text" | "image" | "file" | "audio";
 }
 
 interface ChatState {

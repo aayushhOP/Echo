@@ -168,7 +168,7 @@ export const GroupsPage: React.FC = () => {
                         )}
                       </div>
 
-                      {group.lastMessage?.content && (
+                      {(group.lastMessage?.content || group.lastMessage?.type) && (
                         <p className="text-xs text-slate-400 truncate mt-2">
                           <span className="text-slate-300 font-medium">
                             {typeof group.lastMessage.senderId === "object"
@@ -176,7 +176,13 @@ export const GroupsPage: React.FC = () => {
                               : "Member"}
                             :
                           </span>{" "}
-                          {group.lastMessage.content}
+                          {group.lastMessage.type === "image"
+                            ? "📷 Photo"
+                            : group.lastMessage.type === "audio"
+                            ? "🎤 Voice message"
+                            : group.lastMessage.type === "file"
+                            ? `📎 ${group.lastMessage.fileName || "Attachment"}`
+                            : group.lastMessage.content}
                         </p>
                       )}
                     </div>

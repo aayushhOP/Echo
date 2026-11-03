@@ -91,12 +91,16 @@ class NotificationService {
     }
 
     try {
-      const notification = new Notification(`New message from ${payload.senderName}`, {
+      const iconUrl = payload.senderAvatar || "/echo-icon.svg";
+      const options: NotificationOptions = {
         body: payload.content.length > 80 ? `${payload.content.slice(0, 80)}...` : payload.content,
-        icon: payload.senderAvatar || "/favicon.ico",
+        icon: iconUrl,
+        badge: "/echo-icon.svg",
         tag: `conv-${payload.conversationId}`, // Groups consecutive messages from same chat
         silent: true, // Custom playChime() avoids duplicate audio
-      });
+      };
+
+      const notification = new Notification(`New message from ${payload.senderName}`, options);
 
       notification.onclick = () => {
         window.focus();

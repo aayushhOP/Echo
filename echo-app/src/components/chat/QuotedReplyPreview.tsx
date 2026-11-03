@@ -16,7 +16,12 @@ export const QuotedReplyPreview: React.FC = () => {
             {replyingTo.senderUsername}
           </p>
           <p className="text-xs text-slate-300 truncate max-w-md">
-            {replyingTo.content || (replyingTo.type === "image" ? "Photo" : "Attachment")}
+            {replyingTo.content ||
+              (replyingTo.type === "image"
+                ? "Photo"
+                : replyingTo.type === "audio"
+                ? "Voice message"
+                : "Attachment")}
           </p>
         </div>
       </div>

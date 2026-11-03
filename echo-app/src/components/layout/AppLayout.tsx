@@ -6,6 +6,7 @@ import { useNotifications } from "../../hooks/useNotifications";
 import { useAuthStore } from "../../store/authStore";
 import { useContactStore } from "../../store/contactStore";
 import { SaveContactModal } from "../contacts/SaveContactModal";
+import { NotificationPermissionBanner } from "../notifications/NotificationPermissionBanner";
 
 export const AppLayout: FC = () => {
   // Mount the singleton socket connection hook across authenticated sessions
@@ -36,11 +37,14 @@ export const AppLayout: FC = () => {
       <div className="absolute inset-0 opacity-[0.03] pointer-events-none bg-[radial-gradient(#ffffff_1px,transparent_1px)] [background-size:24px_24px]" />
 
       {/* 2. Main Full-Screen Layout (100% width and height without restrictive bounds, matching WhatsApp Web) */}
-      <div className="relative z-10 w-full h-full flex overflow-hidden bg-[#171824]">
-        <NavRail />
-        <main className="flex-1 h-full overflow-hidden flex min-w-0">
-          <Outlet />
-        </main>
+      <div className="relative z-10 w-full h-full flex flex-col overflow-hidden bg-[#171824]">
+        <NotificationPermissionBanner />
+        <div className="flex-1 flex overflow-hidden min-h-0">
+          <NavRail />
+          <main className="flex-1 h-full overflow-hidden flex min-w-0">
+            <Outlet />
+          </main>
+        </div>
       </div>
 
       <SaveContactModal />

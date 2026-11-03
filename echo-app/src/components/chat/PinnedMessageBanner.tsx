@@ -37,6 +37,8 @@ export const PinnedMessageBanner: React.FC<PinnedMessageBannerProps> = ({
     pinnedMessage.content ||
     (pinnedMessage.type === "image"
       ? "Photo"
+      : pinnedMessage.type === "audio"
+      ? "Voice message"
       : pinnedMessage.fileName
       ? `Document: ${pinnedMessage.fileName}`
       : "Attachment");

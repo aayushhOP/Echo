@@ -80,6 +80,7 @@ export const useNotifications = (currentUserId: string) => {
       let displayContent = msg.content;
       if (!displayContent) {
         if (msg.type === "image") displayContent = "Sent an image";
+        else if (msg.type === "audio") displayContent = "Sent a voice message";
         else if (msg.type === "file") displayContent = "Sent a file attachment";
         else displayContent = "Sent a message";
       }
