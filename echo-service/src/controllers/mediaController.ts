@@ -2,8 +2,10 @@ import { Request, Response } from "express";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
+import { v2 as cloudinary } from "cloudinary";
+import { ENV } from "../config/env";
 
-// Configure local storage
+// Ensure local storage directory exists
 const uploadDir = path.join(process.cwd(), "uploads", "voice-notes");
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
@@ -40,9 +42,6 @@ export const handleVoiceUpload = async (req: Request, res: Response) => {
 
     const { duration, waveform } = req.body;
 
-    // Construct accessible media URL
-    const fileUrl = `/uploads/voice-notes/${req.file.filename}`;
-
     let parsedWaveform: number[] = [];
     if (waveform) {
       if (typeof waveform === "string") {
@@ -57,6 +56,36 @@ export const handleVoiceUpload = async (req: Request, res: Response) => {
     }
 
     const parsedDuration = duration ? parseFloat(duration) : 0;
+
+    let fileUrl: string;
+
+    // If Cloudinary is configured (production or cloud environment)
+    if (ENV.CLOUDINARY_URL) {
+      try {
+        const uploadResult = await cloudinary.uploader.upload(req.file.path, {
+          resource_type: "video", // Cloudinary processes audio under the video resource_type
+          folder: "echo-voice-notes",
+        });
+
+        fileUrl = uploadResult.secure_url;
+
+        // Clean up local temp file
+        try {
+          fs.unlinkSync(req.file.path);
+        } catch {}
+      } catch (cloudErr) {
+        console.error("[Cloudinary Audio Upload Error]:", cloudErr);
+        // Fallback to local URL if Cloudinary fails
+        const protocol = req.protocol;
+        const host = req.get("host");
+        fileUrl = `${protocol}://${host}/uploads/voice-notes/${req.file.filename}`;
+      }
+    } else {
+      // Local URL with protocol & host so it works anywhere
+      const protocol = req.protocol;
+      const host = req.get("host");
+      fileUrl = `${protocol}://${host}/uploads/voice-notes/${req.file.filename}`;
+    }
 
     return res.status(200).json({
       success: true,
@@ -73,3 +102,4 @@ export const handleVoiceUpload = async (req: Request, res: Response) => {
     return res.status(500).json({ message: "Failed to upload audio" });
   }
 };
+

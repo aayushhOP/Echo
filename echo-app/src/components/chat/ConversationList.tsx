@@ -3,8 +3,10 @@ import { useQuery } from "@tanstack/react-query";
 import { messageApi } from "../../api/messageApi";
 import { useChatStore } from "../../store/chatStore";
 import { useAuthStore } from "../../store/authStore";
+import { useContactStore } from "../../store/contactStore";
 import { Avatar } from "../common/Avatar";
-import { CreateChatModal } from "./CreateChatModal";
+import { NewConversationFullScreen } from "./NewConversationFullScreen";
+import { CreateGroupModal } from "./CreateGroupModal";
 import { UndoSnackbar } from "./UndoSnackbar";
 import { formatTime } from "../../utils/date";
 import { getOtherParticipant } from "../../utils/chatUtils";
@@ -12,21 +14,40 @@ import { Plus, Users, MessageSquare, Loader2, Search, BellOff } from "lucide-rea
 import { cn } from "../../utils/cn";
 
 export const ConversationList: FC = () => {
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isNewConvoOpen, setIsNewConvoOpen] = useState(false);
+  const [isGroupModalOpen, setIsGroupModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
   const currentUser = useAuthStore((state) => state.user);
+  const getContactDisplayName = useContactStore((state) => state.getContactDisplayName);
   const {
     conversations,
     setConversations,
     activeConversationId,
     setActiveConversationId,
+    addOrUpdateConversation,
     onlineUsers,
     typingUsers,
     undoDeleteState,
     setUndoDeleteState,
     restoreMessageForMe,
   } = useChatStore();
+
+  const handleCreateGroup = async (groupName: string, selectedUserIds: string[]) => {
+    try {
+      const conv = await messageApi.createConversation({
+        type: "group",
+        groupName,
+        participants: selectedUserIds,
+        participantIds: selectedUserIds,
+      });
+      addOrUpdateConversation(conv);
+      setActiveConversationId(conv._id);
+    } catch (err: any) {
+      console.error("Failed to create group:", err);
+      alert(err.response?.data?.message || err.message || "Failed to create group");
+    }
+  };
 
   const handleUndoDeleteForMe = async (messageId: string) => {
     if (!undoDeleteState) return;
@@ -94,14 +115,24 @@ export const ConversationList: FC = () => {
             {visibleConversationsCount} conversation{visibleConversationsCount !== 1 ? "s" : ""}
           </p>
         </div>
-        <button
-          onClick={() => setIsModalOpen(true)}
-          className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-[#0066ff] hover:bg-[#005ce6] text-xs font-semibold text-white shadow-md shadow-[#0066ff]/25 transition-all cursor-pointer"
-          title="Start new chat"
-        >
-          <Plus className="w-3.5 h-3.5" />
-          <span>New Chat</span>
-        </button>
+        <div className="flex items-center gap-1.5">
+          <button
+            onClick={() => setIsGroupModalOpen(true)}
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] text-xs font-semibold text-slate-200 hover:text-white transition-all cursor-pointer border border-white/[0.08]"
+            title="Create new group"
+          >
+            <Users className="w-3.5 h-3.5 text-[#0066ff]" />
+            <span className="hidden sm:inline">New Group</span>
+          </button>
+          <button
+            onClick={() => setIsNewConvoOpen(true)}
+            className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-[#0066ff] hover:bg-[#005ce6] text-xs font-semibold text-white shadow-md shadow-[#0066ff]/25 transition-all cursor-pointer"
+            title="Start new chat"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>New Chat</span>
+          </button>
+        </div>
       </div>
 
       {/* Full-width dark search container */}
@@ -148,11 +179,16 @@ export const ConversationList: FC = () => {
             ? getOtherParticipant(conv.participants, currentUser)
             : null;
 
+          const otherId = otherParticipant ? otherParticipant.id || (otherParticipant as any)._id : null;
+          const otherClerkId = (otherParticipant as any)?.clerkId;
           const title = isGroup
             ? conv.groupName || "Group Chat"
-            : otherParticipant?.username || "Direct Chat";
-
-          const otherId = otherParticipant ? otherParticipant.id || (otherParticipant as any)._id : null;
+            : otherParticipant
+            ? getContactDisplayName(
+                otherClerkId || otherId || otherParticipant.username,
+                otherParticipant.username
+              )
+            : "Direct Chat";
           const isBlockedByMe = otherId ? blockedUsers.includes(otherId) : false;
           const isBlockedByOther = otherId ? blockedBy.includes(otherId) : false;
           const isBlocked =
@@ -346,10 +382,17 @@ export const ConversationList: FC = () => {
         })}
       </div>
 
-      {/* New conversation modal */}
-      <CreateChatModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+      {/* Full screen new conversation search modal */}
+      <NewConversationFullScreen
+        isOpen={isNewConvoOpen}
+        onClose={() => setIsNewConvoOpen(false)}
+      />
+
+      {/* Group creation modal restricted to saved contacts */}
+      <CreateGroupModal
+        isOpen={isGroupModalOpen}
+        onClose={() => setIsGroupModalOpen(false)}
+        onCreateGroup={handleCreateGroup}
       />
 
       {/* WhatsApp-style Undo Snackbar at bottom of Chat List panel */}

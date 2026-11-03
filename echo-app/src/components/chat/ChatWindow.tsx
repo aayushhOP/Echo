@@ -21,6 +21,7 @@ import { MessageSquareOff, Loader2 } from "lucide-react";
 import { formatDateSeparator } from "../../utils/date";
 import { getOtherParticipant } from "../../utils/chatUtils";
 import { useConfirm } from "../../store/confirmDialogStore";
+import { UnsavedContactBanner } from "./UnsavedContactBanner";
 import chatBg from "../../assets/chat-bg.jpg";
 
 interface ChatWindowProps {
@@ -633,6 +634,14 @@ export const ChatWindow: FC<ChatWindowProps> = ({
 
       {/* In-chat Search Bar */}
       <ChatSearchBar />
+
+      {/* Unsaved Contact Banner (if direct message and counterpart not saved in contacts) */}
+      {counterpart && (
+        <UnsavedContactBanner
+          participant={counterpart as any}
+          onBlock={handleToggleBlockCounterpart}
+        />
+      )}
 
       {/* WhatsApp Pinned Message Banner (just below panel header) */}
       {activePinnedMessage && (

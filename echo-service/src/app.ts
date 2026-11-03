@@ -13,6 +13,7 @@ import { conversationRoutes } from "./routes/conversationRoutes";
 import { groupRoutes } from "./routes/groupRoutes";
 import { messageRoutes } from "./routes/messageRoutes";
 import { mediaRoutes } from "./routes/mediaRoutes";
+import { contactRoutes } from "./routes/contactRoutes";
 import { errorHandler } from "./middlewares/errorHandler";
 
 export const createApp = (): Application => {
@@ -63,6 +64,7 @@ export const createApp = (): Application => {
 
   // API Routes
   app.use("/api/users", userRoutes);
+  app.use("/api/contacts", contactRoutes);
   app.use("/api/conversations", conversationRoutes);
   app.use("/api/groups", groupRoutes);
   app.use("/api/messages", messageRoutes);

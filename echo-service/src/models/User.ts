@@ -6,6 +6,14 @@ export interface IUserPreferences {
   notifications: boolean;
 }
 
+export interface ISavedContact {
+  contactUserId: string; // Mongo _id or clerkId of target user
+  savedName: string;     // Custom alias/name assigned by user
+  email?: string;
+  phoneNumber?: string;
+  savedAt: Date;
+}
+
 export interface IUser extends Document {
   clerkId: string;
   email: string;
@@ -17,6 +25,7 @@ export interface IUser extends Document {
   isOnline: boolean;
   lastSeen: Date;
   preferences?: IUserPreferences;
+  contacts: ISavedContact[];
   blockedUsers: Types.ObjectId[];
   createdAt: Date;
   updatedAt: Date;
@@ -25,6 +34,17 @@ export interface IUser extends Document {
 export interface IUserModel extends Model<IUser> {
   isBlockedRelationship(userA: string | Types.ObjectId, userB: string | Types.ObjectId): Promise<boolean>;
 }
+
+const savedContactSchema = new Schema<ISavedContact>(
+  {
+    contactUserId: { type: String, required: true },
+    savedName: { type: String, required: true },
+    email: { type: String, default: "" },
+    phoneNumber: { type: String, default: "" },
+    savedAt: { type: Date, default: Date.now },
+  },
+  { _id: true }
+);
 
 const userSchema = new Schema<IUser, IUserModel>(
   {
@@ -42,10 +62,13 @@ const userSchema = new Schema<IUser, IUserModel>(
       theme: { type: String, default: "synthwave-dark" },
       notifications: { type: Boolean, default: true },
     },
+    contacts: [savedContactSchema],
     blockedUsers: [{ type: Schema.Types.ObjectId, ref: "User", default: [] }],
   },
   { timestamps: true }
 );
+
+userSchema.index({ "contacts.contactUserId": 1 });
 
 userSchema.statics.isBlockedRelationship = async function (
   userA: string | Types.ObjectId,

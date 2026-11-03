@@ -1,9 +1,11 @@
-import { FC } from "react";
+import { FC, useEffect } from "react";
 import { Outlet } from "react-router-dom";
 import { NavRail } from "./NavRail";
 import { useSocket } from "../../hooks/useSocket";
 import { useNotifications } from "../../hooks/useNotifications";
 import { useAuthStore } from "../../store/authStore";
+import { useContactStore } from "../../store/contactStore";
+import { SaveContactModal } from "../contacts/SaveContactModal";
 
 export const AppLayout: FC = () => {
   // Mount the singleton socket connection hook across authenticated sessions
@@ -11,9 +13,17 @@ export const AppLayout: FC = () => {
 
   const user = useAuthStore((state) => state.user);
   const currentUserId = user?.id || (user as any)?._id || "";
+  const fetchContacts = useContactStore((state) => state.fetchContacts);
 
   // Wire global dual notification system
   useNotifications(currentUserId);
+
+  // Load contacts once authenticated
+  useEffect(() => {
+    if (currentUserId) {
+      fetchContacts();
+    }
+  }, [currentUserId, fetchContacts]);
 
   return (
     <div className="relative h-screen w-screen bg-[#0d0e15] flex select-none overflow-hidden">
@@ -32,6 +42,8 @@ export const AppLayout: FC = () => {
           <Outlet />
         </main>
       </div>
+
+      <SaveContactModal />
     </div>
   );
 };

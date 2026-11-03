@@ -21,15 +21,37 @@ export const VoiceNotePlayer: React.FC<VoiceNotePlayerProps> = ({
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [speedIndex, setSpeedIndex] = useState(0);
+  const [audioDuration, setAudioDuration] = useState(duration);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   // Normalize fallback waveform if none provided
   const bars = waveform && waveform.length > 0 ? waveform : new Array(32).fill(30);
 
+  // Resolve relative URLs to full API host if necessary
+  const resolvedUrl = React.useMemo(() => {
+    if (!audioUrl) return "";
+    if (audioUrl.startsWith("http://") || audioUrl.startsWith("https://") || audioUrl.startsWith("blob:")) {
+      return audioUrl;
+    }
+    // Prepend server base origin if relative path like /uploads/...
+    const apiBase = import.meta.env.VITE_API_URL || "https://echo-1aal.onrender.com/api";
+    const origin = apiBase.replace(/\/api\/?$/, "");
+    return `${origin}${audioUrl.startsWith("/") ? "" : "/"}${audioUrl}`;
+  }, [audioUrl]);
+
   useEffect(() => {
-    const audio = new Audio(audioUrl);
+    if (!resolvedUrl) return;
+
+    const audio = new Audio(resolvedUrl);
+    audio.preload = "metadata";
     audioRef.current = audio;
+
+    const handleLoadedMetadata = () => {
+      if (audio.duration && !isNaN(audio.duration) && isFinite(audio.duration)) {
+        setAudioDuration(audio.duration);
+      }
+    };
 
     const handleTimeUpdate = () => {
       setCurrentTime(audio.currentTime);
@@ -40,15 +62,24 @@ export const VoiceNotePlayer: React.FC<VoiceNotePlayerProps> = ({
       setCurrentTime(0);
     };
 
+    const handleError = (e: Event) => {
+      console.error("[VoiceNotePlayer] Audio error loading URL:", resolvedUrl, e);
+      setIsPlaying(false);
+    };
+
+    audio.addEventListener("loadedmetadata", handleLoadedMetadata);
     audio.addEventListener("timeupdate", handleTimeUpdate);
     audio.addEventListener("ended", handleEnded);
+    audio.addEventListener("error", handleError);
 
     return () => {
       audio.pause();
+      audio.removeEventListener("loadedmetadata", handleLoadedMetadata);
       audio.removeEventListener("timeupdate", handleTimeUpdate);
       audio.removeEventListener("ended", handleEnded);
+      audio.removeEventListener("error", handleError);
     };
-  }, [audioUrl]);
+  }, [resolvedUrl]);
 
   const togglePlay = () => {
     if (!audioRef.current) return;
@@ -56,17 +87,21 @@ export const VoiceNotePlayer: React.FC<VoiceNotePlayerProps> = ({
       audioRef.current.pause();
       setIsPlaying(false);
     } else {
-      audioRef.current.play().catch((err) => {
+      audioRef.current.play().then(() => {
+        setIsPlaying(true);
+      }).catch((err) => {
         console.error("Playback error:", err);
+        setIsPlaying(false);
       });
-      setIsPlaying(true);
     }
   };
+
+  const effectiveDuration = audioDuration || duration || 0;
 
   const handleSeek = (index: number) => {
     if (!audioRef.current) return;
     const progress = index / bars.length;
-    const targetDuration = audioRef.current.duration || duration;
+    const targetDuration = audioRef.current.duration || effectiveDuration;
     const targetTime = progress * targetDuration;
     audioRef.current.currentTime = targetTime;
     setCurrentTime(targetTime);
@@ -86,7 +121,8 @@ export const VoiceNotePlayer: React.FC<VoiceNotePlayerProps> = ({
     return `${mins}:${secs < 10 ? "0" : ""}${secs}`;
   };
 
-  const currentProgressPercent = duration > 0 ? (currentTime / duration) * 100 : 0;
+  const currentProgressPercent =
+    effectiveDuration > 0 ? (currentTime / effectiveDuration) * 100 : 0;
 
   return (
     <div className="flex items-center gap-3 py-1 px-1 min-w-[260px] max-w-[320px]">
@@ -156,7 +192,7 @@ export const VoiceNotePlayer: React.FC<VoiceNotePlayerProps> = ({
 
         {/* Time & Speed Controls */}
         <div className="flex items-center justify-between text-[11px] text-white/70 mt-0.5 font-mono">
-          <span>{isPlaying ? formatTime(currentTime) : formatTime(duration)}</span>
+          <span>{isPlaying ? formatTime(currentTime) : formatTime(effectiveDuration)}</span>
 
           {/* Speed Toggle (1x, 1.5x, 2x) */}
           <button

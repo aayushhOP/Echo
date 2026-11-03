@@ -4,6 +4,7 @@ import { Phone, Video, Search, MoreVertical, Users, CheckSquare, X, Ban, Trash2 
 import { IConversation } from "../../types/chat";
 import { useAuthStore } from "../../store/authStore";
 import { useChatStore } from "../../store/chatStore";
+import { useContactStore } from "../../store/contactStore";
 import { formatLastSeen } from "../../utils/date";
 import { getOtherParticipant } from "../../utils/chatUtils";
 
@@ -77,9 +78,16 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
       ? onlineUsers.has(otherId) || !!otherParticipant?.isOnline
       : false;
 
+  const getContactDisplayName = useContactStore((state) => state.getContactDisplayName);
+
   const title = isGroup
     ? conversation.groupName || "Group Chat"
-    : otherParticipant?.username || "Chat";
+    : otherParticipant
+    ? getContactDisplayName(
+        (otherParticipant as any).clerkId || otherId || otherParticipant.username,
+        otherParticipant.username
+      )
+    : "Chat";
 
   const lastSeenIso =
     otherId && !isBlocked

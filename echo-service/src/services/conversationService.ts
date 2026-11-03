@@ -240,9 +240,42 @@ export const createConversation = async (
       }
     }
 
-    const validUsersCount = await User.countDocuments({ _id: { $in: uniqueIds } });
-    if (validUsersCount !== uniqueIds.length) {
+    const validUsers = await User.find({ _id: { $in: uniqueIds } }).select("_id clerkId");
+    if (validUsers.length !== uniqueIds.length) {
       throw new AppError("One or more participants do not exist", 404);
+    }
+
+    // Restriction: Ensure all other participants exist in creator's saved contacts
+    const creatorUser = await User.findById(userId).select("contacts clerkId");
+    if (!creatorUser) {
+      throw new AppError("Creator not found", 404);
+    }
+
+    const savedContactIdentSet = new Set<string>();
+    for (const sc of creatorUser.contacts || []) {
+      savedContactIdentSet.add(sc.contactUserId);
+    }
+
+    // Check each other participant
+    const unauthorizedUsers: string[] = [];
+    for (const u of validUsers) {
+      const uIdStr = u._id.toString();
+      if (uIdStr === userId) continue;
+
+      const isSaved =
+        savedContactIdentSet.has(uIdStr) ||
+        (u.clerkId && savedContactIdentSet.has(u.clerkId));
+
+      if (!isSaved) {
+        unauthorizedUsers.push(uIdStr);
+      }
+    }
+
+    if (unauthorizedUsers.length > 0) {
+      throw new AppError(
+        "Only saved contacts can be added to groups. Please add the user to your contacts first.",
+        403
+      );
     }
 
     const participantObjectIds = uniqueIds.map((id) => new Types.ObjectId(id));
