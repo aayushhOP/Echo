@@ -96,9 +96,10 @@ export const App: FC = () => {
   return (
     <QueryClientProvider client={queryClient}>
       <Toaster
-        position="top-right"
+        position="bottom-right"
         richColors={false}
         theme="dark"
+        offset={24}
       />
       <ConfirmationModal />
       <ServerWarmupModal

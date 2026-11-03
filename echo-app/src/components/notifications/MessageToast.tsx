@@ -19,7 +19,7 @@ export const MessageToast: FC<MessageToastProps> = ({
         onClick();
         onDismiss();
       }}
-      className="flex items-center gap-3 w-80 p-3 rounded-2xl bg-[#171824]/95 border border-white/[0.08] shadow-2xl backdrop-blur-md cursor-pointer hover:border-[#0066ff]/40 transition-all group"
+      className="toast-slide-in-right flex items-center gap-3 w-84 p-3.5 rounded-2xl bg-[#171824]/95 border border-white/[0.1] shadow-2xl backdrop-blur-xl cursor-pointer hover:border-[#0066ff]/50 hover:bg-[#1a1c2b] transition-all group select-none"
     >
       {/* Avatar or fallback */}
       <div className="relative shrink-0">
