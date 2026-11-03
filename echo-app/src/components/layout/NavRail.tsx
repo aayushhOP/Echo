@@ -3,7 +3,7 @@ import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useClerk } from "@clerk/clerk-react";
 import { useAuthStore } from "../../store/authStore";
 import { useConfirm } from "../../store/confirmDialogStore";
-import { MessageSquare, Users, UsersRound, LogOut } from "lucide-react";
+import { MessageSquare, ContactRound, Users, LogOut } from "lucide-react";
 import { Avatar } from "../common/Avatar";
 import { cn } from "../../utils/cn";
 
@@ -36,8 +36,8 @@ export const NavRail: FC = () => {
 
   const navItems = [
     { label: "Chats", path: "/chat", icon: MessageSquare },
-    { label: "Contacts", path: "/contacts", icon: Users },
-    { label: "Groups", path: "/groups", icon: UsersRound },
+    { label: "Contacts", path: "/contacts", icon: ContactRound },
+    { label: "Groups", path: "/groups", icon: Users },
   ];
 
   return (
