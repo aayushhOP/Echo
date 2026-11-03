@@ -118,6 +118,16 @@ export const getConversationsForUser = async (userId: string) => {
     })
   );
 
+  // Pinned conversations appear first, followed by most recent activity
+  results.sort((a, b) => {
+    if (a.isPinned !== b.isPinned) {
+      return a.isPinned ? -1 : 1;
+    }
+    const timeA = a.lastMessage?.createdAt ? new Date(a.lastMessage.createdAt).getTime() : new Date(a.updatedAt || a.createdAt).getTime();
+    const timeB = b.lastMessage?.createdAt ? new Date(b.lastMessage.createdAt).getTime() : new Date(b.updatedAt || b.createdAt).getTime();
+    return timeB - timeA;
+  });
+
   return results;
 };
 
@@ -151,6 +161,16 @@ export const getConversationById = async (conversationId: string, userId: string
   const totalBlockedSet = new Set([...myBlockedSet, ...blockedBySet]);
 
   const convObj: any = conversation.toObject();
+  const isPinned = Array.isArray(conversation.pinnedBy)
+    ? conversation.pinnedBy.some((id: any) => id.toString() === userId)
+    : false;
+  const isMuted = Array.isArray(conversation.mutedBy)
+    ? conversation.mutedBy.some((id: any) => id.toString() === userId)
+    : false;
+
+  convObj.isPinned = isPinned;
+  convObj.isMuted = isMuted;
+
   if (Array.isArray(convObj.participants)) {
     convObj.participants = convObj.participants.map((p: any) => {
       if (p && p._id && totalBlockedSet.has(p._id.toString())) {

@@ -183,6 +183,61 @@ const MessageBubbleComponent: FC<MessageBubbleProps> = ({
     );
   };
 
+  const renderTextContent = (text: string) => {
+    return text.split(/(https?:\/\/[^\s]+|@\w+)/g).map((part, index) => {
+      if (/^https?:\/\/[^\s]+$/.test(part)) {
+        return (
+          <a
+            key={index}
+            href={part}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={
+              isOwn
+                ? "text-sky-200 underline decoration-sky-300/50 hover:text-white cursor-pointer break-all"
+                : "text-[#38bdf8] underline decoration-sky-400/50 hover:text-sky-300 cursor-pointer break-all"
+            }
+            onClick={(e) => e.stopPropagation()}
+          >
+            {part}
+          </a>
+        );
+      }
+
+      if (part.startsWith("@")) {
+        const targetUsername = part.slice(1);
+        const matchedMember = participants.find(
+          (p) => (p.username || "").toLowerCase() === targetUsername.toLowerCase()
+        );
+
+        return (
+          <span
+            key={index}
+            onClick={(e) => {
+              if (matchedMember) {
+                e.stopPropagation();
+                setContactDrawerUser(matchedMember);
+              }
+            }}
+            className={
+              matchedMember
+                ? isOwn
+                  ? "font-semibold text-sky-200 underline decoration-sky-300/40 hover:text-white cursor-pointer"
+                  : "font-semibold text-[#00a3ff] hover:underline cursor-pointer"
+                : isOwn
+                ? "font-semibold text-sky-200 cursor-default"
+                : "font-semibold text-[#00a3ff] cursor-default"
+            }
+          >
+            {part}
+          </span>
+        );
+      }
+
+      return part;
+    });
+  };
+
   // Close menus on outside click
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -433,25 +488,47 @@ const MessageBubbleComponent: FC<MessageBubbleProps> = ({
                   />
                 </a>
               )}
-              <div className="absolute bottom-2 right-2 bg-[#13141d]/80 backdrop-blur-md px-2 py-0.5 rounded-full flex items-center gap-1 text-[10px] text-white/90 select-none">
-                <span>{formattedTime}</span>
-                {isOwn && (
-                  <span>
-                    {isPending ? (
-                      <Clock className="w-3 h-3 text-white/80 animate-pulse" />
-                    ) : (
-                      <MessageStatusTick status={message.status as any} isOwnMessage={isOwn} />
+
+              {/* Caption (if any) */}
+              {message.content ? (
+                <div className="px-2.5 py-1.5 flex flex-wrap items-baseline justify-end gap-x-2 gap-y-0.5">
+                  <span className="whitespace-pre-wrap break-words mr-auto text-left flex-1 min-w-[20px] select-text text-[13px] text-[#f0f2f8]">
+                    {renderTextContent(message.content)}
+                  </span>
+                  <span className="inline-flex items-center gap-1 text-[10px] shrink-0 select-none text-white/70 self-end">
+                    <span>{formattedTime}</span>
+                    {isOwn && (
+                      <span>
+                        {isPending ? (
+                          <Clock className="w-2.5 h-2.5 text-white/70 animate-pulse ml-0.5" />
+                        ) : (
+                          <MessageStatusTick status={message.status as any} isOwnMessage={isOwn} />
+                        )}
+                      </span>
                     )}
                   </span>
-                )}
-              </div>
+                </div>
+              ) : (
+                <div className="absolute bottom-2 right-2 bg-[#13141d]/80 backdrop-blur-md px-2 py-0.5 rounded-full flex items-center gap-1 text-[10px] text-white/90 select-none">
+                  <span>{formattedTime}</span>
+                  {isOwn && (
+                    <span>
+                      {isPending ? (
+                        <Clock className="w-3 h-3 text-white/80 animate-pulse" />
+                      ) : (
+                        <MessageStatusTick status={message.status as any} isOwnMessage={isOwn} />
+                      )}
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
           {/* File Attachment Type */}
           {message.type === "file" && message.mediaUrl && (
             <div
-              className={`p-2.5 rounded-2xl border transition-colors shadow-sm min-w-[240px] max-w-sm ${
+              className={`p-2 rounded-2xl border transition-colors shadow-sm min-w-[230px] max-w-sm ${
                 isOwn
                   ? "bg-[#0066ff] border-transparent text-white rounded-tr-sm shadow-md shadow-[#0066ff]/20"
                   : "bg-[#232533] border-white/[0.04] text-[#f0f2f8] rounded-tl-sm hover:bg-[#282a3b]"
@@ -462,7 +539,7 @@ const MessageBubbleComponent: FC<MessageBubbleProps> = ({
 
               {message.isForwarded && (
                 <div
-                  className={`flex items-center gap-1 mb-1.5 text-[11px] italic font-normal select-none ${
+                  className={`flex items-center gap-1 mb-1 text-[11px] italic font-normal select-none ${
                     isOwn ? "text-white/80" : "text-slate-400"
                   }`}
                 >
@@ -470,17 +547,17 @@ const MessageBubbleComponent: FC<MessageBubbleProps> = ({
                   <span>Forwarded</span>
                 </div>
               )}
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2.5">
                 <div
                   className={`p-2 rounded-xl shrink-0 flex items-center justify-center ${
                     isOwn ? "bg-white/10 text-white" : "bg-[#0066ff]/15 text-[#0066ff] border border-[#0066ff]/20"
                   }`}
                 >
-                  <FileText size={18} />
+                  <FileText size={16} />
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-medium truncate">{message.fileName || "Document"}</p>
-                  <p className={`text-[10px] mt-0.5 ${isOwn ? "text-white/75" : "text-[#767b93]"}`}>
+                  <p className={`text-[10px] ${isOwn ? "text-white/75" : "text-[#767b93]"}`}>
                     {message.fileSize ? `${Math.round(message.fileSize / 1024)} KB` : "File"}
                   </p>
                 </div>
@@ -494,9 +571,17 @@ const MessageBubbleComponent: FC<MessageBubbleProps> = ({
                   }`}
                   title="Download file"
                 >
-                  <Download size={15} />
+                  <Download size={14} />
                 </a>
               </div>
+
+              {/* Optional Caption for Documents */}
+              {message.content && (
+                <div className="mt-1.5 pt-1.5 border-t border-white/[0.1] text-xs leading-snug select-text font-normal">
+                  {renderTextContent(message.content)}
+                </div>
+              )}
+
               <div
                 className={`flex items-center justify-end gap-1 text-[10px] mt-1 select-none ${
                   isOwn ? "text-white/70" : "text-[#767b93]"
@@ -578,9 +663,6 @@ const MessageBubbleComponent: FC<MessageBubbleProps> = ({
               {renderReplyQuoteHeader()}
 
               {/* WhatsApp-Style Forwarded Banner */}
-              {/* Quoted Reply Header Preview */}
-              {renderReplyQuoteHeader()}
-
               {message.isForwarded && (
                 <div
                   className={`flex items-center gap-1 mb-1 text-[11px] italic font-normal select-none ${

@@ -8,7 +8,6 @@ import { ChatHeader } from "./ChatHeader";
 import { ChatSearchBar } from "./ChatSearchBar";
 import { ChatSelectionBar } from "./ChatSelectionBar";
 import { MessageBubble } from "./MessageBubble";
-import { QuotedReplyPreview } from "./QuotedReplyPreview";
 import { ForwardMessageModal } from "./ForwardMessageModal";
 import { PinMessageDurationModal } from "./PinMessageDurationModal";
 import { PinnedMessageBanner } from "./PinnedMessageBanner";
@@ -759,21 +758,18 @@ export const ChatWindow: FC<ChatWindowProps> = ({
         </div>
       </div>
 
-      {/* Docked Bottom Input Bar with Quoted Reply Preview */}
-      <div className="flex flex-col">
-        <QuotedReplyPreview />
-        <MessageInput
-          conversationId={activeConversationId}
-          onSendMessage={handleSendMessage}
-          isBlocked={isDirectBlocked}
-          isBlockedByMe={isDirectBlockedByMe}
-          onUnblock={handleUnblockCounterpart}
-          isGroup={activeConv?.type === "group"}
-          onlyAdminsMessage={!!activeConv?.settings?.onlyAdminsMessage}
-          isCurrentUserAdmin={isGroupAdmin}
-          participants={activeConv?.participants}
-        />
-      </div>
+      {/* Docked Bottom Input Bar */}
+      <MessageInput
+        conversationId={activeConversationId}
+        onSendMessage={handleSendMessage}
+        isBlocked={isDirectBlocked}
+        isBlockedByMe={isDirectBlockedByMe}
+        onUnblock={handleUnblockCounterpart}
+        isGroup={activeConv?.type === "group"}
+        onlyAdminsMessage={!!activeConv?.settings?.onlyAdminsMessage}
+        isCurrentUserAdmin={isGroupAdmin}
+        participants={activeConv?.participants}
+      />
 
       {/* Forward Message Modal */}
       <ForwardMessageModal

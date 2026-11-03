@@ -63,9 +63,10 @@ export const ChatPage: FC = () => {
   const handleTogglePin = async (conversationId: string) => {
     try {
       const res = await messageApi.togglePinConversation(conversationId);
-      if (activeConversation && activeConversation._id === conversationId) {
+      const targetConv = conversations.find((c) => c._id === conversationId);
+      if (targetConv) {
         addOrUpdateConversation({
-          ...activeConversation,
+          ...targetConv,
           isPinned: res.isPinned,
         });
       }

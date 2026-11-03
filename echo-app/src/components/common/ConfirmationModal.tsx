@@ -109,13 +109,15 @@ export const ConfirmationModal: React.FC = () => {
 
             {/* Action Buttons */}
             <div className="mt-6 flex items-center justify-end gap-2.5">
-              <button
-                type="button"
-                onClick={handleCancel}
-                className="px-3.5 py-2 rounded-xl text-xs font-medium text-slate-300 hover:text-white hover:bg-white/[0.06] transition-colors cursor-pointer"
-              >
-                {cancelText || "Cancel"}
-              </button>
+              {cancelText !== null && (
+                <button
+                  type="button"
+                  onClick={handleCancel}
+                  className="px-3.5 py-2 rounded-xl text-xs font-medium text-slate-300 hover:text-white hover:bg-white/[0.06] transition-colors cursor-pointer"
+                >
+                  {cancelText || "Cancel"}
+                </button>
+              )}
 
               <button
                 type="button"

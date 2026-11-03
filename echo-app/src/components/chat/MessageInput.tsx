@@ -18,6 +18,7 @@ import EmojiPicker, { Theme, EmojiClickData } from "emoji-picker-react";
 import { useTypingIndicator } from "../../hooks/useTypingIndicator";
 import { useAudioRecorder } from "../../hooks/useAudioRecorder";
 import { VoiceRecordingOverlay } from "./VoiceRecordingOverlay";
+import { QuotedReplyPreview } from "./QuotedReplyPreview";
 import { useChatStore } from "../../store/chatStore";
 import { messageApi } from "../../api/messageApi";
 import { cn } from "../../utils/cn";
@@ -526,8 +527,25 @@ export const MessageInput: FC<MessageInputProps> = ({
   };
 
   const handleEmojiClick = (emojiData: EmojiClickData) => {
-    setContent((prev) => prev + emojiData.emoji);
-    textareaRef.current?.focus();
+    const textarea = textareaRef.current;
+    if (textarea) {
+      const start = textarea.selectionStart ?? content.length;
+      const end = textarea.selectionEnd ?? content.length;
+      const newContent = content.substring(0, start) + emojiData.emoji + content.substring(end);
+      setContent(newContent);
+      handleKeystroke();
+
+      const newCursorPos = start + emojiData.emoji.length;
+      setTimeout(() => {
+        if (textareaRef.current) {
+          textareaRef.current.focus();
+          textareaRef.current.setSelectionRange(newCursorPos, newCursorPos);
+        }
+      }, 0);
+    } else {
+      setContent((prev) => prev + emojiData.emoji);
+      handleKeystroke();
+    }
   };
 
   const handleChange = (val: string, cursorPosition: number) => {
@@ -759,11 +777,14 @@ export const MessageInput: FC<MessageInputProps> = ({
           </div>
         )}
 
-        {/* Main Docked Floating Input Surface */}
-        <form
-          onSubmit={handleSubmit}
-          className="bg-[#13141d] border border-white/[0.08] focus-within:border-[#0066ff]/50 focus-within:shadow-[0_0_20px_rgba(0,102,255,0.18)] rounded-2xl px-4 py-2.5 flex items-center gap-2.5 shadow-inner transition-all"
-        >
+        {/* Main Docked Floating Input Surface (Joined with Quoted Reply Header) */}
+        <div className="flex flex-col bg-[#13141d] border border-white/[0.08] focus-within:border-[#0066ff]/50 focus-within:shadow-[0_0_20px_rgba(0,102,255,0.18)] rounded-2xl overflow-hidden shadow-inner transition-all">
+          <QuotedReplyPreview />
+
+          <form
+            onSubmit={handleSubmit}
+            className="px-4 py-2.5 flex items-center gap-2.5 w-full bg-transparent"
+          >
           {/* Hidden File Inputs for Options */}
           <input
             type="file"
@@ -883,6 +904,7 @@ export const MessageInput: FC<MessageInputProps> = ({
           )}
         </form>
       </div>
+    </div>
 
       {/* Live Webcam Capture Modal Portaled Directly to document.body */}
       {isCameraActive &&

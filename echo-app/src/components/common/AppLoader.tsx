@@ -1,5 +1,5 @@
 import { FC, useEffect, useState } from "react";
-import { MessageSquare, Sparkles } from "lucide-react";
+import echoLogo from "../../assets/echo_logo_icon.png";
 
 interface AppLoaderProps {
   onComplete?: () => void;
@@ -49,16 +49,13 @@ export const AppLoader: FC<AppLoaderProps> = ({
 
       {/* Center Branding & Animated Logo */}
       <div className="relative flex flex-col items-center">
-        {/* Pulsing ring aura */}
+        {/* Center Logo */}
         <div className="relative flex items-center justify-center">
-          <div className="absolute w-28 h-28 rounded-3xl bg-indigo-500/20 animate-ping" />
-          <div className="absolute w-24 h-24 rounded-3xl bg-indigo-500/30 blur-md animate-pulse" />
-
-          {/* Main App Icon */}
-          <div className="relative w-20 h-20 rounded-3xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-violet-500 flex items-center justify-center shadow-2xl shadow-indigo-500/40 border border-indigo-400/30 animate-bounce">
-            <MessageSquare className="w-10 h-10 text-white fill-white/10" />
-            <Sparkles className="w-4 h-4 text-amber-300 absolute -top-1 -right-1 animate-spin" />
-          </div>
+          <img
+            src={echoLogo}
+            alt="Echo Logo"
+            className="w-24 h-24 object-contain animate-pulse"
+          />
         </div>
 
         {/* Brand Name */}

@@ -7,6 +7,7 @@ import { useConfirm } from "../../store/confirmDialogStore";
 import { MessageSquare, ContactRound, Users, LogOut } from "lucide-react";
 import { Avatar } from "../common/Avatar";
 import { cn } from "../../utils/cn";
+import echoLogo from "../../assets/echo_logo_icon.png";
 
 export const NavRail: FC = () => {
   const navigate = useNavigate();
@@ -60,11 +61,14 @@ export const NavRail: FC = () => {
       <div className="flex flex-col items-center gap-6 w-full">
         <Link
           to="/chat"
-          className="relative group w-11 h-11 rounded-2xl bg-gradient-to-tr from-[#0052cc] via-[#0066ff] to-[#38bdf8] flex items-center justify-center text-white font-extrabold text-xl shadow-lg shadow-[#0066ff]/35 hover:scale-105 active:scale-95 transition-all"
+          className="relative group w-11 h-11 flex items-center justify-center hover:scale-105 active:scale-95 transition-transform"
           title="Echo Chat"
         >
-          <div className="absolute -inset-0.5 bg-gradient-to-r from-[#0066ff] to-[#38bdf8] rounded-2xl blur-sm opacity-50 group-hover:opacity-100 transition duration-300" />
-          <span className="relative z-10 drop-shadow">E</span>
+          <img
+            src={echoLogo}
+            alt="Echo Logo"
+            className="w-10 h-10 object-contain rounded-xl"
+          />
         </Link>
 
         {/* Middle Navigation switches */}

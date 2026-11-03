@@ -488,7 +488,7 @@ export const SettingsPage: FC = () => {
                       <input
                         type="tel"
                         value={localPhone}
-                        onChange={(e) => setLocalPhone(e.target.value.replace(/[^\d\s-]/g, ""))}
+                        onChange={(e) => setLocalPhone(e.target.value.replace(/\D/g, ""))}
                         placeholder="0000000000"
                         className="w-full h-11 px-3.5 rounded-xl bg-[#13141d] border border-white/[0.08] text-white text-xs placeholder-slate-500 focus:outline-none focus:border-[#0066ff] focus:ring-2 focus:ring-[#0066ff]/20 transition-all font-mono"
                       />

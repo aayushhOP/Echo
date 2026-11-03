@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useSocketStore } from "../store/socketStore";
 import { notificationService, NotificationPayload } from "../services/notificationService";
@@ -7,6 +8,8 @@ import { MessageToast } from "../components/notifications/MessageToast";
 import { Message, MessageSender } from "../types/message";
 
 export const useNotifications = (currentUserId: string) => {
+  const location = useLocation();
+  const navigate = useNavigate();
   const socket = useSocketStore((state) => state.socket);
   const activeConversationId = useChatStore((state) => state.activeConversationId);
   const setActiveConversationId = useChatStore((state) => state.setActiveConversationId);
@@ -22,6 +25,7 @@ export const useNotifications = (currentUserId: string) => {
       const customEvent = event as CustomEvent<{ conversationId: string }>;
       if (customEvent.detail?.conversationId) {
         setActiveConversationId(customEvent.detail.conversationId);
+        navigate("/chat");
       }
     };
 
@@ -29,7 +33,7 @@ export const useNotifications = (currentUserId: string) => {
     return () => {
       window.removeEventListener("echo:navigate-conversation", handleCustomNav);
     };
-  }, [setActiveConversationId]);
+  }, [setActiveConversationId, navigate]);
 
   useEffect(() => {
     if (!socket) return;
@@ -106,7 +110,15 @@ export const useNotifications = (currentUserId: string) => {
         content: displayContent,
       };
 
-      const isCurrentChat = activeConversationId === payload.conversationId;
+      const isChatRoute = location.pathname === "/chat" || location.pathname === "/";
+      const isCurrentChat = isChatRoute && activeConversationId === payload.conversationId;
+
+      const navigateToChat = (convId: string) => {
+        setActiveConversationId(convId);
+        if (location.pathname !== "/chat" && location.pathname !== "/") {
+          navigate("/chat");
+        }
+      };
 
       // 2. State Branching Logic
 
@@ -115,7 +127,7 @@ export const useNotifications = (currentUserId: string) => {
         notificationService.playChime();
         if ("Notification" in window && Notification.permission === "granted") {
           notificationService.showDesktopNotification(payload, (convId) => {
-            setActiveConversationId(convId);
+            navigateToChat(convId);
           });
         } else {
           // Fallback: If desktop notification permission is not granted or blocked, trigger in-app toast
@@ -123,7 +135,7 @@ export const useNotifications = (currentUserId: string) => {
             (t) => (
               <MessageToast
                 payload={payload}
-                onClick={() => setActiveConversationId(payload.conversationId)}
+                onClick={() => navigateToChat(payload.conversationId)}
                 onDismiss={() => toast.dismiss(t)}
               />
             ),
@@ -133,14 +145,14 @@ export const useNotifications = (currentUserId: string) => {
         return;
       }
 
-      // Case B: Tab is focused, but user is looking at another chat or main screen
+      // Case B: Tab is focused, but user is looking at another chat or another page (groups, contacts, settings, profile)
       if (!isCurrentChat) {
         notificationService.playChime();
         toast.custom(
           (t) => (
             <MessageToast
               payload={payload}
-              onClick={() => setActiveConversationId(payload.conversationId)}
+              onClick={() => navigateToChat(payload.conversationId)}
               onDismiss={() => toast.dismiss(t)}
             />
           ),
@@ -158,5 +170,5 @@ export const useNotifications = (currentUserId: string) => {
     return () => {
       socket.off("message:new", handleNewMessage);
     };
-  }, [socket, currentUserId, activeConversationId, setActiveConversationId]);
+  }, [socket, currentUserId, activeConversationId, setActiveConversationId, location.pathname, navigate]);
 };

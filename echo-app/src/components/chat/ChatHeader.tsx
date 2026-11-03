@@ -7,6 +7,7 @@ import { useChatStore } from "../../store/chatStore";
 import { useContactStore } from "../../store/contactStore";
 import { formatLastSeen } from "../../utils/date";
 import { getOtherParticipant } from "../../utils/chatUtils";
+import { useConfirm } from "../../store/confirmDialogStore";
 
 interface ChatHeaderProps {
   conversation: IConversation;
@@ -30,6 +31,7 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
   const currentUser = useAuthStore((state) => state.user);
   const onlineUsers = useChatStore((state) => state.onlineUsers);
   const userLastSeen = useChatStore((state) => state.userLastSeen);
+  const confirm = useConfirm();
   const {
     setActiveConversationId,
     setContactDrawerOpen,
@@ -167,7 +169,15 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
           type="button"
           className="p-2 rounded-xl hover:text-[#0066ff] hover:bg-white/[0.04] transition-colors cursor-pointer"
           title="Start voice call"
-          onClick={() => alert("Voice call feature coming soon!")}
+          onClick={() =>
+            confirm({
+              title: "Voice Call",
+              message: "Voice calling feature will be available soon!",
+              confirmText: "Got it",
+              cancelText: null,
+              variant: "info",
+            })
+          }
         >
           <Phone className="w-4 h-4" />
         </button>
@@ -175,7 +185,15 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
           type="button"
           className="p-2 rounded-xl hover:text-[#0066ff] hover:bg-white/[0.04] transition-colors cursor-pointer"
           title="Start video call"
-          onClick={() => alert("Video call feature coming soon!")}
+          onClick={() =>
+            confirm({
+              title: "Video Call",
+              message: "Video calling feature will be available soon!",
+              confirmText: "Got it",
+              cancelText: null,
+              variant: "info",
+            })
+          }
         >
           <Video className="w-4 h-4" />
         </button>

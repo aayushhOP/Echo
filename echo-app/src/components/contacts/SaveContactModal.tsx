@@ -268,9 +268,9 @@ export const SaveContactModal: React.FC = () => {
                 <input
                   type="tel"
                   value={localNumber}
-                  onChange={(e) => setLocalNumber(e.target.value)}
-                  placeholder="(555) 000-0000"
-                  className="w-full h-11 pl-10 pr-3.5 rounded-xl bg-[#13141d] border border-white/[0.08] text-white text-xs placeholder-slate-500 focus:outline-none focus:border-[#0066ff] focus:ring-2 focus:ring-[#0066ff]/20 transition-all"
+                  onChange={(e) => setLocalNumber(e.target.value.replace(/\D/g, ""))}
+                  placeholder="00000 00000"
+                  className="w-full h-11 pl-10 pr-3.5 rounded-xl bg-[#13141d] border border-white/[0.08] text-white text-xs placeholder-slate-500 focus:outline-none focus:border-[#0066ff] focus:ring-2 focus:ring-[#0066ff]/20 transition-all font-mono"
                 />
               </div>
             </div>

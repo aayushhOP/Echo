@@ -10,7 +10,7 @@ import { CreateGroupModal } from "./CreateGroupModal";
 import { UndoSnackbar } from "./UndoSnackbar";
 import { formatTime } from "../../utils/date";
 import { getOtherParticipant } from "../../utils/chatUtils";
-import { Plus, Users, MessageSquare, Loader2, Search, BellOff } from "lucide-react";
+import { Plus, Users, MessageSquare, Loader2, Search, BellOff, Pin } from "lucide-react";
 import { cn } from "../../utils/cn";
 
 export const ConversationList: FC = () => {
@@ -78,27 +78,41 @@ export const ConversationList: FC = () => {
     staleTime: 1000 * 30, // 30s
   });
 
-  // Filter conversations by search term, and hide empty direct chats from the list
+  // Filter conversations by search term, sort pinned conversations to top, and hide empty direct chats from the list
   const filteredConversations = useMemo(() => {
     const query = searchQuery.toLowerCase().trim();
 
-    return conversations.filter((conv) => {
-      // Direct chats should only appear in the sidebar if they have at least one message
-      if (conv.type === "direct" && !conv.lastMessage) {
-        return false;
-      }
+    return conversations
+      .filter((conv) => {
+        // Direct chats should only appear in the sidebar if they have at least one message
+        if (conv.type === "direct" && !conv.lastMessage) {
+          return false;
+        }
 
-      if (!query) return true;
+        if (!query) return true;
 
-      const isGroup = conv.type === "group";
-      if (isGroup) {
-        return conv.groupName?.toLowerCase().includes(query);
-      }
+        const isGroup = conv.type === "group";
+        if (isGroup) {
+          return conv.groupName?.toLowerCase().includes(query);
+        }
 
-      const otherParticipant = getOtherParticipant(conv.participants, currentUser);
+        const otherParticipant = getOtherParticipant(conv.participants, currentUser);
 
-      return otherParticipant?.username.toLowerCase().includes(query);
-    });
+        return otherParticipant?.username.toLowerCase().includes(query);
+      })
+      .sort((a, b) => {
+        // Pinned conversations always on top
+        if (Boolean(a.isPinned) !== Boolean(b.isPinned)) {
+          return a.isPinned ? -1 : 1;
+        }
+        const timeA = a.lastMessage?.createdAt
+          ? new Date(a.lastMessage.createdAt).getTime()
+          : new Date((a as any).updatedAt || (a as any).createdAt || 0).getTime();
+        const timeB = b.lastMessage?.createdAt
+          ? new Date(b.lastMessage.createdAt).getTime()
+          : new Date((b as any).updatedAt || (b as any).createdAt || 0).getTime();
+        return timeB - timeA;
+      });
   }, [conversations, searchQuery, currentUser]);
 
   const visibleConversationsCount = useMemo(() => {
@@ -369,14 +383,24 @@ export const ConversationList: FC = () => {
                     </p>
                   )}
 
-                  {/* Unread count badge (vanishes instantly when conversation is active) */}
-                  {hasUnread && (
-                    <span
-                      className="rounded-full text-[11px] font-bold px-2 py-0.5 shrink-0 bg-[#0066ff] text-white shadow-sm shadow-[#0066ff]/40 animate-in fade-in zoom-in-95 duration-150"
-                    >
-                      {unreadCount}
-                    </span>
-                  )}
+                  {/* Unread count badge & Pin icon */}
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {conv.isPinned && (
+                      <Pin
+                        className={cn(
+                          "w-3.5 h-3.5 rotate-45",
+                          isSelected ? "text-white/80 fill-white/80" : "text-[#767b93] fill-[#767b93]"
+                        )}
+                      />
+                    )}
+                    {hasUnread && (
+                      <span
+                        className="rounded-full text-[11px] font-bold px-2 py-0.5 shrink-0 bg-[#0066ff] text-white shadow-sm shadow-[#0066ff]/40 animate-in fade-in zoom-in-95 duration-150"
+                      >
+                        {unreadCount}
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>

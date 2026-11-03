@@ -20,6 +20,7 @@ import {
   Check,
   Trash2,
   UserPlus,
+  Loader2,
 } from "lucide-react";
 import { messageApi, MediaItem } from "../../api/messageApi";
 import { userApi } from "../../api/userApi";
@@ -473,34 +474,44 @@ export const ContactDetailDrawer: React.FC<ContactDetailDrawerProps> = ({
           <button
             onClick={handleMuteClick}
             disabled={isTogglingMute}
-            className={`flex flex-col items-center gap-1.5 p-2 rounded-xl hover:bg-white/[0.04] transition-colors cursor-pointer ${
+            className={`flex flex-col items-center gap-1.5 p-2 rounded-xl hover:bg-white/[0.04] transition-colors cursor-pointer disabled:opacity-60 ${
               conversation.isMuted ? "text-rose-400" : "text-[#767b93] hover:text-[#0066ff]"
             }`}
             title={conversation.isMuted ? "Unmute conversation" : "Mute conversation"}
             type="button"
           >
-            {conversation.isMuted ? (
+            {isTogglingMute ? (
+              <Loader2 size={17} className="animate-spin text-[#0066ff]" />
+            ) : conversation.isMuted ? (
               <BellOff size={17} className="text-rose-400" />
             ) : (
               <Bell size={17} />
             )}
-            <span className="text-[10px] font-medium">{conversation.isMuted ? "Muted" : "Mute"}</span>
+            <span className="text-[10px] font-medium">
+              {isTogglingMute ? "Updating..." : conversation.isMuted ? "Muted" : "Mute"}
+            </span>
           </button>
 
           <button
             onClick={handlePinClick}
             disabled={isTogglingPin}
-            className={`flex flex-col items-center gap-1.5 p-2 rounded-xl hover:bg-white/[0.04] transition-colors cursor-pointer ${
+            className={`flex flex-col items-center gap-1.5 p-2 rounded-xl hover:bg-white/[0.04] transition-colors cursor-pointer disabled:opacity-60 ${
               conversation.isPinned ? "text-[#0066ff]" : "text-[#767b93] hover:text-[#0066ff]"
             }`}
             title={conversation.isPinned ? "Unpin conversation" : "Pin conversation"}
             type="button"
           >
-            <Pin
-              size={17}
-              className={conversation.isPinned ? "text-[#0066ff] fill-[#0066ff]" : ""}
-            />
-            <span className="text-[10px] font-medium">{conversation.isPinned ? "Pinned" : "Pin"}</span>
+            {isTogglingPin ? (
+              <Loader2 size={17} className="animate-spin text-[#0066ff]" />
+            ) : (
+              <Pin
+                size={17}
+                className={conversation.isPinned ? "text-[#0066ff] fill-[#0066ff]" : ""}
+              />
+            )}
+            <span className="text-[10px] font-medium">
+              {isTogglingPin ? "Updating..." : conversation.isPinned ? "Pinned" : "Pin"}
+            </span>
           </button>
 
           <button
@@ -514,7 +525,15 @@ export const ContactDetailDrawer: React.FC<ContactDetailDrawerProps> = ({
           </button>
 
           <button
-            onClick={() => alert("Voice & Video calls coming soon!")}
+            onClick={() =>
+              confirm({
+                title: "Calling",
+                message: "Voice & Video calling feature will be available soon!",
+                confirmText: "Got it",
+                cancelText: null,
+                variant: "info",
+              })
+            }
             className="flex flex-col items-center gap-1.5 p-2 rounded-xl hover:bg-white/[0.04] text-[#767b93] hover:text-[#0066ff] transition-colors cursor-pointer"
             title="Audio/Video call"
             type="button"

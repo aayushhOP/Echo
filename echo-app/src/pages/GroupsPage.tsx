@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useChatStore } from "../store/chatStore";
 import { useAuthStore } from "../store/authStore";
-import { Users, Plus, MessageSquare, ShieldCheck, ChevronRight, Search } from "lucide-react";
+import { Users, Plus, MessageSquare, ShieldCheck, ChevronRight, Search, Pin } from "lucide-react";
 import { CreateGroupModal } from "../components/chat/CreateGroupModal";
 import { messageApi } from "../api/messageApi";
 import { useNavigate } from "react-router-dom";
@@ -21,13 +21,26 @@ export const GroupsPage: React.FC = () => {
   // Filter conversations to group chats only
   const groupConversations = conversations.filter((c) => c.type === "group");
 
-  const filteredGroups = groupConversations.filter((g) => {
-    const q = searchQuery.toLowerCase().trim();
-    if (!q) return true;
-    const nameMatch = (g.groupName || g.name || "Group").toLowerCase().includes(q);
-    const memberMatch = g.participants?.some((p) => p.username?.toLowerCase().includes(q));
-    return nameMatch || memberMatch;
-  });
+  const filteredGroups = groupConversations
+    .filter((g) => {
+      const q = searchQuery.toLowerCase().trim();
+      if (!q) return true;
+      const nameMatch = (g.groupName || g.name || "Group").toLowerCase().includes(q);
+      const memberMatch = g.participants?.some((p) => p.username?.toLowerCase().includes(q));
+      return nameMatch || memberMatch;
+    })
+    .sort((a, b) => {
+      if (Boolean(a.isPinned) !== Boolean(b.isPinned)) {
+        return a.isPinned ? -1 : 1;
+      }
+      const timeA = a.lastMessage?.createdAt
+        ? new Date(a.lastMessage.createdAt).getTime()
+        : new Date((a as any).updatedAt || (a as any).createdAt || 0).getTime();
+      const timeB = b.lastMessage?.createdAt
+        ? new Date(b.lastMessage.createdAt).getTime()
+        : new Date((b as any).updatedAt || (b as any).createdAt || 0).getTime();
+      return timeB - timeA;
+    });
 
   const handleCreateGroup = async (groupName: string, selectedUserIds: string[]) => {
     try {
@@ -146,8 +159,11 @@ export const GroupsPage: React.FC = () => {
 
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center justify-between gap-2">
-                        <h3 className="text-sm font-semibold text-white truncate group-hover:text-[#0066ff] transition-colors">
-                          {group.groupName || group.name || "Group"}
+                        <h3 className="text-sm font-semibold text-white truncate group-hover:text-[#0066ff] transition-colors flex items-center gap-1.5">
+                          <span className="truncate">{group.groupName || group.name || "Group"}</span>
+                          {group.isPinned && (
+                            <Pin className="w-3.5 h-3.5 text-[#0066ff] fill-[#0066ff] rotate-45 shrink-0" />
+                          )}
                         </h3>
                         {lastMsgTime && (
                           <span className="text-[10px] text-slate-500 shrink-0 font-mono">
