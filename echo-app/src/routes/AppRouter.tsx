@@ -3,6 +3,7 @@ import { LoginPage } from "../pages/LoginPage";
 import { RegisterPage } from "../pages/RegisterPage";
 import { ChatPage } from "../pages/ChatPage";
 import { ProfilePage } from "../pages/ProfilePage";
+import { SettingsPage } from "../pages/SettingsPage";
 import { ContactsPage } from "../pages/ContactsPage";
 import { InvitePage } from "../pages/InvitePage";
 import { AppLayout } from "../components/layout/AppLayout";
@@ -42,6 +43,10 @@ export const appRouter = createBrowserRouter([
           {
             path: "/profile",
             element: <ProfilePage />,
+          },
+          {
+            path: "/settings",
+            element: <SettingsPage />,
           },
           {
             path: "/invite/:token",

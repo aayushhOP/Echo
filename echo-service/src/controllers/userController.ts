@@ -9,9 +9,11 @@ import { getIO } from "../sockets";
 const updateProfileSchema = z
   .object({
     status: z.string().max(200, "Status must be at most 200 characters").optional(),
-    avatarUrl: z.string().url("Must be a valid URL").or(z.literal("")).optional(),
+    about: z.string().max(200).optional(),
+    avatarUrl: z.string().url("Must be a valid URL").or(z.literal("")).or(z.string().startsWith("/uploads/")).optional(),
     bio: z.string().max(500, "Bio must be at most 500 characters").optional(),
     phone: z.string().max(30).optional(),
+    phoneNumber: z.string().max(30).optional(),
     preferences: z
       .object({
         soundEnabled: z.boolean().optional(),
@@ -231,6 +233,73 @@ export const getBlockedUsersHandler = async (
     res.status(200).json({
       success: true,
       blockedUsers,
+      blockedContacts: blockedUsers,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * POST /api/users/profile/avatar
+ * Uploads custom cropped profile picture
+ */
+export const updateAvatarHandler = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    if (!req.userId) {
+      throw new AppError("Authentication required", 401);
+    }
+    if (!req.file) {
+      res.status(400).json({ success: false, message: "No avatar image uploaded" });
+      return;
+    }
+
+    const avatarUrl = `/uploads/avatars/${req.file.filename}`;
+    const updatedUser = await userService.updateCurrentUserProfile(req.userId, {
+      avatarUrl,
+    });
+
+    res.status(200).json({
+      success: true,
+      avatarUrl: updatedUser.avatarUrl,
+      user: updatedUser,
+      message: "Avatar updated successfully",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * PATCH /api/users/profile/details
+ * Update bio/status/about, phone/phoneNumber
+ */
+export const updateProfileDetailsHandler = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    if (!req.userId) {
+      throw new AppError("Authentication required", 401);
+    }
+    const { about, phoneNumber, phone, status, bio } = req.body;
+    const updatedUser = await userService.updateCurrentUserProfile(req.userId, {
+      about: typeof about === "string" ? about.trim() : undefined,
+      status: typeof status === "string" ? status.trim() : (typeof about === "string" ? about.trim() : undefined),
+      bio: typeof bio === "string" ? bio.trim() : undefined,
+      phoneNumber: typeof phoneNumber === "string" ? phoneNumber.trim() : undefined,
+      phone: typeof phone === "string" ? phone.trim() : (typeof phoneNumber === "string" ? phoneNumber.trim() : undefined),
+    });
+
+    res.status(200).json({
+      success: true,
+      user: updatedUser,
+      message: "Profile details updated successfully",
     });
   } catch (error) {
     next(error);

@@ -23,10 +23,24 @@ export const updateCurrentUserProfile = async (
   data: UpdateProfileDTO
 ): Promise<UserProfileDTO> => {
   const updateFields: any = {};
-  if (data.status !== undefined) updateFields.status = data.status;
+  if (data.status !== undefined) {
+    updateFields.status = data.status;
+    updateFields.about = data.status;
+  }
+  if (data.about !== undefined) {
+    updateFields.about = data.about;
+    updateFields.status = data.about;
+  }
   if (data.avatarUrl !== undefined) updateFields.avatarUrl = data.avatarUrl;
   if (data.bio !== undefined) updateFields.bio = data.bio;
-  if (data.phone !== undefined) updateFields.phone = data.phone;
+  if (data.phone !== undefined) {
+    updateFields.phone = data.phone;
+    updateFields.phoneNumber = data.phone;
+  }
+  if (data.phoneNumber !== undefined) {
+    updateFields.phoneNumber = data.phoneNumber;
+    updateFields.phone = data.phoneNumber;
+  }
   if (data.preferences !== undefined) {
     if (data.preferences.soundEnabled !== undefined) {
       updateFields["preferences.soundEnabled"] = data.preferences.soundEnabled;

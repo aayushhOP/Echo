@@ -20,8 +20,10 @@ export interface IUser extends Document {
   username: string;
   avatarUrl?: string;
   status?: string;
+  about?: string;
   bio?: string;
   phone?: string;
+  phoneNumber?: string;
   isOnline: boolean;
   lastSeen: Date;
   preferences?: IUserPreferences;
@@ -53,8 +55,10 @@ const userSchema = new Schema<IUser, IUserModel>(
     username: { type: String, required: true, trim: true },
     avatarUrl: { type: String, default: "" },
     status: { type: String, default: "Hey there! I'm using Echo" },
+    about: { type: String, default: "Hey there! I am using Echo." },
     bio: { type: String, default: "" },
     phone: { type: String, default: "" },
+    phoneNumber: { type: String, default: "" },
     isOnline: { type: Boolean, default: false },
     lastSeen: { type: Date, default: Date.now },
     preferences: {

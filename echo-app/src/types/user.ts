@@ -6,6 +6,10 @@ export interface User {
   email: string;
   avatarUrl?: string;
   status?: string;
+  about?: string;
+  bio?: string;
+  phone?: string;
+  phoneNumber?: string;
   isOnline: boolean;
   blockedUsers?: string[];
   blockedBy?: string[];
@@ -21,6 +25,8 @@ export interface UserSearchItem {
   username: string;
   avatarUrl?: string;
   status?: string;
+  about?: string;
+  bio?: string;
   isOnline: boolean;
   lastSeen?: string;
 }

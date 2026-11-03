@@ -7,8 +7,10 @@ export interface UserProfileDTO {
   email: string;
   avatarUrl?: string;
   status?: string;
+  about?: string;
   bio?: string;
   phone?: string;
+  phoneNumber?: string;
   preferences?: IUserPreferences;
   blockedUsers: string[];
   blockedBy?: string[];
@@ -30,9 +32,11 @@ export interface UserSearchItemDTO {
 
 export interface UpdateProfileDTO {
   status?: string;
+  about?: string;
   avatarUrl?: string;
   bio?: string;
   phone?: string;
+  phoneNumber?: string;
   preferences?: Partial<IUserPreferences>;
 }
 
@@ -46,8 +50,10 @@ export const formatUserProfile = (
   email: user.email,
   avatarUrl: user.avatarUrl,
   status: user.status,
+  about: user.about || user.status || user.bio || "",
   bio: user.bio,
-  phone: user.phone,
+  phone: user.phone || user.phoneNumber || "",
+  phoneNumber: user.phoneNumber || user.phone || "",
   preferences: user.preferences,
   blockedUsers: Array.isArray(user.blockedUsers)
     ? user.blockedUsers.map((b: any) => (b._id ? b._id.toString() : b.toString()))
