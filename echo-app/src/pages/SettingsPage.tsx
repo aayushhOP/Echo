@@ -15,12 +15,16 @@ import {
   AlertCircle,
   HelpCircle,
   Volume2,
+  ChevronDown,
+  Search,
 } from "lucide-react";
 import { AvatarCropModal } from "../components/settings/AvatarCropModal";
 import { notificationService } from "../services/notificationService";
 import { userApi } from "../api/userApi";
 import { useAuthStore } from "../store/authStore";
 import { UserSearchItem } from "../types/user";
+import { COUNTRIES, CountryCode } from "../utils/countries";
+import { resolveAvatarUrl } from "../utils/chatUtils";
 
 type SettingsTab = "profile" | "privacy" | "notifications" | "general" | "chats" | "help";
 
@@ -36,9 +40,15 @@ export const SettingsPage: FC = () => {
   const [about, setAbout] = useState(
     currentUser?.about || currentUser?.status || "Hey there! I am using Echo."
   );
-  const [phoneNumber, setPhoneNumber] = useState(
-    currentUser?.phoneNumber || currentUser?.phone || ""
-  );
+  
+  // Phone number state with country code component
+  const [localPhone, setLocalPhone] = useState("");
+  const [selectedCountry, setSelectedCountry] = useState<CountryCode>(COUNTRIES[0]); // Default +91 India
+  const [isCountryDropdownOpen, setIsCountryDropdownOpen] = useState(false);
+  const [countrySearch, setCountrySearch] = useState("");
+  const dropdownRef = useRef<HTMLDivElement | null>(null);
+  const countrySearchInputRef = useRef<HTMLInputElement | null>(null);
+
   const [avatarPreview, setAvatarPreview] = useState<string>(
     currentUser?.avatarUrl || clerkUser?.imageUrl || ""
   );
@@ -67,6 +77,25 @@ export const SettingsPage: FC = () => {
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
+  // Parse existing phone number into country code + local number
+  const parsePhoneToState = (rawPhone: string) => {
+    if (!rawPhone) {
+      setLocalPhone("");
+      return;
+    }
+    const trimmed = rawPhone.trim();
+    if (trimmed.startsWith("+")) {
+      const sortedCountries = COUNTRIES.slice().sort((a, b) => b.dialCode.length - a.dialCode.length);
+      const matched = sortedCountries.find((c) => trimmed.startsWith(c.dialCode));
+      if (matched) {
+        setSelectedCountry(matched);
+        setLocalPhone(trimmed.slice(matched.dialCode.length).trim());
+        return;
+      }
+    }
+    setLocalPhone(trimmed);
+  };
+
   // Sync state when currentUser or clerkUser loads
   useEffect(() => {
     if (currentUser) {
@@ -78,13 +107,26 @@ export const SettingsPage: FC = () => {
       if (currentUser.about || currentUser.status) {
         setAbout(currentUser.about || currentUser.status || "Hey there! I am using Echo.");
       }
-      if (currentUser.phoneNumber || currentUser.phone) {
-        setPhoneNumber(currentUser.phoneNumber || currentUser.phone || "");
-      }
+      const existingPhone = currentUser.phoneNumber || currentUser.phone || "";
+      parsePhoneToState(existingPhone);
     } else if (clerkUser?.imageUrl) {
       setAvatarPreview(clerkUser.imageUrl);
     }
   }, [currentUser, clerkUser]);
+
+  // Close country dropdown on outside click
+  useEffect(() => {
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setIsCountryDropdownOpen(false);
+      }
+    };
+    if (isCountryDropdownOpen) {
+      document.addEventListener("mousedown", handleOutsideClick);
+      setTimeout(() => countrySearchInputRef.current?.focus(), 50);
+    }
+    return () => document.removeEventListener("mousedown", handleOutsideClick);
+  }, [isCountryDropdownOpen]);
 
   // Initial blocked list load
   useEffect(() => {
@@ -144,7 +186,7 @@ export const SettingsPage: FC = () => {
     }
   };
 
-  // Save profile details (about / status / phone)
+  // Save profile details (about / status / optional phone)
   const handleSaveProfileDetails = async (e: React.FormEvent) => {
     e.preventDefault();
     setProfileErrorMsg(null);
@@ -152,9 +194,11 @@ export const SettingsPage: FC = () => {
     setIsSavingProfile(true);
 
     try {
+      const formattedPhone = localPhone.trim() ? `${selectedCountry.dialCode} ${localPhone.trim()}` : "";
       const res = await userApi.updateProfileDetails({
         about: about.trim(),
-        phoneNumber: phoneNumber.trim(),
+        phoneNumber: formattedPhone,
+        phone: formattedPhone,
       });
       if (res.success && res.user) {
         updateUser(res.user);
@@ -183,23 +227,30 @@ export const SettingsPage: FC = () => {
     }
   };
 
+  const filteredCountries = COUNTRIES.filter(
+    (c) =>
+      c.name.toLowerCase().includes(countrySearch.toLowerCase().trim()) ||
+      c.dialCode.includes(countrySearch.trim()) ||
+      c.code.toLowerCase().includes(countrySearch.toLowerCase().trim())
+  );
+
   const displayName =
     clerkUser?.fullName ||
     currentUser?.username ||
     clerkUser?.username ||
     "Echo User";
 
-  const displayAvatar = avatarPreview || clerkUser?.imageUrl || "";
+  const resolvedDisplayAvatar = resolveAvatarUrl(avatarPreview || clerkUser?.imageUrl || "");
 
   return (
     <div className="h-full w-full flex bg-[#13141d] text-slate-100 overflow-hidden">
-      {/* 1. LEFT SIDEBAR: Navigation Menu */}
-      <div className="w-80 h-full border-r border-white/[0.06] bg-[#171824]/60 flex flex-col shrink-0">
+      {/* 1. LEFT SIDEBAR: Navigation Menu (matches width of ConversationList panel) */}
+      <div className="w-full md:w-[35%] md:min-w-[340px] md:max-w-[550px] h-full border-r border-white/[0.06] bg-[#171824]/60 flex flex-col shrink-0">
         {/* Profile Card Header */}
         <div className="p-6 border-b border-white/[0.06] flex items-center gap-4">
           <div className="relative w-14 h-14 rounded-full overflow-hidden bg-slate-800 border-2 border-[#0066ff]/30 shrink-0">
-            {displayAvatar ? (
-              <img src={displayAvatar} alt="Avatar" className="w-full h-full object-cover" />
+            {resolvedDisplayAvatar ? (
+              <img src={resolvedDisplayAvatar} alt="Avatar" className="w-full h-full object-cover" />
             ) : (
               <div className="w-full h-full flex items-center justify-center font-bold text-white bg-slate-800">
                 {displayName.slice(0, 2).toUpperCase()}
@@ -279,7 +330,7 @@ export const SettingsPage: FC = () => {
                 </p>
               </div>
 
-              {/* Avatar Uploader Section (URL input completely removed) */}
+              {/* Avatar Uploader Section */}
               <div className="flex flex-col items-center justify-center p-6 rounded-2xl bg-[#171824] border border-white/[0.06]">
                 <div
                   className="relative group cursor-pointer"
@@ -287,9 +338,9 @@ export const SettingsPage: FC = () => {
                   title="Click to change profile photo"
                 >
                   <div className="w-28 h-28 rounded-full overflow-hidden border-4 border-[#0066ff]/20 bg-slate-900 shadow-xl">
-                    {displayAvatar ? (
+                    {resolvedDisplayAvatar ? (
                       <img
-                        src={displayAvatar}
+                        src={resolvedDisplayAvatar}
                         alt="Profile"
                         className="w-full h-full object-cover group-hover:opacity-75 transition-opacity"
                       />
@@ -315,12 +366,7 @@ export const SettingsPage: FC = () => {
                   className="hidden"
                 />
 
-                <p className="text-xs text-slate-400 mt-3">
-                  Click picture to frame & upload (strictly JPG, JPEG, or PNG)
-                </p>
-                <p className="text-[11px] text-slate-500 mt-1">
-                  Default falls back automatically to your Clerk / Google account photo
-                </p>
+                <p className="text-xs text-slate-400 mt-3">Click picture to frame & upload</p>
               </div>
 
               {/* Profile Fields */}
@@ -358,14 +404,96 @@ export const SettingsPage: FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-slate-400 mb-1.5">Phone Number</label>
-                  <input
-                    type="text"
-                    value={phoneNumber}
-                    onChange={(e) => setPhoneNumber(e.target.value)}
-                    placeholder="+91 98765 43210"
-                    className="w-full h-11 px-3.5 rounded-xl bg-[#13141d] border border-white/[0.08] text-white text-xs focus:outline-none focus:border-[#0066ff]"
-                  />
+                  <label className="block text-xs font-medium text-slate-400 mb-1.5">
+                    Phone Number <span className="text-slate-500 font-normal">(Optional)</span>
+                  </label>
+                  <div className="flex items-center gap-2 relative">
+                    {/* Country Code Selector */}
+                    <div ref={dropdownRef} className="relative">
+                      <button
+                        type="button"
+                        onClick={() => setIsCountryDropdownOpen((prev) => !prev)}
+                        className="h-11 px-3 rounded-xl bg-[#13141d] border border-white/[0.08] hover:border-white/20 text-white text-xs flex items-center gap-1.5 focus:outline-none focus:border-[#0066ff] transition-all cursor-pointer shrink-0"
+                        title={`${selectedCountry.name} (${selectedCountry.dialCode})`}
+                      >
+                        <span className="text-base leading-none">{selectedCountry.flag}</span>
+                        <span className="font-medium text-slate-200">{selectedCountry.dialCode}</span>
+                        <ChevronDown
+                          size={14}
+                          className={`text-slate-400 transition-transform duration-150 ${
+                            isCountryDropdownOpen ? "rotate-180 text-[#0066ff]" : ""
+                          }`}
+                        />
+                      </button>
+
+                      {/* Dropdown Menu */}
+                      {isCountryDropdownOpen && (
+                        <div className="absolute left-0 bottom-full mb-1.5 w-64 max-h-60 rounded-xl bg-[#171824] border border-white/[0.1] shadow-2xl z-50 flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-100">
+                          {/* Search inside dropdown */}
+                          <div className="p-2 border-b border-white/[0.06] sticky top-0 bg-[#171824]">
+                            <div className="relative">
+                              <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                              <input
+                                ref={countrySearchInputRef}
+                                type="text"
+                                value={countrySearch}
+                                onChange={(e) => setCountrySearch(e.target.value)}
+                                placeholder="Search country..."
+                                className="w-full h-8 pl-8 pr-2 rounded-lg bg-[#13141d] border border-white/[0.06] text-white text-[11px] placeholder-slate-500 focus:outline-none focus:border-[#0066ff]"
+                              />
+                            </div>
+                          </div>
+
+                          {/* Country List */}
+                          <div className="flex-1 overflow-y-auto p-1 space-y-0.5">
+                            {filteredCountries.length > 0 ? (
+                              filteredCountries.map((c) => {
+                                const isSelected =
+                                  c.code === selectedCountry.code && c.dialCode === selectedCountry.dialCode;
+                                return (
+                                  <button
+                                    key={`${c.code}-${c.dialCode}`}
+                                    type="button"
+                                    onClick={() => {
+                                      setSelectedCountry(c);
+                                      setIsCountryDropdownOpen(false);
+                                      setCountrySearch("");
+                                    }}
+                                    className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-left text-xs transition-colors cursor-pointer ${
+                                      isSelected
+                                        ? "bg-[#0066ff]/20 text-[#0066ff] font-semibold"
+                                        : "hover:bg-white/[0.06] text-slate-300"
+                                    }`}
+                                  >
+                                    <div className="flex items-center gap-2 truncate">
+                                      <span className="text-sm leading-none">{c.flag}</span>
+                                      <span className="truncate">{c.name}</span>
+                                    </div>
+                                    <span className="font-mono text-[11px] text-slate-400 shrink-0 ml-2">
+                                      {c.dialCode}
+                                    </span>
+                                  </button>
+                                );
+                              })
+                            ) : (
+                              <p className="p-3 text-[11px] text-slate-500 text-center">No countries found</p>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Local phone number input */}
+                    <div className="flex-1 relative">
+                      <input
+                        type="tel"
+                        value={localPhone}
+                        onChange={(e) => setLocalPhone(e.target.value.replace(/[^\d\s-]/g, ""))}
+                        placeholder="0000000000"
+                        className="w-full h-11 px-3.5 rounded-xl bg-[#13141d] border border-white/[0.08] text-white text-xs placeholder-slate-500 focus:outline-none focus:border-[#0066ff] focus:ring-2 focus:ring-[#0066ff]/20 transition-all font-mono"
+                      />
+                    </div>
+                  </div>
                 </div>
 
                 <div className="pt-2 flex justify-end">
@@ -421,14 +549,15 @@ export const SettingsPage: FC = () => {
                     blockedList.map((contact) => {
                       const cid = contact.id || (contact as any)._id || contact.clerkId;
                       const isUnblocking = unblockingId === cid;
+                      const contactAvatar = resolveAvatarUrl(contact.avatarUrl);
 
                       return (
                         <div key={cid} className="py-3 flex items-center justify-between">
                           <div className="flex items-center gap-3">
                             <div className="w-9 h-9 rounded-full bg-slate-800 border border-white/10 flex items-center justify-center overflow-hidden">
-                              {contact.avatarUrl ? (
+                              {contactAvatar ? (
                                 <img
-                                  src={contact.avatarUrl}
+                                  src={contactAvatar}
                                   alt={contact.username}
                                   className="w-full h-full object-cover"
                                 />

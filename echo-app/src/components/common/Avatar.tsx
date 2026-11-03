@@ -1,5 +1,6 @@
 import { FC } from "react";
 import { cn } from "../../utils/date";
+import { resolveAvatarUrl } from "../../utils/chatUtils";
 
 interface AvatarProps {
   name: string;
@@ -18,6 +19,7 @@ export const Avatar: FC<AvatarProps> = ({
   size = "md",
   className,
 }) => {
+  const resolvedUrl = resolveAvatarUrl(avatarUrl);
   const initials = name
     ? name
         .split(" ")
@@ -41,9 +43,9 @@ export const Avatar: FC<AvatarProps> = ({
 
   return (
     <div className={cn("relative inline-flex items-center justify-center shrink-0 rounded-full", className)}>
-      {avatarUrl ? (
+      {resolvedUrl ? (
         <img
-          src={avatarUrl}
+          src={resolvedUrl}
           alt={name}
           className={cn(
             "rounded-full object-cover bg-slate-800 block",

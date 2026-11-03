@@ -1,10 +1,13 @@
 import { Response, NextFunction } from "express";
 import { z } from "zod";
+import fs from "fs";
+import { v2 as cloudinary } from "cloudinary";
 import { AuthenticatedRequest } from "../middlewares/authMiddleware";
 import { AppError } from "../middlewares/errorHandler";
 import * as userService from "../services/userService";
 import { getOnlineUserIds } from "../services/presenceService";
 import { getIO } from "../sockets";
+import { ENV } from "../config/env";
 
 const updateProfileSchema = z
   .object({
@@ -258,7 +261,44 @@ export const updateAvatarHandler = async (
       return;
     }
 
-    const avatarUrl = `/uploads/avatars/${req.file.filename}`;
+    let avatarUrl: string;
+
+    // If Cloudinary is configured, upload to Cloudinary so images persist on Render / ephemeral disks
+    if (ENV.CLOUDINARY_URL) {
+      try {
+        try {
+          const parsed = new URL(ENV.CLOUDINARY_URL);
+          cloudinary.config({
+            cloud_name: parsed.hostname,
+            api_key: parsed.username,
+            api_secret: parsed.password,
+          });
+        } catch {
+          cloudinary.config({ cloudinary_url: ENV.CLOUDINARY_URL });
+        }
+
+        const uploadResult = await cloudinary.uploader.upload(req.file.path, {
+          folder: "echo-avatars",
+          resource_type: "image",
+        });
+
+        avatarUrl = uploadResult.secure_url;
+
+        try {
+          fs.unlinkSync(req.file.path);
+        } catch {}
+      } catch (cloudErr) {
+        console.error("[Cloudinary Avatar Upload Error]:", cloudErr);
+        const protocol = req.protocol;
+        const host = req.get("host");
+        avatarUrl = `${protocol}://${host}/uploads/avatars/${req.file.filename}`;
+      }
+    } else {
+      const protocol = req.protocol;
+      const host = req.get("host");
+      avatarUrl = `${protocol}://${host}/uploads/avatars/${req.file.filename}`;
+    }
+
     const updatedUser = await userService.updateCurrentUserProfile(req.userId, {
       avatarUrl,
     });

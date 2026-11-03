@@ -96,3 +96,17 @@ export function getOtherParticipant(
 
   return fallback || null;
 }
+
+/**
+ * Resolves an avatar or media URL to an absolute URL if stored as a relative path.
+ * If already an absolute URL (http, https, blob, data), returns as is.
+ */
+export function resolveAvatarUrl(url?: string | null): string {
+  if (!url) return "";
+  if (url.startsWith("http://") || url.startsWith("https://") || url.startsWith("blob:") || url.startsWith("data:")) {
+    return url;
+  }
+  const apiBase = import.meta.env.VITE_API_URL || "https://echo-1aal.onrender.com/api";
+  const origin = apiBase.replace(/\/api\/?$/, "");
+  return `${origin}${url.startsWith("/") ? "" : "/"}${url}`;
+}
