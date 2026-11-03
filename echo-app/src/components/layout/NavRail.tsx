@@ -2,6 +2,7 @@ import { FC } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useClerk } from "@clerk/clerk-react";
 import { useAuthStore } from "../../store/authStore";
+import { useChatStore } from "../../store/chatStore";
 import { useConfirm } from "../../store/confirmDialogStore";
 import { MessageSquare, ContactRound, Users, LogOut } from "lucide-react";
 import { Avatar } from "../common/Avatar";
@@ -13,7 +14,19 @@ export const NavRail: FC = () => {
   const { signOut } = useClerk();
   const currentUser = useAuthStore((state) => state.user);
   const clearAuth = useAuthStore((state) => state.clearAuth);
+  const conversations = useChatStore((state) => state.conversations);
   const confirm = useConfirm();
+
+  // Compute unread counts for direct chats and group chats
+  const totalUnreadDirect = conversations.reduce((acc, c) => {
+    return c.type === "direct" ? acc + (c.unreadCount || 0) : acc;
+  }, 0);
+
+  const totalUnreadGroup = conversations.reduce((acc, c) => {
+    return c.type === "group" ? acc + (c.unreadCount || 0) : acc;
+  }, 0);
+
+  const totalUnreadAll = totalUnreadDirect + totalUnreadGroup;
 
   const handleLogout = async () => {
     const shouldLogout = await confirm({
@@ -35,9 +48,9 @@ export const NavRail: FC = () => {
   };
 
   const navItems = [
-    { label: "Chats", path: "/chat", icon: MessageSquare },
-    { label: "Contacts", path: "/contacts", icon: ContactRound },
-    { label: "Groups", path: "/groups", icon: Users },
+    { label: "Chats", path: "/chat", icon: MessageSquare, unreadCount: totalUnreadAll },
+    { label: "Contacts", path: "/contacts", icon: ContactRound, unreadCount: 0 },
+    { label: "Groups", path: "/groups", icon: Users, unreadCount: totalUnreadGroup },
   ];
 
   return (
@@ -77,6 +90,18 @@ export const NavRail: FC = () => {
                 <Icon className="w-5 h-5 stroke-[2]" />
                 {isActive && (
                   <span className="absolute -left-2 w-1 h-5 bg-[#38bdf8] rounded-r-full shadow-[0_0_8px_#38bdf8]" />
+                )}
+                {item.unreadCount > 0 && (
+                  <span
+                    className={cn(
+                      "absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold flex items-center justify-center text-white shadow-md animate-in zoom-in-75 duration-150 ring-2 ring-[#1b1c27]",
+                      isActive
+                        ? "bg-[#22c55e] text-white shadow-emerald-500/30"
+                        : "bg-[#0066ff] text-white shadow-[#0066ff]/40"
+                    )}
+                  >
+                    {item.unreadCount > 99 ? "99+" : item.unreadCount}
+                  </span>
                 )}
                 <span className="sr-only">{item.label}</span>
               </Link>
