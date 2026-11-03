@@ -26,6 +26,7 @@ interface MessageBubbleProps {
   isSelected?: boolean;
   onToggleSelect?: (messageId: string) => void;
   canReply?: boolean;
+  onGoToMessage?: (messageId: string) => void;
 }
 
 // 6 default quick reactions (WhatsApp Desktop style)
@@ -64,6 +65,7 @@ const MessageBubbleComponent: FC<MessageBubbleProps> = ({
   isSelected = false,
   onToggleSelect,
   canReply = true,
+  onGoToMessage,
 }) => {
   const currentUser = useAuthStore((state) => state.user);
   const [showQuickTray, setShowQuickTray] = useState(false);
@@ -134,6 +136,53 @@ const MessageBubbleComponent: FC<MessageBubbleProps> = ({
     ? formatTime(message.createdAt)
     : new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
+  // Resolve replyTo metadata if present (either populated object or parent reference)
+  const replyToMsg = typeof message.replyTo === "object" && message.replyTo !== null ? message.replyTo : null;
+  const replyToId = replyToMsg ? replyToMsg._id : typeof message.replyTo === "string" ? message.replyTo : null;
+
+  const replyToSenderName = replyToMsg
+    ? typeof replyToMsg.senderId === "object" && replyToMsg.senderId !== null
+      ? (replyToMsg.senderId as any).username || "Someone"
+      : "Someone"
+    : null;
+
+  const replyToSnippet = replyToMsg
+    ? replyToMsg.content ||
+      (replyToMsg.type === "image"
+        ? "📷 Photo"
+        : replyToMsg.type === "audio"
+        ? "🎤 Voice message"
+        : replyToMsg.fileName
+        ? `📎 ${replyToMsg.fileName}`
+        : "Attachment")
+    : null;
+
+  const renderReplyQuoteHeader = () => {
+    if (!replyToMsg && !replyToSnippet) return null;
+    return (
+      <div
+        onClick={(e) => {
+          e.stopPropagation();
+          if (replyToId && onGoToMessage) {
+            onGoToMessage(replyToId);
+          }
+        }}
+        className={`mb-1.5 p-2 rounded-xl border-l-4 border-l-[#38bdf8] text-xs cursor-pointer select-none transition-opacity hover:opacity-90 ${
+          isOwn
+            ? "bg-black/25 text-slate-200 border-white/10"
+            : "bg-[#181a26]/90 text-slate-300 border-white/[0.06]"
+        }`}
+      >
+        <p className="text-[11px] font-semibold text-[#38bdf8] truncate mb-0.5">
+          {replyToSenderName || "Original message"}
+        </p>
+        <p className="text-[11px] text-slate-300/90 truncate max-w-xs md:max-w-sm">
+          {replyToSnippet}
+        </p>
+      </div>
+    );
+  };
+
   // Close menus on outside click
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -160,7 +209,10 @@ const MessageBubbleComponent: FC<MessageBubbleProps> = ({
       senderId: senderId || "",
       senderUsername: isOwn ? "You" : senderName,
       content: message.content || "",
-      type: message.type === "image" || message.type === "file" ? message.type : "text",
+      type:
+        message.type === "image" || message.type === "file" || message.type === "audio"
+          ? message.type
+          : "text",
     });
   };
 
@@ -355,6 +407,11 @@ const MessageBubbleComponent: FC<MessageBubbleProps> = ({
                 isPending ? "opacity-75 ring-1 ring-[#0066ff]/40" : ""
               }`}
             >
+              {renderReplyQuoteHeader() && (
+                <div className="p-2 pb-0">
+                  {renderReplyQuoteHeader()}
+                </div>
+              )}
               {imageError ? (
                 <div className="p-3 flex items-center gap-2.5 text-xs text-[#767b93] bg-[#13141d]">
                   <div className="w-8 h-8 rounded-lg bg-rose-500/20 text-rose-300 flex items-center justify-center shrink-0">
@@ -400,6 +457,9 @@ const MessageBubbleComponent: FC<MessageBubbleProps> = ({
                   : "bg-[#232533] border-white/[0.04] text-[#f0f2f8] rounded-tl-sm hover:bg-[#282a3b]"
               } ${isPending ? "opacity-75 ring-1 ring-[#0066ff]/40" : ""}`}
             >
+              {/* Quoted Reply Header Preview */}
+              {renderReplyQuoteHeader()}
+
               {message.isForwarded && (
                 <div
                   className={`flex items-center gap-1 mb-1.5 text-[11px] italic font-normal select-none ${
@@ -465,6 +525,9 @@ const MessageBubbleComponent: FC<MessageBubbleProps> = ({
                   : "bg-[#232533] border-white/[0.04] text-[#f0f2f8] rounded-tl-sm hover:bg-[#282a3b]"
               } ${isPending ? "opacity-75 ring-1 ring-[#0066ff]/40" : ""}`}
             >
+              {/* Quoted Reply Header Preview */}
+              {renderReplyQuoteHeader()}
+
               {message.isForwarded && (
                 <div
                   className={`flex items-center gap-1 mb-1 text-[11px] italic font-normal select-none px-1 ${
@@ -511,7 +574,13 @@ const MessageBubbleComponent: FC<MessageBubbleProps> = ({
                   : "bg-[#232533] text-[#f0f2f8] rounded-tl-sm hover:bg-[#282a3b] border border-white/[0.04] shadow-sm"
               } ${isPending ? "opacity-75 ring-1 ring-[#0066ff]/40" : ""}`}
             >
+              {/* Quoted Reply Header Preview */}
+              {renderReplyQuoteHeader()}
+
               {/* WhatsApp-Style Forwarded Banner */}
+              {/* Quoted Reply Header Preview */}
+              {renderReplyQuoteHeader()}
+
               {message.isForwarded && (
                 <div
                   className={`flex items-center gap-1 mb-1 text-[11px] italic font-normal select-none ${
@@ -814,6 +883,7 @@ export const MessageBubble = memo(MessageBubbleComponent, (prevProps, nextProps)
     prevProps.message.mediaUrl === nextProps.message.mediaUrl &&
     prevProps.message.isForwarded === nextProps.message.isForwarded &&
     prevProps.message.isPinned === nextProps.message.isPinned &&
+    prevProps.message.replyTo === nextProps.message.replyTo &&
     prevProps.message.isDeletedForEveryone === nextProps.message.isDeletedForEveryone &&
     prevProps.message.deletedBy?.userId === nextProps.message.deletedBy?.userId &&
     prevProps.message.reactions === nextProps.message.reactions &&

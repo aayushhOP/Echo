@@ -347,6 +347,8 @@ export const ChatWindow: FC<ChatWindowProps> = ({
     }
   };
 
+  const replyingTo = useChatStore((state) => state.replyingTo);
+
   const handleSendMessage = (
     content: string,
     type: "text" | "image" | "file" | "audio" = "text",
@@ -360,6 +362,19 @@ export const ChatWindow: FC<ChatWindowProps> = ({
     }
   ) => {
     if (!activeConversationId || !currentUser) return;
+
+    // Build optimistic replyTo object if replying
+    let optimisticReplyTo: any = metadata?.replyTo || null;
+    if (replyingTo && metadata?.replyTo === replyingTo._id) {
+      optimisticReplyTo = {
+        _id: replyingTo._id,
+        content: replyingTo.content,
+        type: replyingTo.type,
+        senderId: {
+          username: replyingTo.senderUsername,
+        },
+      };
+    }
 
     const tempId = `temp-${Date.now()}-${Math.random()}`;
     const optimisticMsg: Message = {
@@ -378,7 +393,7 @@ export const ChatWindow: FC<ChatWindowProps> = ({
       audioMetadata: metadata?.audioMetadata,
       fileName: metadata?.fileName,
       fileSize: metadata?.fileSize,
-      replyTo: metadata?.replyTo,
+      replyTo: optimisticReplyTo,
       reactions: [],
       readBy: [currentUser.id],
       status: "pending",
@@ -728,6 +743,7 @@ export const ChatWindow: FC<ChatWindowProps> = ({
                     isSelected={selectedMessageIds.includes(msg._id)}
                     onToggleSelect={toggleSelectMessage}
                     canReply={canReply}
+                    onGoToMessage={handleGoToMessage}
                   />
                 </div>
               );

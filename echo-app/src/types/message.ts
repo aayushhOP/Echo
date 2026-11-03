@@ -35,6 +35,17 @@ export interface IDeletedBy {
   role: "sender" | "admin";
 }
 
+export interface IReplyToMessage {
+  _id: string;
+  content: string;
+  senderId?: string | MessageSender;
+  type?: MessageType;
+  mediaUrl?: string | null;
+  fileUrl?: string | null;
+  audioMetadata?: IAudioMetadata;
+  fileName?: string | null;
+}
+
 export interface Message {
   _id: string;
   conversationId: string;
@@ -47,7 +58,7 @@ export interface Message {
   fileName?: string | null;
   fileSize?: number | null;
   reactions?: IReaction[];
-  replyTo?: string | null;
+  replyTo?: string | IReplyToMessage | null;
   readBy: string[];
   status: MessageStatus;
   isForwarded?: boolean;

@@ -13,7 +13,7 @@ export const messagePopulation = [
   { path: "senderId", select: "_id clerkId username avatarUrl" },
   {
     path: "replyTo",
-    select: "_id content senderId type mediaUrl fileName",
+    select: "_id content senderId type mediaUrl fileUrl audioMetadata fileName",
     populate: { path: "senderId", select: "_id clerkId username avatarUrl" },
   },
   { path: "reactions.users", select: "_id clerkId username avatarUrl" },
