@@ -2,6 +2,7 @@ import { FC, useState, FormEvent } from "react";
 import { userApi } from "../api/userApi";
 import { useAuthStore } from "../store/authStore";
 import { Avatar } from "../components/common/Avatar";
+import { NotificationSettings } from "../components/settings/NotificationSettings";
 import { User, Image, AlignLeft, CheckCircle2, Loader2, AlertCircle } from "lucide-react";
 
 export const ProfilePage: FC = () => {
@@ -136,6 +137,11 @@ export const ProfilePage: FC = () => {
               </button>
             </div>
           </form>
+        </div>
+
+        {/* Desktop & Push Notification Settings */}
+        <div className="mt-6">
+          <NotificationSettings />
         </div>
       </div>
     </div>

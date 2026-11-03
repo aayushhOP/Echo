@@ -2,6 +2,7 @@ import { FC, useEffect } from "react";
 import { RouterProvider } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useAuth, useUser } from "@clerk/clerk-react";
+import { Toaster } from "sonner";
 import { appRouter } from "./routes/AppRouter";
 import { useAuthStore } from "./store/authStore";
 import { configureAxiosAuth } from "./api/axiosClient";
@@ -94,6 +95,17 @@ export const App: FC = () => {
 
   return (
     <QueryClientProvider client={queryClient}>
+      <Toaster
+        position="top-right"
+        toastOptions={{
+          style: {
+            background: "transparent",
+            border: "none",
+            boxShadow: "none",
+            padding: 0,
+          },
+        }}
+      />
       <ConfirmationModal />
       <ServerWarmupModal
         isVisible={isWarmingUp}

@@ -2,10 +2,18 @@ import { FC } from "react";
 import { Outlet } from "react-router-dom";
 import { NavRail } from "./NavRail";
 import { useSocket } from "../../hooks/useSocket";
+import { useNotifications } from "../../hooks/useNotifications";
+import { useAuthStore } from "../../store/authStore";
 
 export const AppLayout: FC = () => {
   // Mount the singleton socket connection hook across authenticated sessions
   useSocket();
+
+  const user = useAuthStore((state) => state.user);
+  const currentUserId = user?.id || (user as any)?._id || "";
+
+  // Wire global dual notification system
+  useNotifications(currentUserId);
 
   return (
     <div className="relative h-screen w-screen bg-[#0d0e15] flex select-none overflow-hidden">
