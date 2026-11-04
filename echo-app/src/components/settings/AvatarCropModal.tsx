@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { X, Check, Plus, Minus, RotateCcw } from "lucide-react";
+import { X, Check, Plus, Minus, RotateCcw, Loader2 } from "lucide-react";
 
 export interface AvatarCropModalProps {
   imageSrc: string | null;
@@ -191,10 +191,14 @@ export const AvatarCropModal: React.FC<AvatarCropModalProps> = ({
             type="button"
             disabled={isUploading}
             onClick={handleExportCropped}
-            className="flex items-center justify-center w-11 h-11 rounded-full bg-[#0066ff] hover:bg-[#0052cc] text-white shadow-lg shadow-[#0066ff]/30 transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
+            className="flex items-center justify-center w-11 h-11 rounded-full bg-[#0066ff] hover:bg-[#0052cc] text-white shadow-lg shadow-[#0066ff]/30 transition-all active:scale-95 disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
             title="Apply profile picture"
           >
-            <Check size={20} strokeWidth={2.5} />
+            {isUploading ? (
+              <Loader2 size={20} className="animate-spin" />
+            ) : (
+              <Check size={20} strokeWidth={2.5} />
+            )}
           </button>
         </div>
       </div>

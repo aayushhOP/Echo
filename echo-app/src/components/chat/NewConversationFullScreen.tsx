@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { Search, X, User, MessageSquare, Sparkles, UserPlus, Check } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Search, X, User, MessageSquare, Sparkles, UserPlus, Check, Loader2 } from "lucide-react";
 import { userApi } from "../../api/userApi";
 import { messageApi } from "../../api/messageApi";
 import { useContactStore } from "../../store/contactStore";
@@ -18,6 +19,7 @@ export const NewConversationFullScreen: React.FC<NewConversationFullScreenProps>
   onClose,
   onSelectUserToChat,
 }) => {
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
   const [results, setResults] = useState<UserSearchItem[]>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -78,6 +80,7 @@ export const NewConversationFullScreen: React.FC<NewConversationFullScreenProps>
       }
 
       onClose();
+      navigate("/chat");
     } catch (err: any) {
       console.error("Failed to start direct conversation:", err);
       alert(err.response?.data?.message || err.message || "Failed to start chat");
@@ -208,7 +211,11 @@ export const NewConversationFullScreen: React.FC<NewConversationFullScreenProps>
                       onClick={() => handleStartChat(user)}
                       className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-[#0066ff] hover:bg-[#0052cc] text-white transition-all shadow-md shadow-[#0066ff]/20 active:scale-95 cursor-pointer disabled:opacity-50"
                     >
-                      <MessageSquare size={13} />
+                      {startingChatUserId === uId ? (
+                        <Loader2 size={13} className="animate-spin" />
+                      ) : (
+                        <MessageSquare size={13} />
+                      )}
                       <span>{startingChatUserId === uId ? "Starting..." : "Start Chat"}</span>
                     </button>
                   </div>

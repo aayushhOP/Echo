@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useContactStore } from "../../store/contactStore";
-import { Check, X, Users, AlertCircle } from "lucide-react";
+import { Check, X, Users, AlertCircle, Loader2 } from "lucide-react";
 import { Avatar } from "../common/Avatar";
 
 export interface CreateGroupModalProps {
@@ -150,16 +150,18 @@ export const CreateGroupModal: React.FC<CreateGroupModalProps> = ({
         <div className="mt-6 flex justify-end gap-2.5 pt-2 border-t border-white/[0.06]">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-xs font-medium text-slate-300 hover:text-white hover:bg-white/[0.05] rounded-xl transition-colors"
+            disabled={isSubmitting}
+            className="px-4 py-2 text-xs font-medium text-slate-300 hover:text-white hover:bg-white/[0.05] rounded-xl transition-colors cursor-pointer disabled:opacity-50"
           >
             Cancel
           </button>
           <button
             disabled={isSubmitting || !groupName.trim() || selectedUserIds.length === 0}
             onClick={handleCreate}
-            className="px-5 py-2 rounded-xl text-xs font-semibold bg-[#0066ff] hover:bg-[#0052cc] text-white disabled:opacity-40 transition-all shadow-md shadow-[#0066ff]/20 cursor-pointer"
+            className="flex items-center gap-1.5 px-5 py-2 rounded-xl text-xs font-semibold bg-[#0066ff] hover:bg-[#0052cc] text-white disabled:opacity-40 transition-all shadow-md shadow-[#0066ff]/20 cursor-pointer disabled:cursor-not-allowed"
           >
-            {isSubmitting ? "Creating..." : "Create Group"}
+            {isSubmitting && <Loader2 size={13} className="animate-spin" />}
+            <span>{isSubmitting ? "Creating..." : "Create Group"}</span>
           </button>
         </div>
       </div>

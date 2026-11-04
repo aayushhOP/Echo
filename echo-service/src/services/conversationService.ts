@@ -37,10 +37,6 @@ export const getConversationsForUser = async (userId: string) => {
   const conversations = await Conversation.find({
     participants: userObjectId,
     deletedBy: { $ne: userObjectId },
-    $or: [
-      { type: "group" },
-      { lastMessage: { $exists: true, $ne: null } },
-    ],
   })
     .populate("participants", "_id clerkId username avatarUrl status bio phone isOnline lastSeen")
     .populate("admins", "_id clerkId username avatarUrl")

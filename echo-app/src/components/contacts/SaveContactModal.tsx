@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { X, UserPlus, Mail, Phone, UserCheck, ChevronDown, Search } from "lucide-react";
+import { X, UserPlus, Mail, Phone, UserCheck, ChevronDown, Search, Loader2 } from "lucide-react";
 import { useContactStore } from "../../store/contactStore";
 import { COUNTRIES, CountryCode } from "../../utils/countries";
 
@@ -281,16 +281,18 @@ export const SaveContactModal: React.FC = () => {
             <button
               type="button"
               onClick={closeAddContactModal}
-              className="px-4 py-2 rounded-xl text-xs font-medium text-slate-300 hover:text-white hover:bg-white/[0.05] transition-colors"
+              disabled={isSubmitting}
+              className="px-4 py-2 rounded-xl text-xs font-medium text-slate-300 hover:text-white hover:bg-white/[0.05] transition-colors cursor-pointer disabled:opacity-50"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="px-5 py-2 rounded-xl text-xs font-semibold bg-[#0066ff] hover:bg-[#0052cc] text-white transition-all shadow-lg shadow-[#0066ff]/25 disabled:opacity-50 cursor-pointer"
+              className="flex items-center gap-1.5 px-5 py-2 rounded-xl text-xs font-semibold bg-[#0066ff] hover:bg-[#0052cc] text-white transition-all shadow-lg shadow-[#0066ff]/25 disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
             >
-              {isSubmitting ? "Saving..." : "Save Contact"}
+              {isSubmitting && <Loader2 size={13} className="animate-spin" />}
+              <span>{isSubmitting ? "Saving..." : "Save Contact"}</span>
             </button>
           </div>
         </form>

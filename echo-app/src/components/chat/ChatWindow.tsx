@@ -64,6 +64,7 @@ export const ChatWindow: FC<ChatWindowProps> = ({
     setReplyingTo,
     addMessage,
     setParticipantBlockedStatus,
+    clearConversationMessages,
   } = useChatStore();
 
   const { sendMessage, reactMessage, markAsRead, emitMessagesDeleted } = useSocket();
@@ -573,6 +574,26 @@ export const ChatWindow: FC<ChatWindowProps> = ({
     }
   };
 
+  const handleClearChat = async () => {
+    if (!activeConversationId) return;
+    const confirmed = await confirm({
+      title: "Clear chat messages?",
+      message: "Are you sure you want to clear all messages from this chat? The chat will remain in your chat list.",
+      confirmText: "Clear Chat",
+      cancelText: "Cancel",
+      variant: "warning",
+    });
+    if (!confirmed) return;
+
+    try {
+      await messageApi.clearChat(activeConversationId);
+      clearConversationMessages(activeConversationId);
+    } catch (err: any) {
+      console.error("Failed to clear chat:", err);
+      alert(err.response?.data?.message || err.message || "Failed to clear chat");
+    }
+  };
+
   const handleDeleteChat = async () => {
     if (!activeConversationId) return;
     const confirmed = await confirm({
@@ -642,6 +663,7 @@ export const ChatWindow: FC<ChatWindowProps> = ({
           onOpenMenu={onOpenMenu}
           onSearchClick={onSearchClick}
           onBlockUser={handleToggleBlockCounterpart}
+          onClearChat={handleClearChat}
           onDeleteChat={handleDeleteChat}
         />
       )}

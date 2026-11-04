@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Pin, X } from "lucide-react";
+import { Pin, X, Loader2 } from "lucide-react";
 import { useChatStore } from "../../store/chatStore";
 
 interface PinMessageDurationModalProps {
@@ -11,6 +11,7 @@ export const PinMessageDurationModal: React.FC<PinMessageDurationModalProps> = (
 }) => {
   const { pinningMessage, setPinningMessage } = useChatStore();
   const [selectedDuration, setSelectedDuration] = useState<"24h" | "7d" | "30d">("7d");
+  const [isPinning, setIsPinning] = useState(false);
 
   if (!pinningMessage) return null;
 
@@ -19,6 +20,7 @@ export const PinMessageDurationModal: React.FC<PinMessageDurationModalProps> = (
   };
 
   const handlePin = () => {
+    setIsPinning(true);
     onConfirmPin(selectedDuration);
     setPinningMessage(null);
   };
@@ -99,16 +101,19 @@ export const PinMessageDurationModal: React.FC<PinMessageDurationModalProps> = (
           <button
             type="button"
             onClick={handleCancel}
-            className="px-3.5 py-2 rounded-xl text-xs font-medium text-slate-300 hover:text-white hover:bg-white/[0.06] transition-colors cursor-pointer"
+            disabled={isPinning}
+            className="px-3.5 py-2 rounded-xl text-xs font-medium text-slate-300 hover:text-white hover:bg-white/[0.06] transition-colors cursor-pointer disabled:opacity-50"
           >
             Cancel
           </button>
           <button
             type="button"
             onClick={handlePin}
-            className="px-4 py-2 rounded-xl text-xs font-medium bg-[#0066ff] hover:bg-[#0052cc] text-white shadow-lg shadow-blue-950/40 active:scale-[0.98] transition-all cursor-pointer"
+            disabled={isPinning}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-medium bg-[#0066ff] hover:bg-[#0052cc] text-white shadow-lg shadow-blue-950/40 active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50"
           >
-            Pin
+            {isPinning && <Loader2 size={13} className="animate-spin" />}
+            <span>Pin</span>
           </button>
         </div>
       </div>

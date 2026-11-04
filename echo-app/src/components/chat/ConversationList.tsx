@@ -84,11 +84,6 @@ export const ConversationList: FC = () => {
 
     return conversations
       .filter((conv) => {
-        // Direct chats should only appear in the sidebar if they have at least one message
-        if (conv.type === "direct" && !conv.lastMessage) {
-          return false;
-        }
-
         if (!query) return true;
 
         const isGroup = conv.type === "group";

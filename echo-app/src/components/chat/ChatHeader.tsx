@@ -1,6 +1,6 @@
 import { FC, useState, useRef, useEffect } from "react";
 import { Avatar } from "../common/Avatar";
-import { Phone, Video, Search, MoreVertical, Users, CheckSquare, X, Ban, Trash2 } from "lucide-react";
+import { Phone, Video, Search, MoreVertical, Users, CheckSquare, X, Ban, Trash2, Eraser } from "lucide-react";
 import { IConversation } from "../../types/chat";
 import { useAuthStore } from "../../store/authStore";
 import { useChatStore } from "../../store/chatStore";
@@ -15,6 +15,7 @@ interface ChatHeaderProps {
   onHeaderClick?: () => void;
   onOpenMenu?: () => void;
   onBlockUser?: () => void;
+  onClearChat?: () => void;
   onDeleteChat?: () => void;
 }
 
@@ -23,6 +24,7 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
   onSearchClick,
   onHeaderClick,
   onBlockUser,
+  onClearChat,
   onDeleteChat,
 }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -278,6 +280,21 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
                   <span>{isBlockedByMe ? "Unblock Contact" : "Block Contact"}</span>
                 </button>
               )}
+
+              {/* Clear Chat */}
+              <button
+                type="button"
+                onClick={() => {
+                  setIsMenuOpen(false);
+                  if (onClearChat) {
+                    onClearChat();
+                  }
+                }}
+                className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs text-slate-300 hover:text-white hover:bg-white/[0.05] transition-colors cursor-pointer text-left"
+              >
+                <Eraser size={15} className="text-slate-400" />
+                <span>Clear Chat</span>
+              </button>
 
               {/* Delete Chat */}
               <button

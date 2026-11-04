@@ -1,6 +1,6 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Trash2, Ban, Info, X } from "lucide-react";
+import { Trash2, Ban, Info, X, Loader2 } from "lucide-react";
 import { useConfirmDialogStore, DialogVariant } from "../../store/confirmDialogStore";
 
 const variantConfig: Record<
@@ -35,6 +35,18 @@ const variantConfig: Record<
 export const ConfirmationModal: React.FC = () => {
   const { isOpen, options, handleConfirm, handleCancel } = useConfirmDialogStore();
   const { title, message, confirmText, cancelText, variant = "danger" } = options;
+  const [isConfirming, setIsConfirming] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      setIsConfirming(false);
+    }
+  }, [isOpen]);
+
+  const onConfirmClick = () => {
+    setIsConfirming(true);
+    handleConfirm();
+  };
 
   const currentVariant = variantConfig[variant] || variantConfig.danger;
   const IconComponent = currentVariant.icon;
@@ -49,7 +61,7 @@ export const ConfirmationModal: React.FC = () => {
         handleCancel();
       } else if (e.key === "Enter") {
         e.preventDefault();
-        handleConfirm();
+        onConfirmClick();
       }
     };
 
@@ -113,7 +125,8 @@ export const ConfirmationModal: React.FC = () => {
                 <button
                   type="button"
                   onClick={handleCancel}
-                  className="px-3.5 py-2 rounded-xl text-xs font-medium text-slate-300 hover:text-white hover:bg-white/[0.06] transition-colors cursor-pointer"
+                  disabled={isConfirming}
+                  className="px-3.5 py-2 rounded-xl text-xs font-medium text-slate-300 hover:text-white hover:bg-white/[0.06] transition-colors cursor-pointer disabled:opacity-50"
                 >
                   {cancelText || "Cancel"}
                 </button>
@@ -121,10 +134,12 @@ export const ConfirmationModal: React.FC = () => {
 
               <button
                 type="button"
-                onClick={handleConfirm}
-                className={`px-4 py-2 rounded-xl text-xs font-medium shadow-lg transition-all active:scale-[0.98] cursor-pointer ${currentVariant.confirmButtonBg}`}
+                onClick={onConfirmClick}
+                disabled={isConfirming}
+                className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-medium shadow-lg transition-all active:scale-[0.98] cursor-pointer disabled:opacity-50 ${currentVariant.confirmButtonBg}`}
               >
-                {confirmText || "Confirm"}
+                {isConfirming && <Loader2 size={13} className="animate-spin" />}
+                <span>{confirmText || "Confirm"}</span>
               </button>
             </div>
           </motion.div>
